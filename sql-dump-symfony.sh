@@ -13,7 +13,7 @@ backupFileDefault=${sqlBase}-`date "+%Y%m%d-%H%M%S"`.sql
 backupFile=${2:-$backupFileDefault}
 
 mkdir -p ${backupDir}
-mysqldump --host=$sqlHost --user=$sqlUser --password=$sqlPass $sqlBase > ${backupDir}${backupFile}
+mysqldump --host=$sqlHost --user=$sqlUser --password=$sqlPass --lock-tables=false $sqlBase > ${backupDir}${backupFile}
 
 if [[ $backupTime > 0 ]]; then
 	find ${backupDir} -mtime +${backupTime} -exec rm {} \; 

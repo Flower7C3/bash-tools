@@ -41,11 +41,11 @@ fi
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${branch}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/Documents/lamp/"
+localDataDir="${HOME}/backup/"
+vagrantDataDir="${HOME}/Documents/lamp/"
 virtualDataDir="/vagrant/"
 localScriptsDir=`pwd`"/"
-
-cd ${localDataDir}
+triggerFile="database/"${database}".sql"
 
 printf "Dump sql on ${BIYellow}${host}${Color_Off} from branch ${BIYellow}${branch}${Color_Off} and save on virtual to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"
 
@@ -63,7 +63,9 @@ then
 	printf "${BGreen}Dump sql on ${BIGreen}${host}${BGreen} host ${Green} \n"
 	ssh ${host} '${HOME}/sql-dump-symfony.sh '${branch}' '${exportFileName}
 
-	printf "${BGreen}Copy ${BIGreen}${exportFileName}${BGreen} to local ${Green} \n"
+	printf "${BGreen}Copy ${BIGreen}${exportFileName}${BGreen} from host to local ${Green} \n"
+  mkdir ${localDataDir}
+  cd ${localDataDir}
 	scp ${host}:${remoteDataDir}${exportFileName} ${localDataDir}${exportFileName}
 
 	printf "${BRed}Cleanup ${BIRed}${host}${BRed} host ${Red} \n"
@@ -71,11 +73,19 @@ then
 	ssh ${host} 'rm ${HOME}/colors.sh'
 	ssh ${host} 'rm ${HOME}/sql-dump-symfony.sh'
 
-	printf "${BGreen}Import on virtual ${Green} \n"
-	vagrant ssh -c "mysql "${database}" < "${virtualDataDir}${exportFileName}
+  mv ${localDataDir}${exportFileName} ${vagrantDataDir}${exportFileName}
+
+	cd ${vagrantDataDir}
+  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on virtual ${Green} \n"
+  vagrant ssh -c "mysql "${database}" < "${virtualDataDir}${exportFileName}
+
+  if [ -f "${vagrantDataDir}${triggerFile}" ]; then
+    printf "${BGreen}Import ${BIGreen}${triggerFile}${BGreen} on virtual ${Green} \n"
+    vagrant ssh -c "mysql "${database}" < "${virtualDataDir}${triggerFile}
+  fi
 
 	printf "${BBRed}Cleanup localhost ${Red} \n"
-	rm ${localDataDir}${exportFileName}
+	rm ${vagrantDataDir}${exportFileName}
 
   printf "${Color_Off}"
 

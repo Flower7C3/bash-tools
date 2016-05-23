@@ -9,16 +9,7 @@ _branchDst="master"
 
 if [ $# -ge 1 ]
 then
-  prefix=$1
-else
-  printf "Prefix: ${On_IGreen}"
-  read -e prefix
-  printf "${Color_Off}"
-fi
-
-if [ $# -ge 2 ]
-then
-  branchSrc=$2
+  branchSrc=$1
 else
   printf "Source [${BIYellow}${_branchSrc}${Color_Off}]: ${On_IGreen}"
   read -e input
@@ -26,13 +17,22 @@ else
   printf "${Color_Off}"
 fi
 
-if [ $# -ge 3 ]
+if [ $# -ge 2 ]
 then
-  branchDst=$3
+  branchDst=$2
 else
   printf "Destination [${BIYellow}${_branchDst}${Color_Off}]: ${On_IGreen}"
   read -e input
   branchDst=${input:-$_branchDst}
+  printf "${Color_Off}"
+fi
+
+if [ $# -ge 3 ]
+then
+  prefix=$3
+else
+  printf "Prefix: ${On_IGreen}"
+  read -e prefix
   printf "${Color_Off}"
 fi
 

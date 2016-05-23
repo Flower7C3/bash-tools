@@ -8,16 +8,7 @@ _branches="master,dev"
 
 if [ $# -ge 1 ]
 then
-  prefix=$1
-else
-  printf "Prefix: ${On_IGreen}"
-  read -e prefix
-  printf "${Color_Off}"
-fi
-
-if [ $# -ge 2 ]
-then
-  branches=$2
+  branches=$1
 else
   printf "Branches [${BIYellow}${_branches}${Color_Off}]: ${On_IGreen}"
   read -e input
@@ -25,6 +16,15 @@ else
   printf "${Color_Off}"
 fi
 IFS=',' read -a branches <<< "$branches"
+
+if [ $# -ge 2 ]
+then
+  prefix=$2
+else
+  printf "Prefix: ${On_IGreen}"
+  read -e prefix
+  printf "${Color_Off}"
+fi
 
 printf "Pull branches"
 for branch in "${branches[@]}"
