@@ -64,7 +64,7 @@ datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/Documents/database/"
-virtualDataDir="/usr/lib/mysql/"
+virtualDataDir="/var/lib/mysql/"
 localScriptsDir=`pwd`"/"
 localTriggerFile="${HOME}/Documents/database/"${database}".sql"
 virtualTriggerFile="/var/lib/mysql/"${database}".sql"
@@ -102,17 +102,17 @@ then
   printf "${Color_Off}"
 
   printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on docker ${Green} \n"
-  docker exec -ti ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} < '${database}' < '${virtualDataDir}${exportFileName}
+  docker exec -i ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtualDataDir}${exportFileName}
   printf "${Color_Off}"
 
   if [ -f "${localTriggerFile}" ]; then
     printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} on virtual ${Green} \n"
-    docker exec -ti ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} < '${database}' < '${virtualTriggerFile}
+    docker exec -i ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtualTriggerFile}
     printf "${Color_Off}"
   fi
 
   printf "${BBRed}Cleanup localhost ${Red} \n"
-  rm ${localDataDir}${exportFileName}
+  # rm ${localDataDir}${exportFileName}
   printf "${Color_Off}"
 
 fi
