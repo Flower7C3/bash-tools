@@ -7,6 +7,7 @@ clear
 _proxy="example-proxy-dev"
 _host="example-server-dev"
 _directory="dev"
+_containerName="mysql55"
 _database="example"
 
 if [ $# -ge 1 ]
@@ -41,7 +42,17 @@ fi
 
 if [ $# -ge 4 ]
 then
-  database=$4
+  containerName=$4
+else
+  printf "${Color_Off}Docker container name [${BIYellow}${_containerName}${Color_Off}]: ${On_IGreen}"
+  read -e input
+  containerName=${input:-$_containerName}
+  printf "${Color_Off}"
+fi
+
+if [ $# -ge 5 ]
+then
+  database=$5
 else
   printf "${Color_Off}Local database name [${BIYellow}${_database}${Color_Off}]: ${On_IGreen}"
   read -e input
@@ -52,11 +63,13 @@ fi
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/backup/"
+localDataDir="${HOME}/Documents/database/"
+virtualDataDir="/usr/lib/mysql/"
 localScriptsDir=`pwd`"/"
 localTriggerFile="${HOME}/Documents/database/"${database}".sql"
+virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
-printf "${Color_Off}Dump sql on ${BIYellow}${host}${Color_Off} via ${BIYellow}${proxy}${Color_Off} from directory ${BIYellow}${directory}${Color_Off} and save on local to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"
+printf "${Color_Off}Dump sql on ${BIYellow}${host}${Color_Off} via ${BIYellow}${proxy}${Color_Off} from directory ${BIYellow}${directory}${Color_Off} and save on docker ${BIYellow}${containerName}${Color_Off} container to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"
 
 read -e input
 printf "${Color_Off}"
@@ -88,13 +101,13 @@ then
   ssh ${proxy} 'rm ${HOME}/sql-dump-on-remote-symfony.sh'
   printf "${Color_Off}"
 
-  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on local ${Green} \n"
-  mysql ${database} < ${localDataDir}${exportFileName}
+  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on docker ${Green} \n"
+  docker exec -ti ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} < '${database}' < '${virtualDataDir}${exportFileName}
   printf "${Color_Off}"
 
   if [ -f "${localTriggerFile}" ]; then
-    printf "${BGreen}Execute trigger file ${BIGreen}${localTriggerFile}${BGreen} on local ${Green} \n"
-    mysql ${database} < ${localTriggerFile}
+    printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} on virtual ${Green} \n"
+    docker exec -ti ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} < '${database}' < '${virtualTriggerFile}
     printf "${Color_Off}"
   fi
 
