@@ -101,12 +101,12 @@ then
   ssh ${proxy} 'rm ${HOME}/sql-dump-on-remote-symfony.sh'
   printf "${Color_Off}"
 
-  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on docker ${Green} \n"
+  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on docker ${Green} \n"
   docker exec -i ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtualDataDir}${exportFileName}
   printf "${Color_Off}"
 
   if [ -f "${localTriggerFile}" ]; then
-    printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} on virtual ${Green} \n"
+    printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} to ${BIGreen}${database}${BGreen} database on virtual ${Green} \n"
     docker exec -i ${containerName} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtualTriggerFile}
     printf "${Color_Off}"
   fi

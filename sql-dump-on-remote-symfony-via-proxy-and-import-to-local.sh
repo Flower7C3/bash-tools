@@ -88,12 +88,12 @@ then
   ssh ${proxy} 'rm ${HOME}/sql-dump-on-remote-symfony.sh'
   printf "${Color_Off}"
 
-  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on local ${Green} \n"
+  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on local ${Green} \n"
   mysql ${database} < ${localDataDir}${exportFileName}
   printf "${Color_Off}"
 
   if [ -f "${localTriggerFile}" ]; then
-    printf "${BGreen}Execute trigger file ${BIGreen}${localTriggerFile}${BGreen} on local ${Green} \n"
+    printf "${BGreen}Execute trigger file ${BIGreen}${localTriggerFile}${BGreen} to ${BIGreen}${database}${BGreen} database on local ${Green} \n"
     mysql ${database} < ${localTriggerFile}
     printf "${Color_Off}"
   fi

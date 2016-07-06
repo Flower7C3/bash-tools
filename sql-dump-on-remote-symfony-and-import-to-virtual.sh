@@ -88,13 +88,13 @@ then
 	ssh ${host} 'rm ${HOME}/sql-dump-symfony.sh'
   printf "${Color_Off}"
 
-  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} on virtual ${Green} \n"
+  printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on virtual ${Green} \n"
   cd ${localDataDir}
   vagrant ssh -c "mysql "${database}" < "${virtualDataDir}${exportFileName}
   printf "${Color_Off}"
 
   if [ -f "${localTriggerFile}" ]; then
-    printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} on virtual ${Green} \n"
+    printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} to ${BIGreen}${database}${BGreen} database on virtual ${Green} \n"
     vagrant ssh -c "mysql "${database}" < "${virtualTriggerFile}
     printf "${Color_Off}"
   fi
