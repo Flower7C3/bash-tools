@@ -63,10 +63,10 @@ fi
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/Documents/${localdirectory}/"
+localDataDir="${HOME}/www/${localdirectory}/"
 virtualDataDir="/vagrant/"
 localScriptsDir=`pwd`"/"
-localTriggerFile="${HOME}/Documents/database/"${database}".sql"
+localTriggerFile="${HOME}/www/database/"${database}".sql"
 virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
 printf "Dump sql on ${BIYellow}${host}${Color_Off} via ${BIYellow}${proxy}${Color_Off} from directory ${BIYellow}${directory}${Color_Off} and save on virtual ${BIYellow}${localdirectory}${Color_Off} to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"

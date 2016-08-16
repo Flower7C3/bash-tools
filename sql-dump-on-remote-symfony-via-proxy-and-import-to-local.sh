@@ -54,7 +54,7 @@ exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/backup/"
 localScriptsDir=`pwd`"/"
-localTriggerFile="${HOME}/Documents/database/"${database}".sql"
+localTriggerFile="${HOME}/www/database/"${database}".sql"
 
 printf "${Color_Off}Dump sql on ${BIYellow}${host}${Color_Off} via ${BIYellow}${proxy}${Color_Off} from directory ${BIYellow}${directory}${Color_Off} and save on local to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"
 

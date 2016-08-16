@@ -52,10 +52,10 @@ fi
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/Documents/database/"
+localDataDir="${HOME}/www/database/"
 virtualDataDir="/var/lib/mysql/"
 localScriptsDir=`pwd`"/"
-localTriggerFile="${HOME}/Documents/database/"${database}".sql"
+localTriggerFile="${HOME}/www/database/"${database}".sql"
 virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
 printf "${Color_Off}Dump sql on ${BIYellow}${host}${Color_Off} from directory ${BIYellow}${directory}${Color_Off} and save on docker ${BIYellow}${containerName}${Color_Off} container to ${BIYellow}${database}${Color_Off} database? [n]: ${On_IGreen}"
