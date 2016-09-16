@@ -72,3 +72,53 @@ On_IPurple='\033[0;105m'  # Purple
 On_ICyan='\033[0;106m'    # Cyan
 On_IWhite='\033[0;107m'   # White
 
+
+
+
+# Events
+
+Log=$Purple
+BLog=$BPurple
+BILog=$BPurple
+
+Info=$Cyan
+BInfo=$BCyan
+UInfo=$UCyan
+BIInfo=$BICyan
+
+Notice=$Blue
+BNotice=$BBlue
+UNotice=$UBlue
+BINotice=$BIBlue
+
+Success=$Green
+BSuccess=$BGreen
+USuccess=$UGreen
+BISuccess=$BIGreen
+
+Error=$Red
+BError=$BRed
+UError=$URed
+BIError=$BIRed
+
+
+
+# Lines
+BoxBR='\e(0\x6a\e(B'
+BoxTR='\e(0\x6b\e(B'
+BoxTL='\e(0\x6c\e(B'
+BoxBL='\e(0\x6d\e(B'
+BoxX='\e(0\x6e\e(B'
+BoxH='\e(0\x71\e(B'
+BoxVR='\e(0\x74\e(B'
+BoxVL='\e(0\x75\e(B'
+BoxHT='\e(0\x76\e(B'
+BoxHB='\e(0\x77\e(B'
+BoxV='\e(0\x78\e(B'
+
+
+# char=( 6a 6b 6c 6d 6e 71 74 75 76 77 78 )
+# for i in ${char[*]}
+# do
+    # printf "0x$i \x$i \e(0\x$i\e(B\n"
+# done

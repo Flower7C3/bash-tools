@@ -1,6 +1,7 @@
-clear
+#!/usr/bin/env bash
 
-source `dirname $0`/colors.sh
+source `dirname $0`/_base.sh
+
 
 _method="GET"
 _resourceUrl="http://127.0.0.1:8000/api/v1/pages.json"
@@ -8,51 +9,17 @@ _data=""
 _contentType=""
 _xdebug=" -b XDEBUG_SESSION=PHPSTORM"
 
-if [ $# -ge 1 ]
-then
-  method=$1
-else
-  printf "Method [${BIYellow}${_method}${Color_Off}]: ${On_IGreen}"
-  read -e input
-  method=${input:-$_method}
-  printf "${Color_Off}"
-fi
 
-if [ $# -ge 2 ]
-then
-  resourceUrl=$2
-else
-  printf "Resource [${BIYellow}${_resourceUrl}${Color_Off}]: ${On_IGreen}"
-  read -e input
-  resourceUrl=${input:-$_resourceUrl}
-  printf "${Color_Off}"
-fi
+programTitle "Rest request"
 
-if [ $# -ge 3 ]
-then
-  data=$3
-else
-  printf "Data [${BIYellow}${_data}${Color_Off}]: ${On_IGreen}"
-  read -e input
-  data=${input:-$_data}
-  printf "${Color_Off}"
-fi
-
-# if [ $# -ge 4 ]
-# then
-#   contentType=$4
-# else
-#   printf "Content-Type [${BIYellow}${_contentType}${Color_Off}]: ${On_IGreen}"
-#   read -e input
-#   contentType=${input:-$_contentType}
-#   printf "${Color_Off}"
-# fi
+promptVariable method "Method [${BIYellow}${_method}${Color_Off}]" "$_method" $1
+promptVariable resourceUrl "Resource [${BIYellow}${_resourceUrl}${Color_Off}]" "$_resourceUrl" $2
+promptVariable data "Data [${BIYellow}${_data}${Color_Off}]: ${On_IGreen}" "$_data" $3
 
 if [[ $resourceUrl == *"/auth/login"* ]]
 then
   export REST_API_TOKEN=""
 fi
-
 
 printf "${BBlue}\n"
 printf "${method}: ${resourceUrl}\n"
@@ -87,6 +54,5 @@ printf "${Color_Off}"
 
 printf "${Green}\n"
 echo $response | python -m json.tool
-printf "${Color_Off}"
 
-printf "\n\n"
+programEnd

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cd `dirname $0`
-source colors.sh
+source _base.sh
 clear
 
 host_src=${1:-"source-host"}
