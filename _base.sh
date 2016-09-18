@@ -47,7 +47,7 @@ function promptVariable() {
 		printf "${Color_Off}${question}: ${On_IGreen}"
 		read -e input
 		local variableValue=${input:-$defaultValue}
-		printf "${Color_Off}"
+		printf "${Color_Off}\n"
 	fi
 	eval "$variableName"'=$variableValue' 
 }
