@@ -25,7 +25,6 @@ then
 
 	confirmOrExit "Execute ${BIYellow}${commandName}${Color_Off} command in ${BIYellow}${dockerProjectPath}${Color_Off} path of ${BIYellow}${containerName}${Color_Off} docker container?"
 
-	printf "${Color_Off}\n"
 	docker start ${containerName}
 	docker exec -ti ${containerName} bash -c "cd ${dockerProjectPath} && ${commandName}"
 

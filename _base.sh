@@ -47,7 +47,7 @@ function promptVariable() {
 		printf "${Color_Off}${question}: ${On_IGreen}"
 		read -e input
 		local variableValue=${input:-$defaultValue}
-		printf "${Color_Off}\n"
+		printf "${Color_Off}"
 	fi
 	eval "$variableName"'=$variableValue' 
 }
@@ -64,6 +64,7 @@ function setVariable(){
 function confirmOrExit() {
 	local question=$1
 	promptVariable run "${question} [n]"
+	printf "\n"
 	if [[ "$run" != "y" ]]
 	then
 		exit -1

@@ -44,7 +44,7 @@ scp ${proxy}:${remoteDataDir}${exportFileName} ${localDataDir}${exportFileName}
 printf "${Color_Off}"
 
 printf "${BRed}Cleanup ${BIRed}${proxy}${BRed} proxy ${Red} \n"
-ssh ${proxy} 'rm '${remoteDataDir}${exportFileName}' ${HOME}/_base.sh ${HOME}/_colors.${HOME}/sql-dump-symfony.sh ${HOME}/sql-dump-on-remote-symfony.sh'
+ssh ${proxy} 'rm '${remoteDataDir}${exportFileName}' ${HOME}/_base.sh ${HOME}/_colors.sh ${HOME}/sql-dump-symfony.sh ${HOME}/sql-dump-on-remote-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on local ${Green} \n"
