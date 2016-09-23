@@ -11,9 +11,9 @@ _database="example"
 clear
 programTitle "SQL dump on remote Symfony app"
 
-promptVariable host "Host [${BIYellow}${_host}${Color_Off}]"  "$_host" $1
-promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]"  "$_directory" $2
-setVariable exportFileName "backup_${host}_`date "+%Y%m%d-%H%M%S"`.sql" $3
+promptVariable host "Host [${BIYellow}${_host}${Color_Off}]"  "$_host" 1 "$@"
+promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]"  "$_directory" 2 "$@"
+setVariable exportFileName "backup_${host}_`date "+%Y%m%d-%H%M%S"`.sql" 3 "$@"
 
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/backup/"

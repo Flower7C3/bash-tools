@@ -1,4 +1,4 @@
-source `dirname $0`/_colors.sh
+source ${HOME}/bin/_colors.sh
 
 function programTitle(){
 	local title=$1
@@ -40,9 +40,11 @@ function promptVariable() {
 	local variableName=$1
 	local question=$2
 	local defaultValue=$3
-	if [ $# -ge 4 ]
+	local argNo=$(expr ${4:-1} + 4)
+	local args=$#
+	if [ $args -ge $argNo ];
 	then
-	  	local variableValue=$4
+	  	local variableValue=${!argNo}
 	else
 		printf "${Color_Off}${question}: ${On_IGreen}"
 		read -e input

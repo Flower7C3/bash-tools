@@ -12,10 +12,10 @@ _database="example"
 clear
 programTitle "SQL dump on remote Symfony app and import to docker"
 
-promptVariable host "Host [${BIYellow}${_host}${Color_Off}]" "$_host" $1
-promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]" "$_directory" $2
-promptVariable containerName "Docker container name [${BIYellow}${_containerName}${Color_Off}]" "$_containerName" $3
-promptVariable database "Local database name [${BIYellow}${_database}${Color_Off}]" "$_database" $4
+promptVariable host "Host [${BIYellow}${_host}${Color_Off}]" "$_host" 1 "$@"
+promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]" "$_directory" 2 "$@"
+promptVariable containerName "Docker container name [${BIYellow}${_containerName}${Color_Off}]" "$_containerName" 3 "$@"
+promptVariable database "Local database name [${BIYellow}${_database}${Color_Off}]" "$_database" 4 "$@"
 
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"

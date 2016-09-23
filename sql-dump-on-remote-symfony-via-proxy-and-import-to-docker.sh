@@ -13,11 +13,11 @@ _database="example"
 clear
 programTitle "SQL dump on remote Symfony app via proxy and import to docker"
 
-promptVariable proxy "Proxy [${BIYellow}${_proxy}${Color_Off}]" "$_proxy" $1
-promptVariable host "Host [${BIYellow}${_host}${Color_Off}]" "$_host" $2
-promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]" "$_directory" $3
-promptVariable containerName "Docker container name [${BIYellow}${_containerName}${Color_Off}]" "$_containerName" $4
-promptVariable database "Local database name [${BIYellow}${_database}${Color_Off}]" "$_database" $5
+promptVariable proxy "Proxy [${BIYellow}${_proxy}${Color_Off}]" "$_proxy" 1 "$@"
+promptVariable host "Host [${BIYellow}${_host}${Color_Off}]" "$_host" 2 "$@"
+promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]" "$_directory" 3 "$@"
+promptVariable containerName "Docker container name [${BIYellow}${_containerName}${Color_Off}]" "$_containerName" 4 "$@"
+promptVariable database "Local database name [${BIYellow}${_database}${Color_Off}]" "$_database" 5 "$@"
 
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"

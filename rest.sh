@@ -12,9 +12,9 @@ _xdebug=" -b XDEBUG_SESSION=PHPSTORM"
 
 programTitle "Rest request"
 
-promptVariable method "Method [${BIYellow}${_method}${Color_Off}]" "$_method" $1
-promptVariable resourceUrl "Resource [${BIYellow}${_resourceUrl}${Color_Off}]" "$_resourceUrl" $2
-promptVariable data "Data [${BIYellow}${_data}${Color_Off}]: ${On_IGreen}" "$_data" $3
+promptVariable method "Method [${BIYellow}${_method}${Color_Off}]" "$_method" 1 "$@"
+promptVariable resourceUrl "Resource [${BIYellow}${_resourceUrl}${Color_Off}]" "$_resourceUrl" 2 "$@"
+promptVariable data "Data [${BIYellow}${_data}${Color_Off}]: ${On_IGreen}" "$_data" 3 "$@"
 
 if [[ $resourceUrl == *"/auth/login"* ]]
 then

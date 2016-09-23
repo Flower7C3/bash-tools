@@ -20,8 +20,8 @@ then
 
 	printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
 
-	promptVariable containerName "Container name [${BIYellow}${_containerName}${Color_Off}]" "${_containerName}" $1
-	promptVariable commandName "Command [${BIYellow}${_commandName}${Color_Off}]" "${_commandName}" $2
+	promptVariable containerName "Container name [${BIYellow}${_containerName}${Color_Off}]" "${_containerName}" 1 "$@"
+	promptVariable commandName "Command [${BIYellow}${_commandName}${Color_Off}]" "${_commandName}" 2 "$@"
 
 	confirmOrExit "Execute ${BIYellow}${commandName}${Color_Off} command in ${BIYellow}${dockerProjectPath}${Color_Off} path of ${BIYellow}${containerName}${Color_Off} docker container?"
 

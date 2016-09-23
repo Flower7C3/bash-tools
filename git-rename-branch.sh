@@ -8,8 +8,8 @@ programTitle "Rename GIT branch"
 
 printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
 
-promptVariable old_branch "Old branch name" "" $1
-promptVariable new_branch "New branch name" "" $2
+promptVariable old_branch "Old branch name" "" 1 "$@"
+promptVariable new_branch "New branch name" "" 2 "$@"
 
 confirmOrExit "Rename branch ${BIYellow}${old_branch}${Color_Off} to ${BIYellow}${new_branch}${Color_Off}?"
 
