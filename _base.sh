@@ -1,5 +1,9 @@
 source ${HOME}/bin/_colors.sh
 
+###############################################################
+### Program info
+###############################################################
+
 function programTitle(){
 	local title=$1
 
@@ -34,6 +38,10 @@ function printfln(){
 	local message=$1
 	printf "${message}\n"
 }
+
+###############################################################
+### I/O
+###############################################################
 
 # asks user for variable value
 function promptVariable() {
@@ -98,4 +106,31 @@ function confirmOrExit() {
 	then
 		exit -1
 	fi
+}
+
+###############################################################
+### Facebook cache
+###############################################################
+
+function facebook_cache_clean_by_sitemap {
+    local baseURL=${1:-http://localhost/}
+    local sitemapFile=${2:-sitemap.xml}
+
+    printf "${BInfo}Clean facebook cache for ${BIInfo}${baseURL}${BInfo} ${Info} \n"
+    wget -q ${baseURL} --no-check-certificate --no-cache -O - | egrep -o "${baseURL}[^ \"()\<>]*" | while read url;
+    do
+  		facebook_cache_clean $url
+    done
+}
+
+
+function facebook_cache_clean {
+    local url=${1:-http://localhost/}
+
+    printf "${BInfo}Clean facebook cache for ${BIInfo}${url}${BInfo} page${Color_Off} \n"
+    curl -X POST \
+        -F "id=${url}" \
+        -F "scrape=true" \
+        "https://graph.facebook.com"
+    echo ""
 }
