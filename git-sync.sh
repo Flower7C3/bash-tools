@@ -11,7 +11,7 @@ programTitle "Synch GIT branches"
 
 printf "You are in ${BIYellow}`pwd`${Color_Off} directory.\n"
 
-promptVariable branches "Branches [${BIYellow}${_branches}${Color_Off}]" "$_branches" 1 "$@"
+promptVariable branches "Branches" "$_branches" 1 "$@"
 IFS=',' read -a branches <<< "$branches"
 promptVariable prefix "Prefix (no default value)" "" 2 "$@"
 

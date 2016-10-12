@@ -12,10 +12,10 @@ _database="example"
 clear
 programTitle "SQL dump on remote Symfony app via proxy and import to local"
 
-promptVariable proxy "Proxy [${BIYellow}${_proxy}${Color_Off}]" "$_proxy" 1 "$@"
-promptVariable host "Host [${BIYellow}${_host}${Color_Off}]" "$_host" 2 "$@"
-promptVariable directory "Directory [${BIYellow}${_directory}${Color_Off}]" "$_directory" 3 "$@"
-promptVariable database "Local database name [${BIYellow}${_database}${Color_Off}]" "$_database" 4 "$@"
+promptVariable proxy "Proxy" "$_proxy" 1 "$@"
+promptVariable host "Host" "$_host" 2 "$@"
+promptVariable directory "Directory" "$_directory" 3 "$@"
+promptVariable database "Local database name" "$_database" 4 "$@"
 
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"

@@ -12,8 +12,8 @@ programTitle "Merge GIT branches"
 
 printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
 
-promptVariable branchSrc "Source [${BIYellow}${_branchSrc}${Color_Off}]" "$_branchSrc" 1 "$@"
-promptVariable branchDst "Destination [${BIYellow}${_branchDst}${Color_Off}]" "$_branchDst" 2 "$@"
+promptVariable branchSrc "Source" "$_branchSrc" 1 "$@"
+promptVariable branchDst "Destination" "$_branchDst" 2 "$@"
 
 promptVariable prefix "Prefix (no default value)" "" 3 "$@"
 
