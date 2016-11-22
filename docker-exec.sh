@@ -26,7 +26,7 @@ then
 	promptVariable interactive "Interactive" "${_interactive}" 3 "$@"
 	promptVariable autoClose "Auto close" "${_autoClose}" 4 "$@"
 
-	confirmOrExit "Execute ${BIYellow}${commandName}${Color_Off} command in ${BIYellow}${dockerProjectPath}${Color_Off} path of ${BIYellow}${containerName}${Color_Off} docker container?"
+	confirmOrExit "Execute ${QuestionBI}${commandName}${Question} command in ${QuestionBI}${dockerProjectPath}${Question} path of ${QuestionBI}${containerName}${Question} docker container?"
 
 	if [[ $(docker inspect -f {{.State.Running}} ${containerName}) == "false" ]]; then
 		printf "${Green}Starting container ${BGreen}"
@@ -48,7 +48,7 @@ then
 
 else
 
-	printfln "You must be in ${BIYellow}${localWwwPath}*${Color_Off} path to run this command!"
+	printfln "${Error}You must be in ${ErrorBI}${localWwwPath}*${Error} path to run this command!${Color_Off}"
 
 fi
 
