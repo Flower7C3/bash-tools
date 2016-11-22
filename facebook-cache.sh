@@ -14,13 +14,13 @@ promptVariable url "Url to rescrape" "$_url" 1 "$@"
 
 if [[ "$url" == *$sitemap ]]; then
 
-	confirmOrExit "Really rescrap all pages from ${BIYellow}${url}${Color_Off} sitemap${Color_Off}?"
+	confirmOrExit "Really rescrap all pages from ${QuestionBI}${url}${Question} sitemap?"
 	url=${url/$sitemap/}
 	facebook_cache_clean_by_sitemap $url $sitemap
 
 else
 
-	confirmOrExit "Really rescrap all pages from ${BIYellow}${url}${Color_Off} page${Color_Off}?"
+	confirmOrExit "Really rescrap all pages from ${QuestionBI}${url}${Question} page?"
 	facebook_cache_clean $url
 
 fi

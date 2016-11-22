@@ -13,9 +13,9 @@ printf "You are in ${BIYellow}`pwd`${Color_Off} directory.\n"
 
 promptVariable branches "Branches" "$_branches" 1 "$@"
 IFS=',' read -a branches <<< "$branches"
-promptVariable prefix "Prefix (no default value)" "" 2 "$@"
+promptVariable prefix "Prefix" "" 2 "$@"
 
-confirmOrExit "`printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${BIYellow}${prefix}${branch}${Color_Off}"; done; printf "?"`"
+confirmOrExit "`printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${QuestionBI}${prefix}${branch}${Question}"; done; printf "?"`"
 
 for branch in "${branches[@]}"
 do

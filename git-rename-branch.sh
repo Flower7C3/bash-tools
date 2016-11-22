@@ -11,7 +11,7 @@ printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
 promptVariable old_branch "Old branch name" "" 1 "$@"
 promptVariable new_branch "New branch name" "" 2 "$@"
 
-confirmOrExit "Rename branch ${BIYellow}${old_branch}${Color_Off} to ${BIYellow}${new_branch}${Color_Off}?"
+confirmOrExit "Rename branch ${QuestionBI}${old_branch}${Question} to ${QuestionBI}${new_branch}${Question}?"
 
 printfln "${BGreen}Rename branch localy ${BIGreen}${old_branch}${BGreen} to ${BIGreen}${new_branch} ${Blue}"
 git branch -m $old_branch $new_branch

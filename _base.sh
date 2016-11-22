@@ -1,4 +1,5 @@
-source ${HOME}/bin/_colors.sh
+source `dirname $0`/_colors.sh
+
 
 ###############################################################
 ### Program info
@@ -7,7 +8,7 @@ source ${HOME}/bin/_colors.sh
 function programTitle(){
 	local title=$1
 
-	printf "${BILog}"
+	printf "${LogBI}"
 
 	printf "${BoxTL}${BoxH}"
 	for (( c=1; c<=${#title} ; c++ ))
@@ -51,19 +52,19 @@ function promptVariable() {
 	local argNo=$(expr ${4:-1} + 4)
 	local args=$#
 	# get value defined in argv
-	if [ $args -ge $argNo ]; then
+	if [ ${args} -ge ${argNo} ]; then
 	  	local variableValue=${!argNo}
 	# or ask user for value
 	else
-		printf "${Color_Off}"
+		printf "${QuestionB}"
 		printf "${question}"
 		if [[ ! -z "${defaultValue}" ]]; then
-			printf " [${BIYellow}${defaultValue}${Color_Off}]"
+			printf " [${QuestionBI}${defaultValue}${QuestionB}]"
 		fi
 		printf ": ${On_IGreen}"
 		read -e input
 		# if user set nothing, then set default value
-		local variableValue=$input
+		local variableValue=${input}
 		printf "${Color_Off}"
 	fi
 	setVariable "$variableName" "$defaultValue" "$variableValue"
@@ -79,7 +80,7 @@ function promptVariableFixed() {
 	# ask user for value from allowed list
 	while true; do
 		promptVariable "$variableName" "$question" "$defaultValue" "$@"
-		promptResponse=`eval echo '$'"$variableName"`
+		promptResponse=`eval echo '$'"${variableName}"`
 		if test "`echo " ${allowedValues[*]} " | grep " ${promptResponse} "`"; then
 	 		break
 		else
@@ -94,7 +95,7 @@ function setVariable(){
 	local variableName=$1
 	local defaultValue=$2
 	local variableValue=${3:-$defaultValue}
-	eval "$variableName"'=$variableValue' 
+	eval "${variableName}"'=${variableValue}'
 }
 
 # user must press y and enter, or program will end
@@ -116,7 +117,7 @@ function facebook_cache_clean_by_sitemap {
     local baseURL=${1:-http://localhost/}
     local sitemapFile=${2:-sitemap.xml}
 
-    printf "${BInfo}Clean facebook cache for ${BIInfo}${baseURL}${BInfo} ${Info} \n"
+    printf "${InfoB}Clean facebook cache for ${InfoBI}${baseURL}${InfoB} ${Info} \n"
     wget -q ${baseURL} --no-check-certificate --no-cache -O - | egrep -o "${baseURL}[^ \"()\<>]*" | while read url;
     do
   		facebook_cache_clean $url
@@ -127,7 +128,7 @@ function facebook_cache_clean_by_sitemap {
 function facebook_cache_clean {
     local url=${1:-http://localhost/}
 
-    printf "${BInfo}Clean facebook cache for ${BIInfo}${url}${BInfo} page${Color_Off} \n"
+    printf "${InfoB}Clean facebook cache for ${InfoBI}${url}${InfoB} page${Color_Off} \n"
     curl -X POST \
         -F "id=${url}" \
         -F "scrape=true" \

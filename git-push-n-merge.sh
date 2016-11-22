@@ -15,9 +15,9 @@ printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
 promptVariable branchSrc "Source" "$_branchSrc" 1 "$@"
 promptVariable branchDst "Destination" "$_branchDst" 2 "$@"
 
-promptVariable prefix "Prefix (no default value)" "" 3 "$@"
+promptVariable prefix "Prefix" "" 3 "$@"
 
-confirmOrExit "Merge branch ${BIYellow}${prefix}${branchSrc}${Color_Off} into ${BIYellow}${prefix}${branchDst}${Color_Off}?"
+confirmOrExit "Merge branch ${QuestionBI}${prefix}${branchSrc}${Question} into ${QuestionBI}${prefix}${branchDst}${Question}?"
 
 printfln "${BGreen}Push ${BIGreen}${prefix}${branchSrc}${BGreen} to upstream ${Green}"
 git push

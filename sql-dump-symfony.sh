@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source `dirname $0`/_base.sh
+
 backupDir=${HOME}/backup/
 backupTime=7
 configFile=${HOME}/${1:-master}/app/config/parameters.yml
@@ -12,9 +14,15 @@ sqlBase=`cat $configFile | sed -n "s/^    database_name:\(.*\)/\1/p" | xargs`
 backupFileDefault=${sqlBase}-`date "+%Y%m%d-%H%M%S"`.sql
 backupFile=${2:-$backupFileDefault}
 
+programTitle "SQL dump on Symfony app"
+
+printf "${BGreen}Dump SQL ${Green} \n"
 mkdir -p ${backupDir}
 mysqldump --host=$sqlHost --user=$sqlUser --password=$sqlPass --lock-tables=false $sqlBase > ${backupDir}${backupFile}
 
 if [[ $backupTime > 0 ]]; then
+	printf "${BRed}Clean old backups ${Red} \n"
 	find ${backupDir} -mtime +${backupTime} -exec rm {} \; 
 fi
+
+programEnd
