@@ -1,4 +1,4 @@
-source `dirname $0`/_colors.sh
+source `dirname ${BASH_SOURCE}`/_colors.sh
 
 
 ###############################################################
@@ -84,7 +84,7 @@ function promptVariableFixed() {
 		if test "`echo " ${allowedValues[*]} " | grep " ${promptResponse} "`"; then
 	 		break
 		else
-			printf "${BIRed}Wrong ${question}. Allowed values is ${allowedValues[*]}!${Color_Off}"
+			printf "${ErrorB}Wrong value for ${QuestionB}${question}${ErrorB} question. Allowed values are: ${ErrorBI}%s${ErrorB}!${Color_Off}" $( IFS=$','; printf "${allowedValues[*]}" )
 			echo ""
 		fi
 	done
@@ -101,7 +101,7 @@ function setVariable(){
 # user must press y and enter, or program will end
 function confirmOrExit() {
 	local question=$1
-	promptVariable run "${question} [n]"
+	promptVariableFixed run "${question}" "n" "y n"
 	printf "\n"
 	if [[ "$run" != "y" ]]
 	then

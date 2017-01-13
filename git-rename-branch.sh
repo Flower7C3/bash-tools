@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 
 
 clear
 programTitle "Rename GIT branch"
 
-printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
+printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
 
 promptVariable old_branch "Old branch name" "" 1 "$@"
 promptVariable new_branch "New branch name" "" 2 "$@"

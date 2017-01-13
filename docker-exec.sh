@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 
 
 localWwwPath=${HOME}/www/
@@ -19,7 +19,7 @@ programTitle "Execute command on Docker container"
 if [[ $localProjectPath == ${localWwwPath}* ]];
 then
 
-	printfln "You are in ${BIYellow}`pwd`${Color_Off} directory."
+	printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
 
 	promptVariable containerName "Container name" "${_containerName}" 1 "$@"
 	promptVariable commandName "Command" "${_commandName}" 2 "$@"

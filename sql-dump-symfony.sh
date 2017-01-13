@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
+
 
 backupDir=${HOME}/backup/
-backupTime=7
+backupTime=${3:-7}
 configFile=${HOME}/${1:-master}/app/config/parameters.yml
 
 sqlHost=`cat $configFile | sed -n "s/^    database_host:\(.*\)/\1/p" | xargs`

@@ -78,39 +78,45 @@ On_IWhite='\033[0;107m'   # White
 # Events
 
 Log=${Purple}
-LogB=${BPurple}
-LogBI=${BPurple}
 LogU=${UPurple}
+LogB=${BPurple}
+LogBI=${BIPurple}
+LogI=${IPurple}
 LogG=${On_Purple}
 
 Info=${Cyan}
-InfoB=${BCyan}
 InfoU=${UCyan}
+InfoB=${BCyan}
 InfoBI=${BICyan}
+InfoI=${ICyan}
 InfoG=${On_Cyan}
 
 Question=${Yellow}
-QuestionB=${BYellow}
 QuestionU=${UYellow}
+QuestionB=${BYellow}
 QuestionBI=${BIYellow}
+QuestionI=${IYellow}
 QuestionG=${On_Yellow}
 
 Notice=${Blue}
-NoticeB=${BBlue}
 NoticeU=${UBlue}
+NoticeB=${BBlue}
 NoticeBI=${BIBlue}
+NoticeI=${IBlue}
 NoticeG=${On_Blue}
 
 Success=${Green}
-SuccessB=${BGreen}
 SuccessU=${UGreen}
+SuccessB=${BGreen}
 SuccessBI=${BIGreen}
+SuccessI=${IGreen}
 SuccessG=${On_Green}
 
 Error=${Red}
-ErrorB=${BRed}
 ErrorU=${URed}
+ErrorB=${BRed}
 ErrorBI=${BIRed}
+ErrorI=${IRed}
 ErrorG=${On_IRed}
 
 

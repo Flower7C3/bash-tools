@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 
 
 _method="GET"

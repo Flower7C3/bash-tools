@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-cd `dirname $0`
-source _base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 clear
+
 
 host_src=${1:-"source-host"}
 home_src=${2:-'~/master/'}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 
 
 _branches="master,dev"
@@ -9,7 +9,7 @@ _branches="master,dev"
 clear
 programTitle "Synch GIT branches"
 
-printf "You are in ${BIYellow}`pwd`${Color_Off} directory.\n"
+printf "You are in ${InfoBI}`pwd`${Color_Off} directory.\n"
 
 promptVariable branches "Branches" "$_branches" 1 "$@"
 IFS=',' read -a branches <<< "$branches"

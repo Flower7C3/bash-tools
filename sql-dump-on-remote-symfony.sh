@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname $0`/_base.sh
+source `dirname ${BASH_SOURCE}`/_base.sh
 
 
 _host="example-server-dev"
@@ -28,7 +28,7 @@ scp ${localScriptsDir}sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BGreen}Dump SQL on ${BIGreen}${host}${BGreen} host ${Green} \n"
-ssh ${host} 'bash ${HOME}/sql-dump-symfony.sh '${directory}' '${exportFileName}
+ssh ${host} 'bash ${HOME}/sql-dump-symfony.sh '${directory}' '${exportFileName} 0
 printf "${Color_Off}"
 
 printf "${BGreen}Copy ${BIGreen}${exportFileName}${BGreen} from ${BIGreen}${host}${BGreen} host to ${BIGreen}local${BGreen} host ${Green} \n"
