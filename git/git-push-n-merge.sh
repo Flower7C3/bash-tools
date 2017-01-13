@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source `dirname ${BASH_SOURCE}`/../_base.sh
 
 
 _branchSrc="dev"
@@ -32,10 +32,11 @@ git checkout ${prefix}${branchDst}
 printfln "${BRed}Pull ${BIRed}${prefix}${branchDst}${BRed} from upstream ${Red}"
 git pull origin ${prefix}${branchDst}
 
-printfln "${BYellow}Merge ${BIYellow}${prefix}${branchSrc}${BYellow} into ${BIYellow}${prefix}${branchDst}${BYellow} ${Yellow}"
 if [[ "$noff" == "y" ]]; then
+	printfln "${BYellow}Merge with commit ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
 	git merge ${prefix}${branchSrc} --no-ff
 else
+	printfln "${BYellow}Merge ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
 	git merge ${prefix}${branchSrc}
 fi
 

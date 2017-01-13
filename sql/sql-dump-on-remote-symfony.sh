@@ -24,7 +24,7 @@ confirmOrExit "Dump SQL on ${QuestionBI}${host}${Question} host from ${QuestionB
 printf "${BBlue}Copy scripts to ${BIBlue}${host}${BBlue} host ${Blue} \n"
 scp ${localScriptsDir}_base.sh ${host}:'${HOME}/_base.sh'
 scp ${localScriptsDir}_colors.sh ${host}:'${HOME}/_colors.sh'
-scp ${localScriptsDir}sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
+scp ${localScriptsDir}sql/sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BGreen}Dump SQL on ${BIGreen}${host}${BGreen} host ${Green} \n"

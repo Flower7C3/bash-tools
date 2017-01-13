@@ -35,14 +35,24 @@ function programEnd(){
 }
 
 
+###############################################################
+### I/O
+###############################################################
+
+function displayInfo(){
+    local message=$1
+    printf "${InfoB}(I) ${message}\n"
+}
+
+function displayError(){
+    local message=$1
+    printf "${ErrorB}(E) ${message}\n"
+}
+
 function printfln(){
 	local message=$1
 	printf "${message}\n"
 }
-
-###############################################################
-### I/O
-###############################################################
 
 # asks user for variable value
 function promptVariable() {
@@ -57,7 +67,7 @@ function promptVariable() {
 	# or ask user for value
 	else
 		printf "${QuestionB}"
-		printf "${question}"
+		printf "(Q) ${question}"
 		if [[ ! -z "${defaultValue}" ]]; then
 			printf " [${QuestionBI}${defaultValue}${QuestionB}]"
 		fi

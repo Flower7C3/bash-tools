@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source `dirname ${BASH_SOURCE}`/../_base.sh
 
 
 _method="GET"
@@ -10,7 +10,7 @@ _contentType=""
 _xdebug=" -b XDEBUG_SESSION=PHPSTORM"
 
 
-programTitle "Rest request"
+programTitle "REST request"
 
 promptVariable method "Method" "$_method" 1 "$@"
 promptVariable resourceUrl "Resource" "$_resourceUrl" 2 "$@"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source `dirname ${BASH_SOURCE}`/../_base.sh
 
 
 _url="http://localhost/"
@@ -8,7 +8,7 @@ sitemap=sitemap.xml
 
 
 clear
-programTitle "Clean facebook cache"
+programTitle "Clean Facebook cache"
 
 promptVariable url "Url to rescrape" "$_url" 1 "$@"
 
