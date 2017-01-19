@@ -22,7 +22,7 @@ exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/www/mysql/${containerName}/data/"
 virtualDataDir="/var/lib/mysql/"
-localScriptsDir=`dirname $0`"/"
+localScriptsDir=`dirname ${BASH_SOURCE}`/
 localTriggerFile="${HOME}/www/mysql/${containerName}/data/"${database}".sql"
 virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
@@ -31,7 +31,7 @@ confirmOrExit "Dump SQL on ${QuestionBI}${host}${Question} from directory ${Ques
 printf "${BBlue}Copy scripts to ${BIBlue}${host}${BBlue} host ${Blue} \n"
 scp ${localScriptsDir}_base.sh ${host}:'${HOME}/_base.sh'
 scp ${localScriptsDir}_colors.sh ${host}:'${HOME}/_colors.sh'
-scp ${localScriptsDir}sql/sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
+scp ${localScriptsDir}sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BGreen}Dump SQL on ${BIGreen}${host}${BGreen} host ${Green} \n"

@@ -23,7 +23,7 @@ exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/www/mysql/${containerName}/data/"
 virtualDataDir="/var/lib/mysql/"
-localScriptsDir=`dirname $0`"/"
+localScriptsDir=`dirname ${BASH_SOURCE}`/
 localTriggerFile="${HOME}/www/mysql/${containerName}/data/"${database}".sql"
 virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
@@ -32,8 +32,8 @@ confirmOrExit "Dump SQL on ${QuestionBI}${host}${Question} via ${QuestionBI}${pr
 printf "${BBlue}Copy scripts to ${BIBlue}${proxy}${BBlue} proxy ${Blue} \n"
 scp ${localScriptsDir}_base.sh ${proxy}:'${HOME}/_base.sh'
 scp ${localScriptsDir}_colors.sh ${proxy}:'${HOME}/_colors.sh'
-scp ${localScriptsDir}sql/sql-dump-symfony.sh ${proxy}:'${HOME}/sql-dump-symfony.sh'
-scp ${localScriptsDir}sql/sql-dump-on-remote-symfony.sh ${proxy}:'${HOME}/sql-dump-on-remote-symfony.sh'
+scp ${localScriptsDir}sql-dump-symfony.sh ${proxy}:'${HOME}/sql-dump-symfony.sh'
+scp ${localScriptsDir}sql-dump-on-remote-symfony.sh ${proxy}:'${HOME}/sql-dump-on-remote-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BBlue}Copy scripts to ${BIBlue}${host}${BBlue} host ${Blue} \n"

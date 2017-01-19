@@ -6,31 +6,35 @@ source `dirname ${BASH_SOURCE}`/_base.sh
 _proxy="example-proxy-dev"
 _host="example-server-dev"
 _directory="dev"
+_localdirectory="lamp56"
 _database="example"
 
 
 clear
-programTitle "SQL dump on remote Symfony app via proxy and import to local"
+programTitle "SQL dump on remote Symfony app via proxy and import to virtual"
 
 promptVariable proxy "Proxy" "$_proxy" 1 "$@"
 promptVariable host "Host" "$_host" 2 "$@"
 promptVariable directory "Directory" "$_directory" 3 "$@"
-promptVariable database "Local database name" "$_database" 4 "$@"
+promptVariable localdirectory "Local directory name" "$_localdirectory" 4 "$@"
+promptVariable database "Local database name" "$_database" 5 "$@"
 
 datetime=`date "+%Y%m%d-%H%M%S"`
 exportFileName="backup_${host}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/backup/"
-localScriptsDir=`dirname $0`"/"
+localDataDir="${HOME}/www/${localdirectory}/"
+virtualDataDir="/vagrant/"
+localScriptsDir=`dirname ${BASH_SOURCE}`/
 localTriggerFile="${HOME}/www/database/"${database}".sql"
+virtualTriggerFile="/var/lib/mysql/"${database}".sql"
 
-confirmOrExit "${Color_Off}Dump SQL on ${QuestionBI}${host}${Question} via ${QuestionBI}${proxy}${Question} from directory ${QuestionBI}${directory}${Question} and save on local to ${QuestionBI}${database}${Question} database?"
+confirmOrExit "Dump SQL on ${QuestionBI}${host}${Question} via ${QuestionBI}${proxy}${Question} from directory ${QuestionBI}${directory}${Question} and save on virtual ${QuestionBI}${localdirectory}${Question} to ${QuestionBI}${database}${Question} database?"
 
 printf "${BBlue}Copy scripts to ${BIBlue}${proxy}${BBlue} proxy ${Blue} \n"
 scp ${localScriptsDir}_base.sh ${proxy}:'${HOME}/_base.sh'
 scp ${localScriptsDir}_colors.sh ${proxy}:'${HOME}/_colors.sh'
-scp ${localScriptsDir}sql/sql-dump-symfony.sh ${proxy}:'${HOME}/sql-dump-symfony.sh'
-scp ${localScriptsDir}sql/sql-dump-on-remote-symfony.sh ${proxy}:'${HOME}/sql-dump-on-remote-symfony.sh'
+scp ${localScriptsDir}sql-dump-symfony.sh ${proxy}:'${HOME}/sql-dump-symfony.sh'
+scp ${localScriptsDir}sql-dump-on-remote-symfony.sh ${proxy}:'${HOME}/sql-dump-on-remote-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BBlue}Copy scripts to ${BIBlue}${host}${BBlue} host ${Blue} \n"
@@ -47,13 +51,14 @@ printf "${BRed}Cleanup ${BIRed}${proxy}${BRed} proxy ${Red} \n"
 ssh ${proxy} 'rm '${remoteDataDir}${exportFileName}' ${HOME}/_base.sh ${HOME}/_colors.sh ${HOME}/sql-dump-symfony.sh ${HOME}/sql-dump-on-remote-symfony.sh'
 printf "${Color_Off}"
 
-printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on local ${Green} \n"
-mysql ${database} < ${localDataDir}${exportFileName}
+printf "${BGreen}Import ${BIGreen}${exportFileName}${BGreen} to ${BIGreen}${database}${BGreen} database on virtual ${Green} \n"
+cd ${localDataDir}
+vagrant ssh -c "mysql "${database}" < "${virtualDataDir}${exportFileName}
 printf "${Color_Off}"
 
 if [ -f "${localTriggerFile}" ]; then
-  printf "${BGreen}Execute trigger file ${BIGreen}${localTriggerFile}${BGreen} to ${BIGreen}${database}${BGreen} database on local ${Green} \n"
-  mysql ${database} < ${localTriggerFile}
+  printf "${BGreen}Execute trigger file ${BIGreen}${virtualTriggerFile}${BGreen} to ${BIGreen}${database}${BGreen} database on virtual ${Green} \n"
+  vagrant ssh -c "mysql "${database}" < "${virtualTriggerFile}
   printf "${Color_Off}"
 fi
 

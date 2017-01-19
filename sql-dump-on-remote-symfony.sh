@@ -17,14 +17,14 @@ promptVariable exportFileName "Export filename" "backup_${host}_`date "+%Y%m%d-%
 
 remoteDataDir='${HOME}/backup/'
 localDataDir="${HOME}/backup/"
-localScriptsDir=`dirname $0`"/"
+localScriptsDir=`dirname ${BASH_SOURCE}`/
 
 confirmOrExit "Dump SQL on ${QuestionBI}${host}${Question} host from ${QuestionBI}${directory}${Question} directory?"
 
 printf "${BBlue}Copy scripts to ${BIBlue}${host}${BBlue} host ${Blue} \n"
 scp ${localScriptsDir}_base.sh ${host}:'${HOME}/_base.sh'
 scp ${localScriptsDir}_colors.sh ${host}:'${HOME}/_colors.sh'
-scp ${localScriptsDir}sql/sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
+scp ${localScriptsDir}sql-dump-symfony.sh ${host}:'${HOME}/sql-dump-symfony.sh'
 printf "${Color_Off}"
 
 printf "${BGreen}Dump SQL on ${BIGreen}${host}${BGreen} host ${Green} \n"
