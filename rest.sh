@@ -3,6 +3,7 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
+## CONFIG
 _method="GET"
 _resourceUrl="http://127.0.0.1:8000/api/v1/pages.json"
 _data=""
@@ -10,8 +11,11 @@ _contentType=""
 _xdebug=" -b XDEBUG_SESSION=PHPSTORM"
 
 
+## WELCOME
 programTitle "REST request"
 
+
+## VARIABLES
 promptVariable method "Method" "$_method" 1 "$@"
 promptVariable resourceUrl "Resource" "$_resourceUrl" 2 "$@"
 promptVariable data "Data" "$_data" 3 "$@"
@@ -21,6 +25,8 @@ then
   export REST_API_TOKEN=""
 fi
 
+
+## PROGRAM
 printf "${BBlue}\n"
 printf "${method}: ${resourceUrl}\n"
 printf "data: ${data}\n"

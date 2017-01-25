@@ -3,14 +3,17 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
-clear
+## WELCOME
 programTitle "Rename GIT branch"
-
 printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
 
+
+## VARIABLES
 promptVariable old_branch "Old branch name" "" 1 "$@"
 promptVariable new_branch "New branch name" "" 2 "$@"
 
+
+## PROGRAM
 confirmOrExit "Rename branch ${QuestionBI}${old_branch}${Question} to ${QuestionBI}${new_branch}${Question}?"
 
 printfln "${BGreen}Rename branch localy ${BIGreen}${old_branch}${BGreen} to ${BIGreen}${new_branch} ${Blue}"

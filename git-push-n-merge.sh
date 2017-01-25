@@ -3,20 +3,24 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
+## CONFIG
 _branchSrc="dev"
 _branchDst="master"
 
 
-clear
+## WELCOME
 programTitle "Merge GIT branches"
-
 printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
 
+
+## VARIABLES
 promptVariable branchSrc "Source" "$_branchSrc" 1 "$@"
 promptVariable branchDst "Destination" "$_branchDst" 2 "$@"
 promptVariable prefix "Prefix" "" 3 "$@"
 promptVariableFixed noff "With merge commit (no fast forwad)" "y" "y n" 4 "$@"
 
+
+## PROGRAM
 if [[ "$noff" == "y" ]]; then
 	confirmOrExit "Merge with commit branch ${QuestionBI}${prefix}${branchSrc}${QuestionB} into ${QuestionBI}${prefix}${branchDst}${QuestionB}?"
 else

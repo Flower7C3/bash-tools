@@ -3,15 +3,20 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
+## CONFIG
 _url="http://localhost/"
 sitemap=sitemap.xml
 
 
-clear
+## WELCOME
 programTitle "Clean Facebook cache"
 
+
+## VARIABLES
 promptVariable url "Url to rescrape" "$_url" 1 "$@"
 
+
+## PROGRAM
 if [[ "$url" == *$sitemap ]]; then
 
 	confirmOrExit "Really rescrap all pages from ${QuestionBI}${url}${Question} sitemap?"

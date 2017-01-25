@@ -3,18 +3,22 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
+## CONFIG
 _branches="master,dev"
 
 
-clear
+## WELCOME
 programTitle "Synch GIT branches"
-
 printf "You are in ${InfoBI}`pwd`${Color_Off} directory.\n"
 
+
+## VARIABLES
 promptVariable branches "Branches" "$_branches" 1 "$@"
 IFS=',' read -a branches <<< "$branches"
 promptVariable prefix "Prefix" "" 2 "$@"
 
+
+## PROGRAM
 confirmOrExit "`printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${QuestionBI}${prefix}${branch}${Question}"; done; printf "?"`"
 
 for branch in "${branches[@]}"

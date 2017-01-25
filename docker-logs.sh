@@ -3,12 +3,19 @@
 source `dirname ${BASH_SOURCE}`/_base.sh
 
 
+## CONFIG
 _containerName="php55"
 
+
+## WELCOME
 programTitle "Read Docker container logs"
 
+
+## VARIABLES
 promptVariable containerName "Container name" "${_containerName}" 1 "$@"
 
+
+## PROGRAM
 if [[ $(docker inspect -f {{.State.Running}} ${containerName}) == "false" ]]; then
 	printf "${Green}Starting container ${BGreen}"
 	docker start ${containerName}
