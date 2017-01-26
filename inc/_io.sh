@@ -110,7 +110,7 @@ function promptVariableFixed() {
 		if test "`echo " ${allowedValues[*]} " | grep " ${promptResponse} "`"; then
 	 		break
 		else
-			printf "${BIRed}Wrong ${question}. Allowed values is ${allowedValues[*]}!${Color_Off}"
+			printf "${BRed}Wrong ${QuestionB}${question}${BRed}. Allowed values are ${BIRed}${allowedValues[*]}${BRed}!${Color_Off}"
 			echo ""
 		fi
 	done
@@ -127,7 +127,7 @@ function setVariable(){
 # user must press y and enter, or program will end
 function confirmOrExit() {
 	local question=$1
-	promptVariable run "${question}" "n"
+	promptVariableFixed run "${question}" "n" "y n"
 	printf "\n"
 	if [[ "$run" != "y" ]]
 	then
