@@ -7,7 +7,7 @@ function facebook_cache_clean_by_sitemap {
     local sitemapFile=${2:-sitemap.xml}
 
     printf "${InfoB}Clean facebook cache for ${InfoBI}${baseURL}${InfoB} ${Info} \n"
-    wget -q ${baseURL} --no-check-certificate --no-cache -O - | egrep -o "${baseURL}[^ \"()\<>]*" | while read url;
+    wget -q ${baseURL}${sitemapFile} --no-check-certificate --no-cache -O - | egrep -o "${baseURL}[^ \"()\<>]*" | while read url;
     do
         facebook_cache_clean $url
     done
