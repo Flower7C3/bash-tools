@@ -105,3 +105,15 @@ function removeFileFromLocal {
         printf "${Color_Off}"
     fi
 }
+
+
+function removeDirFromLocal {
+    local localDataDir=$1
+    local dirName=$2
+
+    if [[ -n "$localDataDir" && -n "$dirName" && -d "${localDataDir}${dirName}" ]]; then
+        printf "${BRed}Remove ${BIRed}${dirName}${BRed} directory from local ${Red} \n"
+        rm -rf ${localDataDir}${dirName}
+        printf "${Color_Off}"
+    fi
+}

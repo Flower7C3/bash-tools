@@ -28,14 +28,10 @@ then
 	_isDocker=false
 	promptVariable database "Local MySQL database name" "$_database" 5 "$@"
 	localDataDir="${HOME}/backup/"
-	localTriggerFile="${HOME}/www/database/"${database}".sql"
 else
 	_isDocker=true
 	promptVariable database "Docker MySQL database name" "$_database" 5 "$@"
-	localDataDir="${HOME}/www/mysql/${mysqlHost}/data/"
-	localTriggerFile="${HOME}/www/mysql/${mysqlHost}/data/"${database}".sql"
-	virtualDataDir="/var/lib/mysql/"
-	virtualTriggerFile="/var/lib/mysql/"${database}".sql"
+	localDataDir="${HOME}/www/database/mysql/${mysqlHost}/data/"
 fi
 
 
@@ -52,9 +48,9 @@ moveFileFromHostToLocal "$proxyHost" "$remoteDataDir" "$localDataDir" "$exportFi
 removeScriptsFromHost "$proxyHost"
 
 if [ $_isDocker == "true" ]; then
-	bash `dirname ${BASH_SOURCE}`/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"
+	yes | bash `dirname ${BASH_SOURCE}`/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"
 else
-	bash `dirname ${BASH_SOURCE}`/}sql-import-local.sh "$mysqlHost" "$database" "$exportFileName"
+	yes | bash `dirname ${BASH_SOURCE}`/sql-import-local.sh "$mysqlHost" "$database" "$exportFileName"
 fi
 
 programEnd

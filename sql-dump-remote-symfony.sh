@@ -6,7 +6,8 @@ source `dirname ${BASH_SOURCE}`/_base.sh
 ## CONFIG
 _remoteHost="example-server-dev"
 _directory="dev"
-_database="example"
+remoteDataDir='${HOME}/backup/'
+localDataDir="${HOME}/backup/"
 
 
 ## WELCOME
@@ -15,11 +16,9 @@ programTitle "SQL dump on remote Symfony app"
 
 ## VARIABLES
 promptVariable remoteHost "Remote host name (from SSH config file)"  "$_remoteHost" 1 "$@"
+_exportFileName="backup_${remoteHost}_`date "+%Y%m%d-%H%M%S"`.sql"
 promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 2 "$@"
-promptVariable exportFileName "Export filename" "backup_${remoteHost}_`date "+%Y%m%d-%H%M%S"`.sql" 3 "$@"
-
-remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/backup/"
+promptVariable exportFileName "Export filename" "${_exportFileName}" 3 "$@"
 
 
 ## PROGRAM
