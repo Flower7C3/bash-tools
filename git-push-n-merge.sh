@@ -38,7 +38,7 @@ git pull origin ${prefix}${branchDst}
 
 if [[ "$noff" == "y" ]]; then
 	printfln "${BYellow}Merge with commit ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
-	git merge ${prefix}${branchSrc} --no-ff
+	git merge ${prefix}${branchSrc} --no-ff --no-edit
 else
 	printfln "${BYellow}Merge ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
 	git merge ${prefix}${branchSrc}
