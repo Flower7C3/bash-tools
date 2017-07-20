@@ -1,8 +1,23 @@
 ###############################################################
-### Program info
+### App
 ###############################################################
 
-function programTitle(){
+function appHello {
+    clear
+    local name=${1:-World}
+    local dirname=${2:-`pwd`}
+    programTitle "Hello ${name}. Welcome at '${dirname}' directory."
+}
+
+function appBye {
+    printf "${Log}Bye bye. See You Later, Alligator ${LogB};)${Log} \n"
+    programEnd
+}
+
+###############################################################
+### Program info
+###############################################################
+function programTitle {
 	local title=$1
 
 	printf "${LogBI}"
@@ -26,26 +41,26 @@ function programTitle(){
 	printf "${Color_Off}"
 }
 
-function printfln(){
+function printfln {
 	local message=$1
 	printf "${message}\n"
 }
 
-function displayInfo(){
+function displayInfo {
     local message=$1
     printf "${InfoB}(I) ${message}\n"
 }
 
-function displayError(){
+function displayError {
     local message=$1
     printf "${ErrorB}(E) ${message}\n"
 }
 
-function programEnd(){
+function programEnd {
 	printf "${Color_Off}\n"
 }
 
-function programError(){
+function programError {
 	programEnd
 	exit 1
 }
@@ -55,7 +70,7 @@ function programError(){
 ###############################################################
 
 # asks user for value
-function displayPrompt() {
+function displayPrompt {
 	local password=$1
 	local variableName=$2
 	local question=$3
@@ -87,17 +102,17 @@ function displayPrompt() {
 }
 
 # asks user for variable value
-function promptVariable() {
+function promptVariable {
     displayPrompt "no" "$@"
 }
 
 # asks user for password value
-function promptPassword() {
+function promptPassword {
     displayPrompt "yes" "$@"
 }
 
 # asks user for variable value, but accept only allowed values
-function promptVariableFixed() {
+function promptVariableFixed {
 	local variableName=$1
 	local question=$2
 	local defaultValue=$3
@@ -110,14 +125,14 @@ function promptVariableFixed() {
 		if test "`echo " ${allowedValues[*]} " | grep " ${promptResponse} "`"; then
 	 		break
 		else
-			printf "${BRed}Wrong ${QuestionB}${question}${BRed}. Allowed values are ${BIRed}${allowedValues[*]}${BRed}!${Color_Off}"
+			printf "${ErrorB}Wrong ${QuestionB}${question}${ErrorB}. Allowed values are ${ErrorBI}${allowedValues[*]}${ErrorB}!${Color_Off}"
 			echo ""
 		fi
 	done
 }
 
 # set variable value
-function setVariable(){
+function setVariable {
 	local variableName=$1
 	local defaultValue=$2
 	local variableValue=${3:-$defaultValue}
@@ -125,7 +140,7 @@ function setVariable(){
 }
 
 # user must press y and enter, or program will end
-function confirmOrExit() {
+function confirmOrExit {
 	local question=$1
 	promptVariableFixed run "${question}" "n" "y n"
 	printf "\n"

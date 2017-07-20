@@ -39,13 +39,13 @@ fi
 confirmOrExit "Dump SQL on ${QuestionBI}${remoteHost}${Question} via ${QuestionBI}${proxyHost}${Question} from directory ${QuestionBI}${directory}${Question} and save on local/docker ${QuestionBI}${mysqlHost}${Question} container to ${QuestionBI}${database}${Question} database?"
 
 sourcedScriptsList+=('sql-dump-symfony.sh sql-dump-symfony.sh' 'sql-dump-remote-symfony.sh sql-dump-remote-symfony.sh')
-copyScriptsToHost "$proxyHost"
+copy_scripts_to_host "$proxyHost"
 
 ssh ${proxyHost} 'yes | bash ${HOME}/sql-dump-remote-symfony.sh '${remoteHost}' '${directory}' '${exportFileName}
 
 moveFileFromHostToLocal "$proxyHost" "$remoteDataDir" "$localDataDir" "$exportFileName"
 
-removeScriptsFromHost "$proxyHost"
+remove_scripts_from_host "$proxyHost"
 
 if [ $_isDocker == "true" ]; then
 	yes | bash `dirname ${BASH_SOURCE}`/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"

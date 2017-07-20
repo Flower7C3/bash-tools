@@ -2,7 +2,7 @@
 ### Scripts
 ###############################################################
 
-function copyScriptsToHost {
+function copy_scripts_to_host {
     local host=$1
     printf "${BGreen}Copy scripts to ${BIGreen}${host}${BGreen} host ${Green} \n"
     for i in "${!sourcedScriptsList[@]}"
@@ -15,9 +15,9 @@ function copyScriptsToHost {
     printf "${Color_Off}"
 }
 
-function removeScriptsFromHost {
+function remove_scripts_from_host {
     local host=$1
-    printf "${BRed}Cleanup scripts on ${BIRed}${host}${BRed} host ${Red} \n"
+    printf "${ErrorB}Cleanup scripts on ${ErrorBI}${host}${ErrorB} host ${Error} \n"
     for i in "${!sourcedScriptsList[@]}"
     do
         fileInfo=(${sourcedScriptsList[$i]})
@@ -31,11 +31,11 @@ function removeScriptsFromHost {
 ### File operations over SSH
 ###############################################################
 
-function copyFileBetweenHosts {
+function copy_file_between_hosts {
     local sourceHost=$1
     local destHost=$2
     local fileName=$3
-    fileNameCheck "$fileName"
+    file_name_check "$fileName"
 
     printf "${BGreen}Copy ${BIGreen}${fileName}${BGreen} file from ${BIGreen}${sourceHost}${BGreen} host to ${BIGreen}local${BGreen} host${Green} \n"
     scp $sourceHost:$fileName $fileName
@@ -44,13 +44,13 @@ function copyFileBetweenHosts {
     scp $fileName $destHost:$fileName
 }
 
-function removeFileFromHosts {
+function remove_file_from_hosts {
     local sourceHost=$1
     local destHost=$2
     local fileName=$3
-    fileNameCheck "$fileName"
+    file_name_check "$fileName"
 
-    printf "${BRed}Remove ${BIRed}${fileName}${BRed} file from ${BIRed}${sourceHost}${BRed} host, ${BIRed}${destHost}${BRed} host and ${BIRed}local${BRed} host${Red} \n"
+    printf "${ErrorB}Remove ${ErrorBI}${fileName}${ErrorB} file from ${ErrorBI}${sourceHost}${ErrorB} host, ${ErrorBI}${destHost}${ErrorB} host and ${ErrorBI}local${ErrorB} host${Error} \n"
     ssh $sourceHost 'rm -rf '${fileName}''
     ssh $destHost 'rm -rf '${fileName}''
     rm -rf $fileName
@@ -60,7 +60,7 @@ function removeFileFromHosts {
 ### Copy / move / remove on remote host
 ###############################################################
 
-function copyFileFromHostToLocal {
+function copy_file_from_host_to_local {
     local host=$1
     local remoteDataDir=$2
     local localDataDir=$3
@@ -71,12 +71,12 @@ function copyFileFromHostToLocal {
     printf "${Color_Off}"
 }
 
-function removeFileFromHost {
+function remove_file_from_host {
     local host=$1
     local remoteDataDir=$2
     local fileName=$3
     if [[ -n "$remoteDataDir" && -n "$fileName" ]]; then
-        printf "${BRed}Remove ${BIRed}${fileName}${BRed} file from ${BIRed}${host}${BRed} host ${Red} \n"
+        printf "${ErrorB}Remove ${ErrorBI}${fileName}${ErrorB} file from ${ErrorBI}${host}${ErrorB} host ${Error} \n"
         ssh ${host} 'rm '${remoteDataDir}${fileName}
         printf "${Color_Off}"
     fi
@@ -87,32 +87,32 @@ function moveFileFromHostToLocal {
     local remoteDataDir=$2
     local localDataDir=$3
     local fileName=$4
-    copyFileFromHostToLocal "$host" "$remoteDataDir" "$localDataDir" "$fileName"
-    removeFileFromHost "$host" "$remoteDataDir" "$fileName"
+    copy_file_from_host_to_local "$host" "$remoteDataDir" "$localDataDir" "$fileName"
+    remove_file_from_host "$host" "$remoteDataDir" "$fileName"
 }
 
 ###############################################################
 ### Remove on local host
 ###############################################################
 
-function removeFileFromLocal {
+function remove_file_from_local {
     local localDataDir=$1
     local fileName=$2
 
     if [[ -n "$localDataDir" && -n "$fileName" && -f "${localDataDir}${fileName}" ]]; then
-        printf "${BRed}Remove ${BIRed}${fileName}${BRed} file from local ${Red} \n"
+        printf "${ErrorB}Remove ${ErrorBI}${fileName}${ErrorB} file from local ${Error} \n"
         rm ${localDataDir}${fileName}
         printf "${Color_Off}"
     fi
 }
 
 
-function removeDirFromLocal {
+function remove_dir_from_local {
     local localDataDir=$1
     local dirName=$2
 
     if [[ -n "$localDataDir" && -n "$dirName" && -d "${localDataDir}${dirName}" ]]; then
-        printf "${BRed}Remove ${BIRed}${dirName}${BRed} directory from local ${Red} \n"
+        printf "${ErrorB}Remove ${ErrorBI}${dirName}${ErrorB} directory from local ${Error} \n"
         rm -rf ${localDataDir}${dirName}
         printf "${Color_Off}"
     fi

@@ -42,7 +42,7 @@ if [ -f "${localTriggerDir}${triggerFileName}" ]; then
 	printf "${Color_Off}"
 fi
 
-removeFileFromLocal "${localDataDir}" "${exportFileName}"
-removeDirFromLocal "${localDataDir}" "${exportDirName}"
+remove_file_from_local "${localDataDir}" "${exportFileName}"
+remove_dir_from_local "${localDataDir}" "${exportDirName}"
 
 programEnd

@@ -37,13 +37,13 @@ fi
 confirmOrExit "Dump Mongo on ${QuestionBI}${remoteHost}${Question} from directory ${QuestionBI}${directory}${Question} and save on docker ${QuestionBI}${mongoHost}${Question} container to ${QuestionBI}${database}${Question} database?"
 
 sourcedScriptsList+=('mongo-dump-symfony.sh mongo-dump-symfony.sh')
-copyScriptsToHost "$remoteHost"
+copy_scripts_to_host "$remoteHost"
 
 ssh ${remoteHost} 'yes | bash ${HOME}/mongo-dump-symfony.sh '${directory}' '${exportDirName}' '${exportFileName} 0
 
 moveFileFromHostToLocal "$remoteHost" "$remoteDataDir" "$localDataDir" "$exportFileName"
 
-removeScriptsFromHost "$remoteHost"
+remove_scripts_from_host "$remoteHost"
 
 if [ $_isDocker == "true"]; then
 	yes | bash `dirname ${BASH_SOURCE}`/mongo-import-docker.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"

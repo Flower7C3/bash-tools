@@ -8,6 +8,9 @@ sourcedScriptsList=(
 	'inc/_tool_check.sh			_inc_tool_check.sh'
 	'inc/_tool_vendor.sh		_inc_tool_vendor.sh'
 	'inc/_tool_sql.sh			_inc_tool_sql.sh'
+	'inc/_notify.sh			    _inc_notify.sh'
+	'inc/_git.sh			    _inc_git.sh'
+	'inc/_www.sh			    _inc_www.sh'
 )
 
 for i in "${!sourcedScriptsList[@]}";

@@ -1,7 +1,7 @@
 ###############################################################
 ### File check
 ###############################################################
-function fileNameCheck {
+function file_name_check {
     local fileName=$1
     if [ -z "$fileName" ]; then
         displayError "File name not specified!"
@@ -14,7 +14,7 @@ function fileNameCheck {
     fi
 }
 
-function dirNameCheck {
+function dir_name_check {
     local dirName=$1
     if [ -z "$dirName" ]; then
         displayError "Dir name not specified!"
@@ -30,14 +30,15 @@ function dirNameCheck {
 ###############################################################
 ### Domain check
 ###############################################################
-function checkSSH {
+function ssh_check {
     local username=$1
     local hostname=$2
-    sshStatus=$(ssh -i /etc/projects/id_rsa -l ${username} ${hostname} "pwd")
+    local keyfile=$3
+    sshStatus=$(ssh -i ${keyfile} -l ${username} ${hostname} "pwd")
     printf "${InfoB}%16s ${InfoBI}%60s${InfoB}\t${LogBI}%s${InfoB}\n${Log}" "SSH" "${username}@${hostname}" "$sshStatus"
 }
 
-function checkDomain {
+function domain_status_code_check {
     local domain=$1
     local userpass=${2:-"vml:vml"}
     local statusCode=$(curl -H "Cache-Control: no-cache" -L -u "${userpass}" -s -o /dev/null -I -w "%{http_code}" ${domain})
@@ -52,4 +53,37 @@ function checkDomain {
         fi
     fi
     printf "%s\n${Log}" $statusCode
+}
+
+function domain_status_code_check_or_rollback {
+    local url=${1:-http://localhost/}
+
+    local exists=$(curl -k -s --head ${url}  | head -n 1 | grep "HTTP/1.[01] [23]..")
+
+    if [ "$exists" == "" ]; then
+
+        printf "${ErrorB}Site url ${ErrorBI}${url}${ErrorB} is not working."
+        if [[ "$currentCommitId" != "" ]]; then
+            printf "${Info}Check ${InfoU}${InfoB}a${Info}gain or ${InfoU}r${Info}ollback or ${InfoU}s${Info}kip? \n"
+        else
+            printf "${Info}Check ${InfoU}${InfoB}a${Info}gain or ${InfoU}s${Info}kip? \n"
+        fi
+        printf "${NoticeB} > ${Notice}"
+        read -e input
+
+        if [[ "$input" != "s" ]]; then
+            if [[ "$currentCommitId" != "" ]]; then
+                if [[ "$input" == "r" ]]; then
+                    git_checkout ${currentCommitId}
+                else
+                    domain_status_code_check ${url}
+                fi
+            else
+                domain_status_code_check ${url}
+            fi
+        fi
+
+    else
+        printf "${SuccessB}Site url ${SuccessBI}${url}${SuccessB} is working ${Success} \n"
+    fi
 }

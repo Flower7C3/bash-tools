@@ -27,12 +27,12 @@ promptVariable exportFileName "Export filename" "$_exportFileName" 4 "$@"
 confirmOrExit "Dump Mongo on ${QuestionBI}${remoteHost}${Question} host from ${QuestionBI}${directory}${Question} directory?"
 
 sourcedScriptsList+=('mongo-dump-symfony.sh mongo-dump-symfony.sh')
-copyScriptsToHost "$remoteHost"
+copy_scripts_to_host "$remoteHost"
 
 ssh ${remoteHost} 'yes | bash ${HOME}/mongo-dump-symfony.sh '${directory}' '${exportDirName}' '${exportFileName} 0
 
 moveFileFromHostToLocal "${remoteHost}" "${remoteDataDir}" "${localDataDir}" "${exportFileName}"
 
-removeScriptsFromHost "$remoteHost"
+remove_scripts_from_host "$remoteHost"
 
 programEnd

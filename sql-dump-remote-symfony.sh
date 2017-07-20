@@ -25,12 +25,12 @@ promptVariable exportFileName "Export filename" "${_exportFileName}" 3 "$@"
 confirmOrExit "Dump SQL on ${QuestionBI}${remoteHost}${Question} host from ${QuestionBI}${directory}${Question} directory?"
 
 sourcedScriptsList+=('sql-dump-symfony.sh sql-dump-symfony.sh')
-copyScriptsToHost "$remoteHost"
+copy_scripts_to_host "$remoteHost"
 
 ssh ${remoteHost} 'yes | bash ${HOME}/sql-dump-symfony.sh '${directory}' '${exportFileName} 0
 
 moveFileFromHostToLocal "${remoteHost}" "${remoteDataDir}" "${localDataDir}" "${exportFileName}"
 
-removeScriptsFromHost "$remoteHost"
+remove_scripts_from_host "$remoteHost"
 
 programEnd
