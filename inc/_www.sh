@@ -3,14 +3,16 @@
 ###############################################################
 
 function web_htaccess_symlink {
-    local linkType=${1:-maintenance}
-
-    if [[ "$linkType" == "maintenance" ]]; then
-        printf "${InfoB}Lock site with ${InfoBI}maintenance${InfoB} htaccess${Info} \n"
-    else
-        printf "${InfoB}Unlock site to ${InfoBI}${linkType}${InfoB} htaccess${Info} \n"
+    local applicationDir=$1
+    local linkType=${2:-maintenance}
+    if [[ -n "$applicationDir" ]]; then
+        if [[ "$linkType" == "maintenance" ]]; then
+            printf "${InfoB}Lock site with ${InfoBI}maintenance${InfoB} htaccess${Info} \n"
+        else
+            printf "${InfoB}Unlock site to ${InfoBI}${linkType}${InfoB} htaccess${Info} \n"
+        fi
+        ln -sf .htaccess.${linkType} ${applicationDir}web/.htaccess
     fi
-    ln -sf .htaccess.${linkType} ${symfonyRootDir}web/.htaccess
 }
 
 ###############################################################
@@ -71,7 +73,7 @@ function symfony_assets_dump {
 
 function assets_clear {
     local applicationDir=$1
-    if [[ -n "$symfonyConsole" ]]; then
+    if [[ -n "$applicationDir" ]]; then
         printf "${InfoB}Cleanup old Symfony assets${Info} \n"
         rm -rf ${applicationDir}web/bundles/*
         rm -rf ${applicationDir}web/assetic/*
