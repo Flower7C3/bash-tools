@@ -18,6 +18,7 @@ function slack_notify_project_updated  {
     local user_icon=${3:-""}
     local channel=${4:-""}
     local project_url=${5:-""}
+    local project_dir=${6:-""}
 
     git_current
 
@@ -27,7 +28,7 @@ function slack_notify_project_updated  {
             "username": "'"${user_name}"'",
             "icon_emoji": "'"${user_icon}"'",
             "text": "
-                    Aloha. Project *<'"${project_url}"'>* is now updated at *<'"${current_repo_web_url}"'/network/'"${current_branch_name}"'|'"${current_branch_name}"'>* branch from *<'"${current_repo_web_url}"'|'"${current_repo_url}"'>* repository in `'"${symfony_root_dir}"'` directory :tada:
+                    Aloha. Project *<'"${project_url}"'>* is now updated at *<'"${current_repo_web_url}"'/network/'"${current_branch_name}"'|'"${current_branch_name}"'>* branch from *<'"${current_repo_web_url}"'|'"${current_repo_url}"'>* repository in `'"${project_dir}"'` directory :tada:
             ",
             "attachments": [
                 {
