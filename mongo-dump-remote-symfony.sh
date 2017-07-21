@@ -31,7 +31,7 @@ copy_scripts_to_host "$remoteHost"
 
 ssh ${remoteHost} 'yes | bash ${HOME}/mongo-dump-symfony.sh '${directory}' '${exportDirName}' '${exportFileName} 0
 
-moveFileFromHostToLocal "${remoteHost}" "${remoteDataDir}" "${localDataDir}" "${exportFileName}"
+move_file_from_host_to_local "${remoteHost}" "${remoteDataDir}" "${localDataDir}" "${exportFileName}"
 
 remove_scripts_from_host "$remoteHost"
 

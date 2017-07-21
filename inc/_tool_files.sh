@@ -82,7 +82,7 @@ function remove_file_from_host {
     fi
 }
 
-function moveFileFromHostToLocal {
+function move_file_from_host_to_local {
     local host=$1
     local remoteDataDir=$2
     local localDataDir=$3
