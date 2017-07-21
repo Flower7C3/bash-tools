@@ -43,8 +43,8 @@ function symfony_assets_install {
 
     if [[ -n "$symfony_console" ]]; then
         if [[ -z "$symfony_env" ]]; then
-            assets_install "$symfony_console" "dev"
-            assets_install "$symfony_console" "prod"
+            symfony_assets_install "$symfony_console" "dev"
+            symfony_assets_install "$symfony_console" "prod"
         else
             printf "${color_info_b}Install assets in ${color_info_h}${symfony_env}${color_info_b} symfony enviroment${color_off} \n"
             ${symfony_console} assets:install web --env=${symfony_env} --symlink
@@ -60,8 +60,8 @@ function symfony_assets_dump {
 
     if [[ -n "$symfony_console" ]]; then
         if [[ -z "$symfony_env" ]]; then
-            assets_dump "$symfony_console" "dev"
-            assets_dump "$symfony_console" "prod"
+            symfony_assets_dump "$symfony_console" "dev"
+            symfony_assets_dump "$symfony_console" "prod"
         else
             printf "${color_info_b}Dump assets in ${color_info_h}${symfony_env}${color_info_b} Symfony enviroment${color_off} \n"
             ${symfony_console} assetic:dump --env=${symfony_env}
