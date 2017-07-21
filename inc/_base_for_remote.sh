@@ -1,6 +1,6 @@
-baseDir=$(dirname ${BASH_SOURCE})/
+base_dir_path=$(dirname ${BASH_SOURCE})/
 
-sourcedScriptsList=(
+sourced_scripts_list=(
 	'_base.sh					_base.sh'
 	'_inc_colors.sh				_inc_colors.sh'
 	'_inc_io.sh					_inc_io.sh'
@@ -13,12 +13,12 @@ sourcedScriptsList=(
 	'_inc_www.sh			    _inc_www.sh'
 )
 
-for i in "${!sourcedScriptsList[@]}";
+for i in "${!sourced_scripts_list[@]}";
 do
 	if [[ "$i" > 0 ]];
 	then
-		fileInfo=(${sourcedScriptsList[$i]})
-	    fileNameLocal=${fileInfo[0]}
-		source ${baseDir}${fileNameLocal}
+		file_info=(${sourced_scripts_list[$i]})
+	    local_file_name=${file_info[0]}
+		source ${base_dir_path}${local_file_name}
 	fi
 done

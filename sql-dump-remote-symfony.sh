@@ -4,33 +4,33 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_remoteHost="example-server-dev"
+_remote_host="example-server-dev"
 _directory="dev"
-remoteDataDir='${HOME}/backup/'
-localDataDir="${HOME}/backup/"
+remote_data_dir_path='${HOME}/backup/'
+local_data_dir_path="${HOME}/backup/"
 
 
 ## WELCOME
-programTitle "SQL dump on remote Symfony app"
+program_title "SQL dump on remote Symfony app"
 
 
 ## VARIABLES
-promptVariable remoteHost "Remote host name (from SSH config file)"  "$_remoteHost" 1 "$@"
-_exportFileName="backup_${remoteHost}_$(date "+%Y%m%d-%H%M%S").sql"
-promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 2 "$@"
-promptVariable exportFileName "Export filename" "${_exportFileName}" 3 "$@"
+prompt_variable remote_host "Remote host name (from SSH config file)"  "$_remote_host" 1 "$@"
+_export_file_name="backup_${remote_host}_$(date "+%Y%m%d-%H%M%S").sql"
+prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 2 "$@"
+prompt_variable export_file_name "Export filename" "${_export_file_name}" 3 "$@"
 
 
 ## PROGRAM
-confirmOrExit "Dump SQL on ${QuestionBI}${remoteHost}${Question} host from ${QuestionBI}${directory}${Question} directory?"
+confirm_or_exit "Dump SQL on ${color_question_h}${remote_host}${color_question} host from ${color_question_h}${directory}${color_question} directory?"
 
-sourcedScriptsList+=('sql-dump-symfony.sh sql-dump-symfony.sh')
-copy_scripts_to_host "$remoteHost"
+sourced_scripts_list+=('sql-dump-symfony.sh sql-dump-symfony.sh')
+copy_scripts_to_host "$remote_host"
 
-ssh ${remoteHost} 'yes | bash ${HOME}/sql-dump-symfony.sh '${directory}' '${exportFileName} 0
+ssh ${remote_host} 'yes | bash ${HOME}/sql-dump-symfony.sh '${directory}' '${export_file_name} 0
 
-move_file_from_host_to_local "${remoteHost}" "${remoteDataDir}" "${localDataDir}" "${exportFileName}"
+move_file_from_host_to_local "${remote_host}" "${remote_data_dir_path}" "${local_data_dir_path}" "${export_file_name}"
 
-remove_scripts_from_host "$remoteHost"
+remove_scripts_from_host "$remote_host"
 
-programEnd
+program_end

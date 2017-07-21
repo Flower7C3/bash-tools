@@ -4,51 +4,51 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_remoteHost="example-server-dev"
+_remote_host="example-server-dev"
 _directory="dev"
-_mysqlHost="mysql55"
+_sql_host="mysql55"
 _database="example"
 
 
 ## WELCOME
-programTitle "SQL dump-n-import: from remote Symfony app to local/docker"
+program_title "SQL dump-n-import: from remote Symfony app to local/docker"
 
 
 ## VARIABLES
-promptVariable remoteHost "Remote host name (from SSH config file)" "$_remoteHost" 1 "$@"
-promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 2 "$@"
+prompt_variable remote_host "Remote host name (from SSH config file)" "$_remote_host" 1 "$@"
+prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 2 "$@"
 datetime=$(date "+%Y%m%d-%H%M%S")
-exportFileName="backup_${remoteHost}_${datetime}.sql"
-remoteDataDir='${HOME}/backup/'
-promptVariable mysqlHost "Local MySQL machine name (or Docker container name)" "$_mysqlHost" 3 "$@"
-if [ $_mysqlHost == "localhost" ];
+export_file_name="backup_${remote_host}_${datetime}.sql"
+remote_data_dir_path='${HOME}/backup/'
+prompt_variable sql_host "Local MySQL machine name (or Docker container name)" "$_sql_host" 3 "$@"
+if [ $_sql_host == "localhost" ];
 then
-	_isDocker=false
-	promptVariable database "Local MySQL database name" "$_database" 4 "$@"
-	localDataDir="${HOME}/backup/"
+	_is_docker=false
+	prompt_variable database "Local MySQL database name" "$_database" 4 "$@"
+	local_data_dir_path="${HOME}/backup/"
 else
-	_isDocker=true
-	promptVariable database "Docker MySQL database name" "$_database" 4 "$@"
-	localDataDir="${HOME}/www/database/mysql/${mysqlHost}/data/"
+	_is_docker=true
+	prompt_variable database "Docker MySQL database name" "$_database" 4 "$@"
+	local_data_dir_path="${HOME}/www/database/mysql/${sql_host}/data/"
 fi
 
 
 ## PROGRAM
-confirmOrExit "Dump SQL on ${QuestionBI}${remoteHost}${Question} from directory ${QuestionBI}${directory}${Question} and save on docker ${QuestionBI}${mysqlHost}${Question} container to ${QuestionBI}${database}${Question} database?"
+confirm_or_exit "Dump SQL on ${color_question_h}${remote_host}${color_question} from directory ${color_question_h}${directory}${color_question} and save on docker ${color_question_h}${sql_host}${color_question} container to ${color_question_h}${database}${color_question} database?"
 
-sourcedScriptsList+=('sql-dump-symfony.sh sql-dump-symfony.sh')
-copy_scripts_to_host "$remoteHost"
+sourced_scripts_list+=('sql-dump-symfony.sh sql-dump-symfony.sh')
+copy_scripts_to_host "$remote_host"
 
-ssh ${remoteHost} 'yes | bash ${HOME}/sql-dump-symfony.sh '${directory}' '${exportFileName} 0
+ssh ${remote_host} 'yes | bash ${HOME}/sql-dump-symfony.sh '${directory}' '${export_file_name} 0
 
-move_file_from_host_to_local "$remoteHost" "$remoteDataDir" "$localDataDir" "$exportFileName"
+move_file_from_host_to_local "$remote_host" "$remote_data_dir_path" "$local_data_dir_path" "$export_file_name"
 
-remove_scripts_from_host "$remoteHost"
+remove_scripts_from_host "$remote_host"
 
-if [ $_isDocker == "true"]; then
-	yes | bash $(dirname ${BASH_SOURCE})/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"
+if [ $_is_docker == "true"]; then
+	yes | bash $(dirname ${BASH_SOURCE})/sql-import-docker.sh "$sql_host" "$database" "$export_file_name"
 else
-	yes | bash $(dirname ${BASH_SOURCE})/sql-import-local.sh "$mysqlHost" "$database" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/sql-import-local.sh "$sql_host" "$database" "$export_file_name"
 fi
 
-programEnd
+program_end

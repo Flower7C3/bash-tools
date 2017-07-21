@@ -4,50 +4,50 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_branchSrc="dev"
-_branchDst="master"
+_branch_src="dev"
+_branch_dst="master"
 
 
 ## WELCOME
-programTitle "Merge GIT branches"
-printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
+program_title "Merge GIT branches"
+printfln "You are in ${color_info_h}`pwd`${color_off} directory."
 
 
 ## VARIABLES
-promptVariable branchSrc "Source" "$_branchSrc" 1 "$@"
-promptVariable branchDst "Destination" "$_branchDst" 2 "$@"
-promptVariable prefix "Prefix" "" 3 "$@"
-promptVariableFixed noff "With merge commit (no fast forwad)" "y" "y n" 4 "$@"
+prompt_variable branch_src "Source" "$_branch_src" 1 "$@"
+prompt_variable branch_dst "Destination" "$_branch_dst" 2 "$@"
+prompt_variable prefix "Prefix" "" 3 "$@"
+prompt_variable_fixed noff "With merge commit (no fast forwad)" "y" "y n" 4 "$@"
 
 
 ## PROGRAM
 if [[ "$noff" == "y" ]]; then
-	confirmOrExit "Merge with commit branch ${QuestionBI}${prefix}${branchSrc}${QuestionB} into ${QuestionBI}${prefix}${branchDst}${QuestionB}?"
+	confirm_or_exit "Merge with commit branch ${color_question_h}${prefix}${branch_src}${color_question_b} into ${color_question_h}${prefix}${branch_dst}${color_question_b}?"
 else
-	confirmOrExit "Merge branch ${QuestionBI}${prefix}${branchSrc}${QuestionB} into ${QuestionBI}${prefix}${branchDst}${QuestionB}?"
+	confirm_or_exit "Merge branch ${color_question_h}${prefix}${branch_src}${color_question_b} into ${color_question_h}${prefix}${branch_dst}${color_question_b}?"
 fi
 
-printfln "${BGreen}Push ${BIGreen}${prefix}${branchSrc}${BGreen} to upstream ${Green}"
-git push origin ${prefix}${branchSrc}
+printfln "${color_success_b}Push ${color_success_h}${prefix}${branch_src}${color_success_b} to upstream ${color_success}"
+git push origin ${prefix}${branch_src}
 
-printfln "${BBlue}Checkout ${BIBlue}${prefix}${branchDst}${BBlue} ${Blue}"
-git checkout ${prefix}${branchDst}
+printfln "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_dst}${color_notice_b} ${color_notice}"
+git checkout ${prefix}${branch_dst}
 
-printfln "${BRed}Pull ${BIRed}${prefix}${branchDst}${BRed} from upstream ${Red}"
-git pull origin ${prefix}${branchDst}
+printfln "${color_error_b}Pull ${color_error_h}${prefix}${branch_dst}${color_error_b} from upstream ${Red}"
+git pull origin ${prefix}${branch_dst}
 
 if [[ "$noff" == "y" ]]; then
-	printfln "${BYellow}Merge with commit ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
-	git merge ${prefix}${branchSrc} --no-ff --no-edit
+	printfln "${color_notice_b}Merge with commit ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	git merge ${prefix}${branch_src} --no-ff --no-edit
 else
-	printfln "${BYellow}Merge ${BIYellow}${prefix}${branchSrc}${BYellow} branch into ${BIYellow}${prefix}${branchDst}${BYellow} branch${Yellow}"
-	git merge ${prefix}${branchSrc}
+	printfln "${color_notice_b}Merge ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	git merge ${prefix}${branch_src}
 fi
 
-printfln "${BGreen}Push ${BIGreen}${prefix}${branchDst}${BGreen} to upstream ${Green}"
-git push origin ${prefix}${branchDst}
+printfln "${color_success_b}Push ${color_success_h}${prefix}${branch_dst}${color_success_b} to upstream ${color_success}"
+git push origin ${prefix}${branch_dst}
 
-printfln "${BBlue}Checkout ${BIBlue}${prefix}${branchSrc}${BBlue} ${Blue} \n"
-git checkout ${prefix}${branchSrc}
+printfln "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_src}${color_notice_b} ${color_notice} \n"
+git checkout ${prefix}${branch_src}
 
-programEnd
+program_end

@@ -4,50 +4,50 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-backupDir=${HOME}/backup/
+backup_dir_path=${HOME}/backup/
 
 
 ## WELCOME
-programTitle "SQL dump on Symfony app"
+program_title "SQL dump on Symfony app"
 
 
 ## VARIABLES
 _directory="master"
-promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 1 "$@"
-configFile=${HOME}/${directory}/app/config/parameters.yml
-sqlHost=$(sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $configFile | xargs)
-if [[ "$sqlHost" == "~" || "$sqlHost" == "" || "$sqlHost" == "null" ]]; then
-	sqlHost='localhost'
+prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 1 "$@"
+config_file_path=${HOME}/${directory}/app/config/parameters.yml
+sql_host=$(sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $config_file_path | xargs)
+if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then
+	sql_host='localhost'
 fi
-sqlPort=$(sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $configFile | xargs)
-if [[ "$sqlPort" == "~" || "$sqlPort" == "" || "$sqlPort" == "null" ]]; then
-	sqlPort=3306
+sql_port=$(sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $config_file_path | xargs)
+if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then
+	sql_port=3306
 fi
-sqlUser=$(sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $configFile | xargs)
-if [[ "$sqlUser" == "~" || "$sqlUser" == "" || "$sqlUser" == "null" ]]; then
-	sqlUser='root'
+sql_user=$(sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $config_file_path | xargs)
+if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then
+	sql_user='root'
 fi
-sqlPass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $configFile | xargs)
-if [[ "$sqlPass" == "~" || "$sqlPass" == "" || "$sqlPass" == "null" ]]; then
-	sqlPass=''
+sql_pass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $config_file_path | xargs)
+if [[ "$sql_pass" == "~" || "$sql_pass" == "" || "$sql_pass" == "null" ]]; then
+	sql_pass=''
 fi
-sqlBase=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $configFile | xargs)
-_exportFileName=${sqlBase}-$(date "+%Y%m%d-%H%M%S").sql
-promptVariable exportFileName "Export filename" "$_exportFileName" 2 "$@"
-_backupTime=0
-promptVariable backupTime "Backup time (days)" "$_backupTime" 3 "$@"
+sql_base=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $config_file_path | xargs)
+_export_file_name=${sql_base}-$(date "+%Y%m%d-%H%M%S").sql
+prompt_variable export_file_name "Export filename" "$_export_file_name" 2 "$@"
+_backup_time=0
+prompt_variable backup_time "Backup time (days)" "$_backup_time" 3 "$@"
 
 
 ## PROGRAM
-confirmOrExit "Dump SQL from ${QuestionBI}${sqlUser}@${sqlHost}/${sqlBase}${QuestionB} base to ${QuestionBI}${exportFileName}${QuestionB} file?"
+confirm_or_exit "Dump SQL from ${color_question_h}${sql_user}@${sql_host}/${sql_base}${color_question_b} base to ${color_question_h}${export_file_name}${color_question_b} file?"
 
-printf "${InfoB}Dumping database ${Info} \n"
-mkdir -p ${backupDir}
-mysqldump --host=${sqlHost} --port=${sqlPort} --user=${sqlUser} --password=${sqlPass} --skip-lock-tables ${sqlBase} > ${backupDir}${exportFileName}
+printf "${color_info_b}Dumping database ${color_info} \n"
+mkdir -p ${backup_dir_path}
+mysqldump --host=${sql_host} --port=${sql_port} --user=${sql_user} --password=${sql_pass} --skip-lock-tables ${sql_base} > ${backup_dir_path}${export_file_name}
 
-if [[ $backupTime > 0 ]]; then
-	printf "${NoticeB}Clean old backups ${Notice} \n"
-	find ${backupDir} -mtime +${backupTime} -exec rm {} \; 
+if [[ $backup_time > 0 ]]; then
+	printf "${color_notice_b}Clean old backups ${color_notice} \n"
+	find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
 fi
 
-programEnd
+program_end

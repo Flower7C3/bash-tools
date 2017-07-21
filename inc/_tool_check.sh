@@ -2,28 +2,28 @@
 ### File check
 ###############################################################
 function file_name_check {
-    local fileName=$1
-    if [ -z "$fileName" ]; then
-        displayError "File name not specified!"
-        programError
+    local file_name=$1
+    if [ -z "$file_name" ]; then
+        display_error "File name not specified!"
+        program_error
     fi
-    fileNameTest=$(printf $fileName | egrep "/")
-    if [ -n "$fileNameTest" ]; then
-        displayError "File name is wrong!"
-        programError
+    file_name_test_1=$(printf ${file_name} | egrep "/")
+    if [ -n "$file_name_test_1" ]; then
+        display_error "File name is wrong!"
+        program_error
     fi
 }
 
 function dir_name_check {
-    local dirName=$1
-    if [ -z "$dirName" ]; then
-        displayError "Dir name not specified!"
-        programError
+    local dir_name=$1
+    if [ -z "$dir_name" ]; then
+        display_error "Dir name not specified!"
+        program_error
     fi
-    outputDirTest1=$(printf $dirName | egrep "/$")
-    if [ -z "$outputDirTest1" ]; then
-        displayError "Dir name must end with slash!"
-        programError
+    output_dir_test_1=$(printf ${dir_name} | egrep "/$")
+    if [ -z "$output_dir_test_1" ]; then
+        display_error "Dir name must end with slash!"
+        program_error
     fi
 }
 
@@ -35,24 +35,24 @@ function ssh_check {
     local hostname=$2
     local keyfile=$3
     sshStatus=$(ssh -i ${keyfile} -l ${username} ${hostname} "pwd")
-    printf "${InfoB}%16s ${InfoBI}%60s${InfoB}\t${LogBI}%s${InfoB}\n${Log}" "SSH" "${username}@${hostname}" "$sshStatus"
+    printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t${color_log_h}%s${color_info_b}\n${color_log}" "SSH" "${username}@${hostname}" "$sshStatus"
 }
 
 function domain_status_code_check {
     local domain=$1
-    local userpass=${2:-"vml:vml"}
+    local userpass=$2
     local statusCode=$(curl -H "Cache-Control: no-cache" -L -u "${userpass}" -s -o /dev/null -I -w "%{http_code}" ${domain})
-    printf "${InfoB}%16s ${InfoBI}%60s${InfoB}\t" "DOMENA" "$domain"
+    printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t" "DOMENA" "$domain"
     if (( "$statusCode" >= 200 && "$statusCode" < 400 )); then
-        printf "${SuccessBI}"
+        printf "${color_success_h}"
     else
         if (( "$statusCode" >= 400 && "$statusCode" < 600 )); then
-            printf "${ErrorBI}"
+            printf "${color_error_h}"
         else
-            printf "${LogBI}"
+            printf "${color_log_h}"
         fi
     fi
-    printf "%s\n${Log}" $statusCode
+    printf "%s\n${color_log}" $statusCode
 }
 
 function domain_status_code_check_or_rollback {
@@ -62,19 +62,19 @@ function domain_status_code_check_or_rollback {
 
     if [ "$exists" == "" ]; then
 
-        printf "${ErrorB}Site url ${ErrorBI}${url}${ErrorB} is not working."
-        if [[ "$currentCommitId" != "" ]]; then
-            printf "${Info}Check ${InfoU}${InfoB}a${Info}gain or ${InfoU}r${Info}ollback or ${InfoU}s${Info}kip? \n"
+        printf "${color_error_b}Site url ${color_error_h}${url}${color_error_b} is not working."
+        if [[ "$current_commit_id" != "" ]]; then
+            printf "${color_info}Check ${color_info_u}${color_info_b}a${color_info}gain or ${color_info_u}r${color_info}ollback or ${color_info_u}s${color_info}kip? \n"
         else
-            printf "${Info}Check ${InfoU}${InfoB}a${Info}gain or ${InfoU}s${Info}kip? \n"
+            printf "${color_info}Check ${color_info_u}${color_info_b}a${color_info}gain or ${color_info_u}s${color_info}kip? \n"
         fi
-        printf "${NoticeB} > ${Notice}"
+        printf "${color_notice_b} > ${color_notice}"
         read -e input
 
         if [[ "$input" != "s" ]]; then
-            if [[ "$currentCommitId" != "" ]]; then
+            if [[ "$current_commit_id" != "" ]]; then
                 if [[ "$input" == "r" ]]; then
-                    git_checkout ${currentCommitId}
+                    git_checkout ${current_commit_id}
                 else
                     domain_status_code_check ${url}
                 fi
@@ -84,6 +84,6 @@ function domain_status_code_check_or_rollback {
         fi
 
     else
-        printf "${SuccessB}Site url ${SuccessBI}${url}${SuccessB} is working ${Success} \n"
+        printf "${color_success_b}Site url ${color_success_h}${url}${color_success_b} is working ${color_success} \n"
     fi
 }

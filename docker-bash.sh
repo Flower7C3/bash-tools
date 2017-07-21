@@ -4,14 +4,14 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-containerName=$1
+docker_container_name=$1
 
 
 ## PROGRAM
-if [[ $(docker inspect -f {{.State.Running}} ${containerName}) == "false" ]]; then
-	printf "${Green}Starting container ${BGreen}"
-	docker start ${containerName}
-	printf "${Color_Off}"
+if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
+	printf "${color_success}Starting container ${color_success_b}"
+	docker start ${docker_container_name}
+	printf "${color_off}"
 fi
 
-docker exec -ti ${containerName} bash
+docker exec -ti ${docker_container_name} bash

@@ -4,53 +4,53 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_proxyHost="example-proxy-dev"
-_remoteHost="example-server-dev"
+_proxy_host="example-proxy-dev"
+_remote_host="example-server-dev"
 _directory="dev"
-_mongoHost="mongo3"
+_mongo_host="mongo3"
 _database="example"
 
 
 ## WELCOME
-programTitle "Mongo dump-n-import: from remote Symfony app via proxy to local/docker"
+program_title "Mongo dump-n-import: from remote Symfony app via proxy to local/docker"
 
 
 ## VARIABLES
-promptVariable proxyHost "Proxy name (from SSH config file)" "$_proxyHost" 1 "$@"
-promptVariable remoteHost "Remote host name (from SSH config file)" "$_remoteHost" 2 "$@"
-promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 3 "$@"
-exportDirName="backup_${remoteHost}_$(date "+%Y%m%d-%H%M%S")"
-exportFileName="backup_${remoteHost}_$(date "+%Y%m%d-%H%M%S").tar.gz"
-remoteDataDir='${HOME}/backup/'
-promptVariable mongoHost "Local Mongo machine name (or Docker container name)" "$_mongoHost" 4 "$@"
-if [ $_mongoHost == "localhost" ];
+prompt_variable proxy_host "Proxy name (from SSH config file)" "$_proxy_host" 1 "$@"
+prompt_variable remote_host "Remote host name (from SSH config file)" "$_remote_host" 2 "$@"
+prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 3 "$@"
+export_dir_name="backup_${remote_host}_$(date "+%Y%m%d-%H%M%S")"
+export_file_name="backup_${remote_host}_$(date "+%Y%m%d-%H%M%S").tar.gz"
+remote_data_dir_path='${HOME}/backup/'
+prompt_variable mongo_host "Local Mongo machine name (or Docker container name)" "$_mongo_host" 4 "$@"
+if [ ${_mongo_host} == "localhost" ];
 then
-	_isDocker=false
-	promptVariable database "Local Mongo database name" "$_database" 5 "$@"
-	localDataDir="${HOME}/backup/"
+	_is_docker=false
+	prompt_variable database "Local Mongo database name" "$_database" 5 "$@"
+	local_data_dir_path="${HOME}/backup/"
 else
-	_isDocker=true
-	promptVariable database "Docker Mongo database name" "$_database" 5 "$@"
-	localDataDir="${HOME}/www/database/mongo/${mongoHost}/data/"
+	_is_docker=true
+	prompt_variable database "Docker Mongo database name" "$_database" 5 "$@"
+	local_data_dir_path="${HOME}/www/database/mongo/${mongo_host}/data/"
 fi
 
 
 ## PROGRAM
-confirmOrExit "Dump Mongo on ${QuestionBI}${remoteHost}${Question} via ${QuestionBI}${proxyHost}${Question} from directory ${QuestionBI}${directory}${Question} and save on local/docker ${QuestionBI}${mongoHost}${Question} container to ${QuestionBI}${database}${Question} database?"
+confirm_or_exit "Dump Mongo on ${color_question_h}${remote_host}${color_question} via ${color_question_h}${proxy_host}${color_question} from directory ${color_question_h}${directory}${color_question} and save on local/docker ${color_question_h}${mongo_host}${color_question} container to ${color_question_h}${database}${color_question} database?"
 
-sourcedScriptsList+=('mongo-dump-symfony.sh mongo-dump-symfony.sh' 'mongo-dump-remote-symfony.sh mongo-dump-remote-symfony.sh')
-copy_scripts_to_host "$proxyHost"
+sourced_scripts_list+=('mongo-dump-symfony.sh mongo-dump-symfony.sh' 'mongo-dump-remote-symfony.sh mongo-dump-remote-symfony.sh')
+copy_scripts_to_host "$proxy_host"
 
-ssh ${proxyHost} 'yes | bash ${HOME}/mongo-dump-remote-symfony.sh '${remoteHost}' '${directory}' '${exportDirName}' '${exportFileName}
+ssh ${proxy_host} 'yes | bash ${HOME}/mongo-dump-remote-symfony.sh '${remote_host}' '${directory}' '${export_dir_name}' '${export_file_name}
 
-move_file_from_host_to_local "$proxyHost" "$remoteDataDir" "$localDataDir" "$exportFileName"
+move_file_from_host_to_local "$proxy_host" "$remote_data_dir_path" "$local_data_dir_path" "$export_file_name"
 
-remove_scripts_from_host "$proxyHost"
+remove_scripts_from_host "$proxy_host"
 
-if [ $_isDocker == "true" ]; then
-	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-docker.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
+if [ ${_is_docker} == "true" ]; then
+	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-docker.sh "$mongo_host" "$database" "${export_dir_name}" "$export_file_name"
 else
-	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-local.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-local.sh "$mongo_host" "$database" "${export_dir_name}" "$export_file_name"
 fi
 
-programEnd
+program_end

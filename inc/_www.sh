@@ -3,15 +3,15 @@
 ###############################################################
 
 function web_htaccess_symlink {
-    local applicationDir=$1
+    local application_dir_path=$1
     local linkType=${2:-maintenance}
-    if [[ -n "$applicationDir" ]]; then
+    if [[ -n "$application_dir_path" ]]; then
         if [[ "$linkType" == "maintenance" ]]; then
-            printf "${InfoB}Lock site with ${InfoBI}maintenance${InfoB} htaccess${Info} \n"
+            printf "${color_info_b}Lock site with ${color_info_h}maintenance${color_info_b} htaccess${color_info} \n"
         else
-            printf "${InfoB}Unlock site to ${InfoBI}${linkType}${InfoB} htaccess${Info} \n"
+            printf "${color_info_b}Unlock site to ${color_info_h}${linkType}${color_info_b} htaccess${color_info} \n"
         fi
-        ln -sf .htaccess.${linkType} ${applicationDir}web/.htaccess
+        ln -sf .htaccess.${linkType} ${application_dir_path}web/.htaccess
     fi
 }
 
@@ -20,79 +20,79 @@ function web_htaccess_symlink {
 ###############################################################
 
 function symfony_permissions_fix {
-    local symfonyCache=$1
-    local symfonyLogs=$2
-    if [[ -n "$symfonyCache" ]] && [[ -n "$symfonyLogs" ]]; then
-        printf "${InfoB}Fix Symfony cache and logs persmissions${Info} \n"
+    local symfony_cache_dir_path=$1
+    local symfony_log_dir_path=$2
+    if [[ -n "$symfony_cache_dir_path" ]] && [[ -n "$symfony_log_dir_path" ]]; then
+        printf "${color_info_b}Fix Symfony cache and logs persmissions${color_info} \n"
         HTTPDUSER=$(ps axo user,comm | grep -E '[a]pache|[h]ttpd|[_]www|[w]ww-data|[n]ginx' | grep -v root | head -1 | cut -d\  -f1)
-        setfacl -R -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfonyCache} ${symfonyLogs}
-        setfacl -dR -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfonyCache} ${symfonyLogs}
+        setfacl -R -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfony_cache_dir_path} ${symfony_log_dir_path}
+        setfacl -dR -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfony_cache_dir_path} ${symfony_log_dir_path}
     else
-        printf "${ErrorB}ERROR: Fix Symfony cache and logs persmission: no directories defined!${Error} \n"
+        printf "${color_error_b}ERROR: Fix Symfony cache and logs persmission: no directories defined!${color_error} \n"
     fi
 }
 
 function composer_install {
-    printf "${InfoB}Install data from ${InfoBI}composer.lock${InfoB} file${Color_Off} \n"
+    printf "${color_info_b}Install data from ${color_info_h}composer.lock${color_info_b} file${color_off} \n"
     composer install
 }
 
 function symfony_assets_install {
-    local symfonyConsole=$1
-    local symfonyEnv=$2
+    local symfony_console=$1
+    local symfony_env=$2
 
-    if [[ -n "$symfonyConsole" ]]; then
-        if [[ -z "$symfonyEnv" ]]; then
-            assets_install "$symfonyConsole" "dev"
-            assets_install "$symfonyConsole" "prod"
+    if [[ -n "$symfony_console" ]]; then
+        if [[ -z "$symfony_env" ]]; then
+            assets_install "$symfony_console" "dev"
+            assets_install "$symfony_console" "prod"
         else
-            printf "${InfoB}Install assets in ${InfoBI}${symfonyEnv}${InfoB} symfony enviroment${Color_Off} \n"
-            ${symfonyConsole} assets:install web --env=${symfonyEnv} --symlink
+            printf "${color_info_b}Install assets in ${color_info_h}${symfony_env}${color_info_b} symfony enviroment${color_off} \n"
+            ${symfony_console} assets:install web --env=${symfony_env} --symlink
         fi
     else
-        printf "${ErrorB}ERROR: Install Symfony assets: no console defined!${Error} \n"
+        printf "${color_error_b}ERROR: Install Symfony assets: no console defined!${color_error} \n"
     fi
 }
 
 function symfony_assets_dump {
-    local symfonyConsole=$1
-    local symfonyEnv=$2
+    local symfony_console=$1
+    local symfony_env=$2
 
-    if [[ -n "$symfonyConsole" ]]; then
-        if [[ -z "$symfonyEnv" ]]; then
-            assets_dump "$symfonyConsole" "dev"
-            assets_dump "$symfonyConsole" "prod"
+    if [[ -n "$symfony_console" ]]; then
+        if [[ -z "$symfony_env" ]]; then
+            assets_dump "$symfony_console" "dev"
+            assets_dump "$symfony_console" "prod"
         else
-            printf "${InfoB}Dump assets in ${InfoBI}${symfonyEnv}${InfoB} Symfony enviroment${Color_Off} \n"
-            ${symfonyConsole} assetic:dump --env=${symfonyEnv}
+            printf "${color_info_b}Dump assets in ${color_info_h}${symfony_env}${color_info_b} Symfony enviroment${color_off} \n"
+            ${symfony_console} assetic:dump --env=${symfony_env}
         fi
     else
-        printf "${ErrorB}ERROR: Dump Symfony assets: no console defined!${Error} \n"
+        printf "${color_error_b}ERROR: Dump Symfony assets: no console defined!${color_error} \n"
     fi
 }
 
 function assets_clear {
-    local applicationDir=$1
-    if [[ -n "$applicationDir" ]]; then
-        printf "${InfoB}Cleanup old Symfony assets${Info} \n"
-        rm -rf ${applicationDir}web/bundles/*
-        rm -rf ${applicationDir}web/assetic/*
-        rm -rf ${applicationDir}web/fonts/*
-        rm -rf ${applicationDir}web/cache/*
-        rm -rf ${applicationDir}web/images/*
-        rm -rf ${applicationDir}web/css/*
-        rm -rf ${applicationDir}web/js/*
+    local application_dir_path=$1
+    if [[ -n "$application_dir_path" ]]; then
+        printf "${color_info_b}Cleanup old Symfony assets${color_info} \n"
+        rm -rf ${application_dir_path}web/bundles/*
+        rm -rf ${application_dir_path}web/assetic/*
+        rm -rf ${application_dir_path}web/fonts/*
+        rm -rf ${application_dir_path}web/cache/*
+        rm -rf ${application_dir_path}web/images/*
+        rm -rf ${application_dir_path}web/css/*
+        rm -rf ${application_dir_path}web/js/*
     else
-        printf "${ErrorB}ERROR: Cleanup old Symfony assets: no application dir defined!${Error} \n"
+        printf "${color_error_b}ERROR: Cleanup old Symfony assets: no application dir defined!${color_error} \n"
     fi
 }
 
 function symfony_cache_clear {
-    local symfonyCache=$1
-    if [[ -n "$symfonyCache" ]]; then
-        printf "${InfoB}Cleanup Symfony cache ${Info} \n"
-        rm -rf ${symfonyCache}*
+    local symfony_cache_dir_path=$1
+    if [[ -n "$symfony_cache_dir_path" ]]; then
+        printf "${color_info_b}Cleanup Symfony cache ${color_info} \n"
+        rm -rf ${symfony_cache_dir_path}*
     else
-        printf "${ErrorB}ERROR: Cleanup Symfony cache: no directories defined!${Error} \n"
+        printf "${color_error_b}ERROR: Cleanup Symfony cache: no directories defined!${color_error} \n"
     fi
 }

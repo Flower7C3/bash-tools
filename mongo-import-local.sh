@@ -4,44 +4,44 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_mongoHost="localhost"
-_mongoDatabase="example"
-_exportDirName="backup_$(date "+%Y%m%d-%H%M%S")"
-_exportFileName="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
+_mongo_host="localhost"
+_mongo_base="example"
+_export_dir_name="backup_$(date "+%Y%m%d-%H%M%S")"
+_export_file_name="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
 
 
 ## WELCOME
-programTitle "SQL import to local"
+program_title "SQL import to local"
 
 
 ## VARIABLES
-promptVariable mongoHost "Mongo host" "$_mongoHost" 1 "$@"
-promptVariable mongoDatabase "Mongo database name" "$_mongoDatabase" 2 "$@"
+prompt_variable mongo_host "Mongo host" "$_mongo_host" 1 "$@"
+prompt_variable mongo_base "Mongo database name" "$_mongo_base" 2 "$@"
 
-localDataDir="${HOME}/backup/"
-localTriggerDir="${HOME}/www/database/"
-triggerFileName=${mongoDatabase}".json"
+local_data_dir_path="${HOME}/backup/"
+local_trigger_dir_path="${HOME}/www/database/"
+trigger_file_name=${mongo_base}".json"
 
-promptVariable exportDirName "Export dir name (from ${QuestionBI}${localDataDir}${QuestionB} path)" "$_exportDirName" 3 "$@"
-promptVariable exportFileName "Export file name (from ${QuestionBI}${localDataDir}${QuestionB} path)" "$_exportFileName" 4 "$@"
+prompt_variable export_dir_name "Export dir name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_dir_name" 3 "$@"
+prompt_variable export_file_name "Export file name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_file_name" 4 "$@"
 
 
 
 ## PROGRAM
-confirmOrExit "Import SQL to ${QuestionBI}${mongoDatabase}${Question} database at ${QuestionBI}${mysqlHost}${Question} mysql host from ${QuestionBI}${exportFileName}${Question} export file and ${QuestionBI}${triggerFileName}${Question} trigger file?"
+confirm_or_exit "Import SQL to ${color_question_h}${mongo_base}${color_question} database at ${color_question_h}${sql_host}${color_question} mysql host from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
 
-printf "${InfoB}Import ${InfoBI}${exportFileName}${InfoB} export file to ${InfoBI}${mongoDatabase}${InfoB} database on local ${Info} \n"
-$(cd ${localDataDir} && tar xzf ${exportFileName})
-mongorestore --host ${mongoHost} --drop --db ${mongoDatabase} --gzip --dir ${localDataDir}${exportDirName}
-printf "${Color_Off}"
+printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${mongo_base}${color_info_b} database on local ${color_info} \n"
+$(cd ${local_data_dir_path} && tar xzf ${export_file_name})
+mongorestore --host ${mongo_host} --drop --db ${mongo_base} --gzip --dir ${local_data_dir_path}${export_dir_name}
+printf "${color_off}"
 
-if [ -f "${localTriggerDir}${triggerFileName}" ]; then
-  printf "${InfoB}Execute ${InfoBI}${triggerFileName}${InfoB} trigger file to ${InfoBI}${mongoDatabase}${InfoB} database on local ${Info} \n"
-  mongo --host ${mongoHost} < ${localTriggerDir}${triggerFileName}
-  printf "${Color_Off}"
+if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
+  printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${mongo_base}${color_info_b} database on local ${color_info} \n"
+  mongo --host ${mongo_host} < ${local_trigger_dir_path}${trigger_file_name}
+  printf "${color_off}"
 fi
 
-remove_file_from_local "${localDataDir}" "${exportFileName}"
-remove_dir_from_local "${localDataDir}" "${exportDirName}"
+remove_file_from_local "${local_data_dir_path}" "${export_file_name}"
+remove_dir_from_local "${local_data_dir_path}" "${export_dir_name}"
 
-programEnd
+program_end

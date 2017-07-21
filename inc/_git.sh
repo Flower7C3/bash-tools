@@ -3,21 +3,21 @@
 ###############################################################
 
 function git_current {
-    currentRepoURL=$(git config --get remote.origin.url)
-    currentRepoWebURL=$(printf ${currentRepoURL} | sed -e 's/\(.*\)@\(.*\)\:\(.*\)\.git/http:\/\/\2\/\3/')
-    currentBranchName=$(git rev-parse --abbrev-ref HEAD)
-    currentCommitId=$(git rev-parse --verify HEAD)
-    currentCommitMessage=$(git --no-pager log -1 --pretty=format:"%B")
-    currentCommitTime=$(git --no-pager log -1 --pretty=format:"%ct")
-    currentCommitAuthorName=$(git --no-pager log -1 --pretty=format:"%an" )
-    currentCommitAuthorEmail=$(git --no-pager log -1 --pretty=format:"%ae" )
+    current_repo_url=$(git config --get remote.origin.url)
+    current_repo_web_url=$(printf ${current_repo_url} | sed -e 's/\(.*\)@\(.*\)\:\(.*\)\.git/http:\/\/\2\/\3/')
+    current_branch_name=$(git rev-parse --abbrev-ref HEAD)
+    current_commit_id=$(git rev-parse --verify HEAD)
+    current_commit_message=$(git --no-pager log -1 --pretty=format:"%B")
+    current_commit_time=$(git --no-pager log -1 --pretty=format:"%ct")
+    current_commit_author_name=$(git --no-pager log -1 --pretty=format:"%an" )
+    current_commit_author_email=$(git --no-pager log -1 --pretty=format:"%ae" )
 
-    printf "${InfoB}Git current commit hash is ${InfoBI}${currentCommitId}${InfoB}${Color_Off} \n"
+    printf "${color_info_b}Git current commit hash is ${color_info_h}${current_commit_id}${color_info_b}${color_off} \n"
 }
 
 
 function git_fetch {
-    printf "${InfoB}Git fetch data from upstream ${Color_Off} \n"
+    printf "${color_info_b}Git fetch data from upstream ${color_off} \n"
     git fetch
 }
 
@@ -25,13 +25,13 @@ function git_fetch {
 function git_checkout {
     local branch=${1:-master}
 
-    printf "${InfoB}Git checkout to ${InfoBI}${branch}${InfoB} ${Color_Off} \n"
+    printf "${color_info_b}Git checkout to ${color_info_h}${branch}${color_info_b} ${color_off} \n"
     git checkout ${branch}
 }
 
 
 function git_revert_changes {
-    printf "${InfoB}Git revert changes ${Color_Off} \n"
+    printf "${color_info_b}Git revert changes ${color_off} \n"
     git checkout -- .
 }
 
@@ -41,6 +41,6 @@ function git_pull {
 
     git_current
 
-    printf "${InfoB}Git pull ${InfoBI}${branch}${InfoB} branch from origin ${Color_Off} \n"
+    printf "${color_info_b}Git pull ${color_info_h}${branch}${color_info_b} branch from origin ${color_off} \n"
     git pull origin ${branch}
 }

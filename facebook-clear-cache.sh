@@ -9,23 +9,23 @@ sitemap=sitemap.xml
 
 
 ## WELCOME
-programTitle "Clean Facebook cache"
+program_title "Clean Facebook cache"
 
 
 ## VARIABLES
-promptVariable url "Url to rescrape" "$_url" 1 "$@"
+prompt_variable url "Url to rescrape" "$_url" 1 "$@"
 
 
 ## PROGRAM
 if [[ "$url" == *$sitemap ]]; then
 
-	confirmOrExit "Really rescrap all pages from ${QuestionBI}${url}${Question} sitemap?"
+	confirm_or_exit "Really rescrap all pages from ${color_question_h}${url}${color_question} sitemap?"
 	url=${url/$sitemap/}
 	facebook_cache_clean_by_sitemap $url $sitemap
 
 else
 
-	confirmOrExit "Really rescrap all pages from ${QuestionBI}${url}${Question} page?"
+	confirm_or_exit "Really rescrap all pages from ${color_question_h}${url}${color_question} page?"
 	facebook_cache_clean $url
 
 fi

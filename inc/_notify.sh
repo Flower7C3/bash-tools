@@ -2,42 +2,42 @@
 ### Notify
 ###############################################################
 
-function slackNotify  {
+function slack_notify  {
     local service_identifier=$1
     local url="https://hooks.slack.com/services/${service_identifier}"
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
-    printf "${InfoB}Send notification to Slack${Color_Off} \n"
+    printf "${color_info_b}Send notification to Slack${color_off} \n"
     curl -X POST --data "payload=${payload}" ${url}
     echo ""
 }
 
-function slackNotifyProjectUpdated  {
-    local slackId=$1
-    local username=${2:-""}
-    local usericon=${3:-""}
+function slack_notify_project_updated  {
+    local slack_id=$1
+    local user_name=${2:-""}
+    local user_icon=${3:-""}
     local channel=${4:-""}
-    local projectUrl=${5:-""}
+    local project_url=${5:-""}
 
     git_current
 
-    slackNotify "${slackId}" '
+    slack_notify "${slack_id}" '
         {
             "channel": "'"${channel}"'",
-            "username": "'"${username}"'",
-            "icon_emoji": "'"${usericon}"'",
+            "username": "'"${user_name}"'",
+            "icon_emoji": "'"${user_icon}"'",
             "text": "
-                    Aloha. Project *<'"${projectUrl}"'>* is now updated at *<'"${currentRepoWebURL}"'/network/'"${currentBranchName}"'|'"${currentBranchName}"'>* branch from *<'"${currentRepoWebURL}"'|'"${currentRepoURL}"'>* repository in `'"${symfonyRootDir}"'` directory :tada:
+                    Aloha. Project *<'"${project_url}"'>* is now updated at *<'"${current_repo_web_url}"'/network/'"${current_branch_name}"'|'"${current_branch_name}"'>* branch from *<'"${current_repo_web_url}"'|'"${current_repo_url}"'>* repository in `'"${symfony_root_dir}"'` directory :tada:
             ",
             "attachments": [
                 {
-                    "fallback": "Project '"${projectUrl}"' updated to '"${currentCommitId}"' commit",
+                    "fallback": "Project '"${project_url}"' updated to '"${current_commit_id}"' commit",
                     "color": "good",
-                    "author_name": "'"${currentCommitAuthorName}"' <'"${currentCommitAuthorEmail}"'>",
-                    "title": "Commit '"${currentCommitId}"'",
-                    "title_link": "'"${currentRepoWebURL}"'/commit/'"${currentCommitId}"'",
-                    "text": "'"${currentCommitMessage}"'",
-                    "ts": '"${currentCommitTime}"'
+                    "author_name": "'"${current_commit_author_name}"' <'"${current_commit_author_email}"'>",
+                    "title": "Commit '"${current_commit_id}"'",
+                    "title_link": "'"${current_repo_web_url}"'/commit/'"${current_commit_id}"'",
+                    "text": "'"${current_commit_message}"'",
+                    "ts": '"${current_commit_time}"'
                 }
             ]
         }

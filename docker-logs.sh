@@ -4,24 +4,24 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_containerName="php55"
+_docker_container_name="php55"
 
 
 ## WELCOME
-programTitle "Read Docker container logs"
+program_title "Read Docker container logs"
 
 
 ## VARIABLES
-promptVariable containerName "Container name" "${_containerName}" 1 "$@"
+prompt_variable docker_container_name "Container name" "${_docker_container_name}" 1 "$@"
 
 
 ## PROGRAM
-if [[ $(docker inspect -f {{.State.Running}} ${containerName}) == "false" ]]; then
-	printf "${Green}Starting container ${BGreen}"
-	docker start ${containerName}
-	printf "${Color_Off}"
+if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
+	printf "${color_success}Starting container ${color_success_b}"
+	docker start ${docker_container_name}
+	printf "${color_off}"
 fi
 
-docker logs --follow --details --timestamps --tail 32 ${containerName}
+docker logs --follow --details --timestamps --tail 32 ${docker_container_name}
 
-programEnd
+program_end

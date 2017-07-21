@@ -4,45 +4,45 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_containerName="mongo3"
-_mongoDatabase="example"
-_exportDirName="backup_$(date "+%Y%m%d-%H%M%S")"
-_exportFileName="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
+_docker_container_name="mongo3"
+_mongo_base="example"
+_export_dir_name="backup_$(date "+%Y%m%d-%H%M%S")"
+_export_file_name="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
 
 
 ## WELCOME
-programTitle "Mongo import to docker"
+program_title "Mongo import to docker"
 
 
 ## VARIABLES
-promptVariable containerName "Docker container name" "$_containerName" 1 "$@"
-promptVariable mongoDatabase "Docker Mongo database name" "$_mongoDatabase" 2 "$@"
+prompt_variable docker_container_name "Docker container name" "$_docker_container_name" 1 "$@"
+prompt_variable mongo_base "Docker Mongo database name" "$_mongo_base" 2 "$@"
 
-localDataDir="${HOME}/www/database/mongo/${containerName}/data/"
-localTriggerDir="${HOME}/www/database/mongo/${containerName}/data/"
-virtualDataDir="/data/db/"
-virtualTriggerDir="/data/db/"
-triggerFileName=${mongoDatabase}".json"
+local_data_dir_path="${HOME}/www/database/mongo/${docker_container_name}/data/"
+local_trigger_dir_path="${HOME}/www/database/mongo/${docker_container_name}/data/"
+virtual_data_dir_path="/data/db/"
+virtual_trigger_dir_path="/data/db/"
+trigger_file_name=${mongo_base}".json"
 
-promptVariable exportDirName "Export dir name (from ${QuestionBI}${localDataDir}${QuestionB} path)" "$_exportDirName" 3 "$@"
-promptVariable exportFileName "Export file name (from ${QuestionBI}${localDataDir}${QuestionB} path)" "$_exportFileName" 4 "$@"
+prompt_variable export_dir_name "Export dir name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_dir_name" 3 "$@"
+prompt_variable export_file_name "Export file name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_file_name" 4 "$@"
 
 
 ## PROGRAM
-confirmOrExit "Import Mongo to ${QuestionBI}${mongoDatabase}${Question} database at ${QuestionBI}${containerName}${Question} docker container from ${QuestionBI}${exportFileName}${Question} export file and ${QuestionBI}${triggerFileName}${Question} trigger file?"
+confirm_or_exit "Import Mongo to ${color_question_h}${mongo_base}${color_question} database at ${color_question_h}${docker_container_name}${color_question} docker container from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
 
-printf "${InfoB}Import ${InfoBI}${exportFileName}${InfoB} export file to ${InfoBI}${mongoDatabase}${InfoB} database on docker ${Info} \n"
-$(cd ${localDataDir} && tar xzf ${exportFileName})
-docker exec -i ${containerName} sh -c 'exec mongorestore --drop --db '${mongoDatabase}' --gzip --dir '${virtualDataDir}${exportDirName}''
-printf "${Color_Off}"
+printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${mongo_base}${color_info_b} database on docker ${color_info} \n"
+$(cd ${local_data_dir_path} && tar xzf ${export_file_name})
+docker exec -i ${docker_container_name} sh -c 'exec mongorestore --drop --db '${mongo_base}' --gzip --dir '${virtual_data_dir_path}${export_dir_name}''
+printf "${color_off}"
 
-if [ -f "${localTriggerDir}${triggerFileName}" ]; then
-	printf "${InfoB}Execute ${InfoBI}${triggerFileName}${InfoB} trigger file to ${InfoBI}${mongoDatabase}${InfoB} database on docker ${Info} \n"
-	docker exec -t ${containerName} sh -c 'exec mongo < '${virtualTriggerDir}${triggerFileName}
-	printf "${Color_Off}"
+if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
+	printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${mongo_base}${color_info_b} database on docker ${color_info} \n"
+	docker exec -t ${docker_container_name} sh -c 'exec mongo < '${virtual_trigger_dir_path}${trigger_file_name}
+	printf "${color_off}"
 fi
 
-remove_file_from_local "${localDataDir}" "${exportFileName}"
-remove_dir_from_local "${localDataDir}" "${exportDirName}"
+remove_file_from_local "${local_data_dir_path}" "${export_file_name}"
+remove_dir_from_local "${local_data_dir_path}" "${export_dir_name}"
 
-programEnd
+program_end

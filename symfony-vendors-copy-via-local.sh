@@ -17,22 +17,22 @@ backup_file='vendors-'$date'.tar'
 home_local="${HOME}/"
 
 
-printf "${BBlue}Prepare directory ${BIBlue}${home_src}${backup_path}${BBlue} at ${BIBlue}${host_src}${BBlue} host ${Blue} \n"
+printf "${color_notice_b}Prepare directory ${color_notice_h}${home_src}${backup_path}${color_notice_b} at ${color_notice_h}${host_src}${color_notice_b} host ${color_notice} \n"
 ssh ${host_src} "cd "${home_src}";tar -cf "${home_src}${backup_file}" "${backup_path}
 ssh ${host_dst} "rm -rf "${home_dst}${backup_path}"*"
-printf "${Color_Off}"
+printf "${color_off}"
 
-printf "${BGreen}Copy from source ${BIGreen}${host_src}${BGreen} host to destination ${BIGreen}${host_dst}${BGreen} host ${Green} \n"
+printf "${color_success_b}Copy from source ${color_success_h}${host_src}${color_success_b} host to destination ${color_success_h}${host_dst}${color_success_b} host ${color_success} \n"
 scp ${host_src}:${home_src}${backup_file} ${home_local}${backup_file}
 scp ${home_local}${backup_file} ${host_dst}:${home_dst}${backup_file}
-printf "${Color_Off}"
+printf "${color_off}"
 
-printf "${BGreen}Extract ${BIGreen}${backup_file}${BGreen} file to ${BIGreen}${home_dst}${backup_path}${BGreen} path at ${BIGreen}${host_dst}${BGreen} host ${Green} \n"
+printf "${color_success_b}Extract ${color_success_h}${backup_file}${color_success_b} file to ${color_success_h}${home_dst}${backup_path}${color_success_b} path at ${color_success_h}${host_dst}${color_success_b} host ${color_success} \n"
 ssh ${host_dst} "cd "${home_dst}"; tar -xf "${home_dst}${backup_file}
-printf "${Color_Off}"
+printf "${color_off}"
 
-printf "${BRed}Cleanup${Red} \n"
+printf "${color_error_b}Cleanup${Red} \n"
 ssh ${host_src} "rm "${home_src}${backup_file}
 ssh ${host_dst} "rm "${home_dst}${backup_file}
 rm ${home_local}${backup_file}
-printf "${Color_Off}"
+printf "${color_off}"

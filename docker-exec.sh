@@ -4,55 +4,55 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-localWwwPath=${HOME}/www/
-localProjectPath=$(pwd)
+local_www_path=${HOME}/www/
+local_project_path=$(pwd)
 
-dockerWwwPath=/var/www/
-dockerProjectPath=${localProjectPath/$localWwwPath/$dockerWwwPath}
+docker_www_path=/var/www/
+docker_project_path=${local_project_path/$local_www_path/$docker_www_path}
 
-_containerName="php55"
+_docker_container_name="php55"
 _commandName="pwd"
 _interactive="y"
-_autoClose="n"
+_auto_close="n"
 
 
 ## WELCOME
-programTitle "Execute command on Docker container"
-if [[ $localProjectPath == ${localWwwPath}* ]];
+program_title "Execute command on Docker container"
+if [[ ${local_project_path} == ${local_www_path}* ]];
 then
-	printfln "You are in ${InfoBI}`pwd`${Color_Off} directory."
+	printfln "You are in ${color_info_h}`pwd`${color_off} directory."
 else
-	printfln "${Error}You must be in ${ErrorBI}${localWwwPath}*${Error} path to run this command!${Color_Off}"
-	programError
+	printfln "${color_error}You must be in ${color_error_h}${local_www_path}*${color_error} path to run this command!${color_off}"
+	program_error
 fi
 
 
 ## VARIABLES
-promptVariable containerName "Container name" "${_containerName}" 1 "$@"
-promptVariable commandName "Command" "${_commandName}" 2 "$@"
-promptVariable interactive "Interactive" "${_interactive}" 3 "$@"
-promptVariable autoClose "Auto close" "${_autoClose}" 4 "$@"
+prompt_variable docker_container_name "Container name" "${_docker_container_name}" 1 "$@"
+prompt_variable commandName "Command" "${_commandName}" 2 "$@"
+prompt_variable_fixed interactive "Interactive" "${_interactive}" "y n" 3 "$@"
+prompt_variable_fixed auto_close "Auto close" "${_auto_close}" "y n" 4 "$@"
 
 
 ## PROGRAM
-confirmOrExit "Execute ${QuestionBI}${commandName}${Question} command in ${QuestionBI}${dockerProjectPath}${Question} path of ${QuestionBI}${containerName}${Question} docker container?"
+confirm_or_exit "Execute ${color_question_h}${commandName}${color_question} command in ${color_question_h}${docker_project_path}${color_question} path of ${color_question_h}${docker_container_name}${color_question} docker container?"
 
-if [[ $(docker inspect -f {{.State.Running}} ${containerName}) == "false" ]]; then
-	printf "${Green}Starting container ${BGreen}"
-	docker start ${containerName}
-	printf "${Color_Off}"
+if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
+	printf "${color_success}Starting container ${color_success_b}"
+	docker start ${docker_container_name}
+	printf "${color_off}"
 fi
 
 if [[ "$interactive" = "y" ]]; then
-	docker exec -ti ${containerName} bash -c "cd ${dockerProjectPath} && ${commandName}"
+	docker exec -ti ${docker_container_name} bash -c "cd ${docker_project_path} && ${commandName}"
 else
-	docker exec ${containerName} bash -c "cd ${dockerProjectPath} && ${commandName}"
+	docker exec ${docker_container_name} bash -c "cd ${docker_project_path} && ${commandName}"
 fi
 
-if [[ "$autoClose" == "y" ]]; then
-	printf "${Red}Stoping container ${BRed}"
-	docker stop ${containerName}
-	printf "${Color_Off}"
+if [[ "$auto_close" == "y" ]]; then
+	printf "${color_error}Stoping container ${color_error_b}"
+	docker stop ${docker_container_name}
+	printf "${color_off}"
 fi
 
-programEnd
+program_end

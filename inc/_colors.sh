@@ -1,5 +1,5 @@
 # Reset
-Color_Off='\033[0m'       # Text Reset
+color_off='\033[0m'       # Text Reset
 
 # Regular Colors
 Black='\033[0;30m'        # Black
@@ -73,61 +73,63 @@ On_IWhite='\033[0;107m'   # White
 
 
 
-
 # Events
 
-Log=${Purple}
-LogU=${UPurple}
-LogB=${BPurple}
-LogBI=${BIPurple}
-LogI=${IPurple}
-LogG=${On_Purple}
+color_log=${Purple}
+color_log_u=${UPurple}
+color_log_b=${BPurple}
+color_log_h=${BIPurple}
+color_log_i=${IPurple}
+color_log_g=${On_Purple}
 
-Info=${Cyan}
-InfoU=${UCyan}
-InfoB=${BCyan}
-InfoBI=${BICyan}
-InfoI=${ICyan}
-InfoG=${On_Cyan}
+color_info=${Cyan}
+color_info_u=${UCyan}
+color_info_b=${BCyan}
+color_info_h=${BICyan}
+color_info_i=${ICyan}
+color_info_g=${On_Cyan}
 
-Question=${Yellow}
-QuestionU=${UYellow}
-QuestionB=${BYellow}
-QuestionBI=${BIYellow}
-QuestionI=${IYellow}
-QuestionG=${On_Yellow}
+color_question=${Yellow}
+color_question_u=${UYellow}
+color_question_b=${BYellow}
+color_question_h=${BIYellow}
+color_question_i=${IYellow}
+color_question_g=${On_Yellow}
 
-Notice=${Blue}
-NoticeU=${UBlue}
-NoticeB=${BBlue}
-NoticeBI=${BIBlue}
-NoticeI=${IBlue}
-NoticeG=${On_Blue}
+color_notice=${Blue}
+color_notice_u=${UBlue}
+color_notice_b=${BBlue}
+color_notice_h=${BIBlue}
+color_notice_i=${IBlue}
+color_notice_g=${On_Blue}
 
-Success=${Green}
-SuccessU=${UGreen}
-SuccessB=${BGreen}
-SuccessBI=${BIGreen}
-SuccessI=${IGreen}
-SuccessG=${On_Green}
+color_success=${Green}
+color_success_u=${UGreen}
+color_success_b=${BGreen}
+color_success_h=${BIGreen}
+color_success_i=${IGreen}
+color_success_g=${On_Green}
 
-Error=${Red}
-ErrorU=${URed}
-ErrorB=${BRed}
-ErrorBI=${BIRed}
-ErrorI=${IRed}
-ErrorG=${On_IRed}
+color_error=${Red}
+color_error_u=${URed}
+color_error_b=${BRed}
+color_error_h=${BIRed}
+color_error_i=${IRed}
+color_error_g=${On_IRed}
+
+color_console="${Black}${On_Cyan}"
 
 
 # Lines
-BoxBR='\e(0\x6a\e(B'
-BoxTR='\e(0\x6b\e(B'
-BoxTL='\e(0\x6c\e(B'
-BoxBL='\e(0\x6d\e(B'
-BoxX='\e(0\x6e\e(B'
-BoxH='\e(0\x71\e(B'
-BoxVR='\e(0\x74\e(B'
-BoxVL='\e(0\x75\e(B'
-BoxHT='\e(0\x76\e(B'
-BoxHB='\e(0\x77\e(B'
-BoxV='\e(0\x78\e(B'
+
+box_tl='\e(0\x6c\e(B' # ┌
+box_bl='\e(0\x6d\e(B' # └
+box_tr='\e(0\x6b\e(B' # ┐
+box_br='\e(0\x6a\e(B' # ┘
+box_hb='\e(0\x77\e(B' # ┬
+box_vr='\e(0\x74\e(B' # ├
+box_vl='\e(0\x75\e(B' # ┤
+box_ht='\e(0\x76\e(B' # ┴
+box_x='\e(0\x6e\e(B' # ┼
+box_h='\e(0\x71\e(B' # ─
+box_v='\e(0\x78\e(B' # │
