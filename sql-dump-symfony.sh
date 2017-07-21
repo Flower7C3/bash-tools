@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
@@ -15,24 +15,24 @@ programTitle "SQL dump on Symfony app"
 _directory="master"
 promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 1 "$@"
 configFile=${HOME}/${directory}/app/config/parameters.yml
-sqlHost=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $configFile | xargs`
-if [[ "$sqlHost" == '~' || "$sqlHost" == '' || "$sqlHost" == 'null' ]]; then
+sqlHost=$(sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $configFile | xargs)
+if [[ "$sqlHost" == "~" || "$sqlHost" == "" || "$sqlHost" == "null" ]]; then
 	sqlHost='localhost'
 fi
-sqlPort=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $configFile | xargs`
-if [[ "$sqlPort" == '~' || "$sqlPort" == '' || "$sqlPort" == 'null' ]]; then
+sqlPort=$(sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $configFile | xargs)
+if [[ "$sqlPort" == "~" || "$sqlPort" == "" || "$sqlPort" == "null" ]]; then
 	sqlPort=3306
 fi
-sqlUser=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $configFile | xargs`
-if [[ "$sqlUser" == '~' || "$sqlUser" == '' || "$sqlUser" == 'null' ]]; then
+sqlUser=$(sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $configFile | xargs)
+if [[ "$sqlUser" == "~" || "$sqlUser" == "" || "$sqlUser" == "null" ]]; then
 	sqlUser='root'
 fi
-sqlPass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $configFile | xargs`
-if [[ "$sqlPass" == '~' || "$sqlPass" == '' || "$sqlPass" == 'null' ]]; then
+sqlPass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $configFile | xargs)
+if [[ "$sqlPass" == "~" || "$sqlPass" == "" || "$sqlPass" == "null" ]]; then
 	sqlPass=''
 fi
-sqlBase=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $configFile | xargs`
-_exportFileName=${sqlBase}-`date "+%Y%m%d-%H%M%S"`.sql
+sqlBase=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $configFile | xargs)
+_exportFileName=${sqlBase}-$(date "+%Y%m%d-%H%M%S").sql
 promptVariable exportFileName "Export filename" "$_exportFileName" 2 "$@"
 _backupTime=0
 promptVariable backupTime "Backup time (days)" "$_backupTime" 3 "$@"

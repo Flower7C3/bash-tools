@@ -1,4 +1,4 @@
-baseDir=`dirname ${BASH_SOURCE}`/
+baseDir=$(dirname ${BASH_SOURCE})/
 
 sourcedScriptsList=(
 	'_base.sh					_base.sh'

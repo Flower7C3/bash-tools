@@ -53,7 +53,7 @@ function displayInfo {
 
 function displayError {
     local message=$1
-    printf "${ErrorB}(E) ${message}\n"
+    printf "${ErrorB}(E) ${message}\n" >&2
 }
 
 function programEnd {

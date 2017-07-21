@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
@@ -17,8 +17,8 @@ programTitle "Mongo dump-n-import: from remote Symfony app to local/docker"
 ## VARIABLES
 promptVariable remoteHost "Remote host name (from SSH config file)" "$_remoteHost" 1 "$@"
 promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 2 "$@"
-exportDirName="backup_${remoteHost}_`date "+%Y%m%d-%H%M%S"`"
-exportFileName="backup_${remoteHost}_`date "+%Y%m%d-%H%M%S"`.tar.gz"
+exportDirName="backup_${remoteHost}_$(date "+%Y%m%d-%H%M%S")"
+exportFileName="backup_${remoteHost}_$(date "+%Y%m%d-%H%M%S").tar.gz"
 remoteDataDir='${HOME}/backup/'
 promptVariable mongoHost "Local Mongo machine name (or Docker container name)" "$_mongoHost" 3 "$@"
 if [ $_mongoHost == "localhost" ];
@@ -46,9 +46,9 @@ move_file_from_host_to_local "$remoteHost" "$remoteDataDir" "$localDataDir" "$ex
 remove_scripts_from_host "$remoteHost"
 
 if [ $_isDocker == "true"]; then
-	yes | bash `dirname ${BASH_SOURCE}`/mongo-import-docker.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-docker.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
 else
-	yes | bash `dirname ${BASH_SOURCE}`/mongo-import-local.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-local.sh "$mongoHost" "$database" "${exportDirName}" "$exportFileName"
 fi
 
 programEnd

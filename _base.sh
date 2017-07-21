@@ -1,4 +1,4 @@
-baseDir=`dirname ${BASH_SOURCE}`/
+baseDir=$(dirname ${BASH_SOURCE})/
 
 sourcedScriptsList=(
 	'inc/_base_for_remote.sh	_base.sh'

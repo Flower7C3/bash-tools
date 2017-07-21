@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
 _containerName="mysql55"
 _database="example"
-_exportFileName="backup_`date "+%Y%m%d-%H%M%S"`.sql"
+_exportFileName="backup_$(date "+%Y%m%d-%H%M%S").sql"
 
 
 ## WELCOME

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
 _mongoHost="localhost"
 _mongoDatabase="example"
-_exportDirName="backup_`date "+%Y%m%d-%H%M%S"`"
-_exportFileName="backup_`date "+%Y%m%d-%H%M%S"`.tar.gz"
+_exportDirName="backup_$(date "+%Y%m%d-%H%M%S")"
+_exportFileName="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
 
 
 ## WELCOME

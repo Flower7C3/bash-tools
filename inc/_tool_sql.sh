@@ -79,23 +79,23 @@ function mysql_backup_via_symfony {
     local symfonyRootDir=$1
     local symfonyConfigFilePath="${symfonyRootDir}app/config/parameters.yml"
 
-    local sqlHost=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$sqlHost" == '~' || "$sqlHost" == '' || "$sqlHost" == 'null' ]]; then
+    local sqlHost=$(sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$sqlHost" == "~" || "$sqlHost" == "" || "$sqlHost" == "null" ]]; then
 	    sqlHost='localhost'
     fi
-    local sqlPort=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$sqlPort" == '~' || "$sqlPort" == '' || "$sqlPort" == 'null' ]]; then
+    local sqlPort=$(sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$sqlPort" == "~" || "$sqlPort" == "" || "$sqlPort" == "null" ]]; then
 	    sqlPort='3306'
     fi
-    local sqlUser=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$sqlUser" == '~' || "$sqlUser" == '' || "$sqlUser" == 'null' ]]; then
+    local sqlUser=$(sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$sqlUser" == "~" || "$sqlUser" == "" || "$sqlUser" == "null" ]]; then
 	    sqlUser='root'
     fi
-    local sqlPass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    local sqlBase=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
+    local sqlPass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    local sqlBase=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
 
     local backupDir="dump/"
-    local backupFileName=${1:-${sqlHost}.${sqlBase}.`date "+%Y%m%d.%H%M%S"`.sql}
+    local backupFileName=${1:-${sqlHost}.${sqlBase}.$(date "+%Y%m%d.%H%M%S").sql}
 
     printf "${InfoB}Backup ${InfoBI}%s${InfoB} MySQL database to ${InfoBI}%s${InfoB} file (via Symfony config)${Info} \n" "$sqlHost:$sqlPort/$sqlBase" "$backupDir$backupFileName"
     mkdir -p ${backupDir}
@@ -106,23 +106,23 @@ function mongo_backup_via_symfony {
     local symfonyRootDir=$1
     local symfonyConfigFilePath="${symfonyRootDir}app/config/parameters.yml"
 
-    local mongoHost=`sed -n "s/\([ ]\{1,\}\)mongo_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoHost" == '~' || "$mongoHost" == '' || "$mongoHost" == 'null' ]]; then
+    local mongoHost=$(sed -n "s/\([ ]\{1,\}\)mongo_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoHost" == "~" || "$mongoHost" == "" || "$mongoHost" == "null" ]]; then
         mongoHost='localhost'
     fi
-    local mongoPort=`sed -n "s/\([ ]\{1,\}\)mongo_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoPort" == '~' || "$mongoPort" == '' || "$mongoPort" == 'null' ]]; then
+    local mongoPort=$(sed -n "s/\([ ]\{1,\}\)mongo_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoPort" == "~" || "$mongoPort" == "" || "$mongoPort" == "null" ]]; then
         mongoPort=27017
     fi
-    local mongoUser=`sed -n "s/\([ ]\{1,\}\)mongo_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoUser" == '~' || "$mongoUser" == '' || "$mongoUser" == 'null' ]]; then
+    local mongoUser=$(sed -n "s/\([ ]\{1,\}\)mongo_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoUser" == "~" || "$mongoUser" == "" || "$mongoUser" == "null" ]]; then
         mongoUser='root'
     fi
-    local mongoPass=`sed -n "s/\([ ]\{1,\}\)mongo_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoPass" == '~' || "$mongoPass" == '' || "$mongoPass" == 'null' ]]; then
+    local mongoPass=$(sed -n "s/\([ ]\{1,\}\)mongo_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoPass" == "~" || "$mongoPass" == "" || "$mongoPass" == "null" ]]; then
         mongoPass=''
     fi
-    local mongoBase=`sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
+    local mongoBase=$(sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
     local backupDir="dump/${mongoBase}/"
 
     printf "${InfoB}Backup ${InfoBI}%s${InfoB} Mongo database to ${InfoBI}%s${InfoB} directory (via Symfony config)${Info}\n" "$mongoHost/$mongoBase" "$backupDir"
@@ -134,23 +134,23 @@ function mongo_restore_via_symfony {
     local symfonyRootDir=$1
     local symfonyConfigFilePath="${symfonyRootDir}app/config/parameters.yml"
 
-    local mongoHost=`sed -n "s/\([ ]\{1,\}\)mongo_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoHost" == '~' || "$mongoHost" == '' || "$mongoHost" == 'null' ]]; then
+    local mongoHost=$(sed -n "s/\([ ]\{1,\}\)mongo_host:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoHost" == "~" || "$mongoHost" == "" || "$mongoHost" == "null" ]]; then
         mongoHost='localhost'
     fi
-    local mongoPort=`sed -n "s/\([ ]\{1,\}\)mongo_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoPort" == '~' || "$mongoPort" == '' || "$mongoPort" == 'null' ]]; then
+    local mongoPort=$(sed -n "s/\([ ]\{1,\}\)mongo_port:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoPort" == "~" || "$mongoPort" == "" || "$mongoPort" == "null" ]]; then
         mongoPort=27017
     fi
-    local mongoUser=`sed -n "s/\([ ]\{1,\}\)mongo_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoUser" == '~' || "$mongoUser" == '' || "$mongoUser" == 'null' ]]; then
+    local mongoUser=$(sed -n "s/\([ ]\{1,\}\)mongo_user:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoUser" == "~" || "$mongoUser" == "" || "$mongoUser" == "null" ]]; then
         mongoUser='root'
     fi
-    local mongoPass=`sed -n "s/\([ ]\{1,\}\)mongo_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
-    if [[ "$mongoPass" == '~' || "$mongoPass" == '' || "$mongoPass" == 'null' ]]; then
+    local mongoPass=$(sed -n "s/\([ ]\{1,\}\)mongo_password:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
+    if [[ "$mongoPass" == "~" || "$mongoPass" == "" || "$mongoPass" == "null" ]]; then
         mongoPass=''
     fi
-    local mongoBase=`sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs`
+    local mongoBase=$(sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfonyConfigFilePath} | xargs)
     sourceBase=$1
     local backupDir="dump/${sourceBase}/"
 

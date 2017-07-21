@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 clear
 
 
@@ -12,7 +12,7 @@ home_dst=${4:-'~/dev/'}
 
 backup_path=${5:-"vendor/"}
 
-date=`date "+%Y%m%d-%H%M%S"`
+date=$(date "+%Y%m%d-%H%M%S")
 backup_file='vendors-'$date'.tar'
 home_local="${HOME}/"
 

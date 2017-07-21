@@ -24,9 +24,9 @@ function symfony_permissions_fix {
     local symfonyLogs=$2
     if [[ -n "$symfonyCache" ]] && [[ -n "$symfonyLogs" ]]; then
         printf "${InfoB}Fix Symfony cache and logs persmissions${Info} \n"
-        HTTPDUSER=`ps axo user,comm | grep -E '[a]pache|[h]ttpd|[_]www|[w]ww-data|[n]ginx' | grep -v root | head -1 | cut -d\  -f1`
-        setfacl -R -m u:"$HTTPDUSER":rwX -m u:`whoami`:rwX ${symfonyCache} ${symfonyLogs}
-        setfacl -dR -m u:"$HTTPDUSER":rwX -m u:`whoami`:rwX ${symfonyCache} ${symfonyLogs}
+        HTTPDUSER=$(ps axo user,comm | grep -E '[a]pache|[h]ttpd|[_]www|[w]ww-data|[n]ginx' | grep -v root | head -1 | cut -d\  -f1)
+        setfacl -R -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfonyCache} ${symfonyLogs}
+        setfacl -dR -m u:"$HTTPDUSER":rwX -m u:$(whoami):rwX ${symfonyCache} ${symfonyLogs}
     else
         printf "${ErrorB}ERROR: Fix Symfony cache and logs persmission: no directories defined!${Error} \n"
     fi

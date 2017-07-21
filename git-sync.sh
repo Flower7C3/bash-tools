@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
@@ -19,7 +19,7 @@ promptVariable prefix "Prefix" "" 2 "$@"
 
 
 ## PROGRAM
-confirmOrExit "`printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${QuestionBI}${prefix}${branch}${Question}"; done; printf "?"`"
+confirmOrExit "$(printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${QuestionBI}${prefix}${branch}${Question}"; done; printf "?")"
 
 for branch in "${branches[@]}"
 do

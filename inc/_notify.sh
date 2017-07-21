@@ -5,7 +5,7 @@
 function slackNotify  {
     local service_identifier=$1
     local url="https://hooks.slack.com/services/${service_identifier}"
-    local payload=`echo "$2" | sed ':a;N;$!ba;s/\n//g'`
+    local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
     printf "${InfoB}Send notification to Slack${Color_Off} \n"
     curl -X POST --data "payload=${payload}" ${url}

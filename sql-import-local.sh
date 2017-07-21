@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
 _mysqlHost="mysql55"
 _database="example"
-datetime=`date "+%Y%m%d-%H%M%S"`
+datetime=$(date "+%Y%m%d-%H%M%S")
 _exportFileName="backup_${datetime}.sql"
 
 

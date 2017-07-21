@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source `dirname ${BASH_SOURCE}`/_base.sh
+source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
@@ -19,7 +19,7 @@ programTitle "SQL dump-n-import: from remote Symfony app via proxy to local/dock
 promptVariable proxyHost "Proxy name (from SSH config file)" "$_proxyHost" 1 "$@"
 promptVariable remoteHost "Remote host name (from SSH config file)" "$_remoteHost" 2 "$@"
 promptVariable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 3 "$@"
-datetime=`date "+%Y%m%d-%H%M%S"`
+datetime=$(date "+%Y%m%d-%H%M%S")
 exportFileName="backup_${remoteHost}_${datetime}.sql"
 remoteDataDir='${HOME}/backup/'
 promptVariable mysqlHost "Local MySQL machine name (or Docker container name)" "$_mysqlHost" 4 "$@"
@@ -48,9 +48,9 @@ move_file_from_host_to_local "$proxyHost" "$remoteDataDir" "$localDataDir" "$exp
 remove_scripts_from_host "$proxyHost"
 
 if [ $_isDocker == "true" ]; then
-	yes | bash `dirname ${BASH_SOURCE}`/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/sql-import-docker.sh "$mysqlHost" "$database" "$exportFileName"
 else
-	yes | bash `dirname ${BASH_SOURCE}`/sql-import-local.sh "$mysqlHost" "$database" "$exportFileName"
+	yes | bash $(dirname ${BASH_SOURCE})/sql-import-local.sh "$mysqlHost" "$database" "$exportFileName"
 fi
 
 programEnd
