@@ -5,7 +5,7 @@
 function symfony_database_migrate {
 	local symfony_console=$1
 	local interactive=${2:-"y"}
-    local has_migrations=$(${symfony_console} doc:mig:sta | grep "New Migrations" | sed 's/[^0-9]//g')
+    local has_migrations=$(${symfony_console} doc:mig:sta --no-ansi | grep "New Migrations" | sed 's/[^0-9]//g')
 
     if [[ -n "$symfony_console" ]]; then
         if [[ "$has_migrations" != "0" ]]; then
