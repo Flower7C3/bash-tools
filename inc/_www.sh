@@ -33,8 +33,9 @@ function symfony_permissions_fix {
 }
 
 function composer_install {
+    local composer_command=${1:-"composer"}
     printf "${color_info_b}Install data from ${color_info_h}composer.lock${color_info_b} file${color_off} \n"
-    composer install
+    ${composer_command} install
 }
 
 function symfony_assets_install {

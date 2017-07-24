@@ -19,10 +19,10 @@ function symfony_database_migrate {
 
 function mysql_remote_truncate_via_symfony {
 	local host_name=$1
-	local symfony_root_dir=$2
+	local symfony_console=$2
 
-	printf "${color_info_b}Truncate database at ${color_info_h}${host_name}${color_info_b} host in ${color_info_h}${symfony_root_dir}${color_info_b} directory${color_info}\n"
-	ssh ${host_name} 'php '${symfony_root_dir}'app/console doctrine:database:drop --force && php '${symfony_root_dir}'app/console doctrine:database:create'
+	printf "${color_info_b}Truncate database at ${color_info_h}${host_name}${color_info_b} host with ${color_info_h}${symfony_console}${color_info_b}${color_info}\n"
+	ssh ${host_name} ''${symfony_console}' doctrine:database:drop --force && '${symfony_console}' doctrine:database:create'
 }
 
 function mysql_remote_check_via_symfony {
