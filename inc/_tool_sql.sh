@@ -4,16 +4,26 @@
 
 function symfony_database_migrate {
 	local symfony_console=$1
+	local interactive=${2:-"y"}
     local has_migrations=$(${symfony_console} doc:mig:sta | grep "New Migrations" | sed 's/[^0-9]//g')
 
-    if [[ "$has_migrations" != "0" ]]; then
-        printf "${color_notice_b}Database has new structure${color_off} \n"
-        ${symfony_console} doctrine:schema:update --dump-sql
-        ${symfony_console} doc:mig:sta --show-versions | grep "not migrated"
-        printf "${color_console}${symfony_console} doctrine:migrations:migrate${color_off}\n\n"
-        ${symfony_console} doctrine:migrations:migrate
+    if [[ -n "$symfony_console" ]]; then
+        if [[ "$has_migrations" != "0" ]]; then
+            printf "${color_notice_b}Database has new structure${color_off} \n"
+            ${symfony_console} doctrine:schema:update --dump-sql
+            printf "${color_notice_b}Database has new migrations${color_off} \n"
+            ${symfony_console} doc:mig:sta --show-versions | grep "not migrated"
+            printf "${color_console}${symfony_console} doctrine:migrations:migrate${color_off}\n\n"
+            if [[ "$interactive" == "n" ]]; then
+                ${symfony_console} doctrine:migrations:migrate --no-interaction
+            else
+                ${symfony_console} doctrine:migrations:migrate
+            fi
+        else
+            printf "${color_info_b}Database is in sync with the current entity metadata${color_info} \n"
+        fi
     else
-        printf "${color_info_b}Database is in sync with the current entity metadata${color_info} \n"
+        printf "${color_error_b}ERROR: Database migrate via Symfony: console command not defined!${color_error} \n"
     fi
 }
 
@@ -21,8 +31,16 @@ function mysql_remote_truncate_via_symfony {
 	local host_name=$1
 	local symfony_console=$2
 
-	printf "${color_info_b}Truncate database at ${color_info_h}${host_name}${color_info_b} host with ${color_info_h}${symfony_console}${color_info_b}${color_info}\n"
-	ssh ${host_name} ''${symfony_console}' doctrine:database:drop --force && '${symfony_console}' doctrine:database:create'
+    if [[ -n "$host_name" ]]; then
+        if [[ -n "$symfony_console" ]]; then
+            printf "${color_info_b}Truncate database at ${color_info_h}${host_name}${color_info_b} host with ${color_info_h}${symfony_console}${color_info_b}${color_info}\n"
+            ssh ${host_name} ''${symfony_console}' doctrine:database:drop --force && '${symfony_console}' doctrine:database:create'
+        else
+            printf "${color_error_b}ERROR: Database truncate via Symfony: console command not defined!${color_error} \n"
+        fi
+    else
+        printf "${color_error_b}ERROR: Database truncate via Symfony: host name not defined!${color_error} \n"
+    fi
 }
 
 function mysql_remote_check_via_symfony {
