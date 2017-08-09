@@ -8,7 +8,7 @@ function slack_notify  {
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
     printf "${color_info_b}Send notification to Slack${color_off} \n"
-    curl -X POST --data "payload=${payload}" ${url}
+    curl -k -X POST --data "payload=${payload}" "$url"
     echo ""
 }
 
@@ -51,7 +51,7 @@ function msteams_notify {
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
     printf "${color_info_b}Send notification to MS Teams${color_off} \n"
-    curl -vs -X POST --data "${payload}" ${url}
+    curl -k -X POST --data "$payload" "$url"
     echo ""
 }
 
