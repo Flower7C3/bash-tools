@@ -44,3 +44,78 @@ function slack_notify_project_updated  {
         }
         '
 }
+
+function msteams_notify {
+    local service_identifier=$1
+    local url="https://outlook.office.com/webhook/${service_identifier}"
+    local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
+
+    printf "${color_info_b}Send notification to MS Teams${color_off} \n"
+    curl -vs -X POST --data "${payload}" ${url}
+    echo ""
+}
+
+function msteams_notify_project_updated {
+    local team_id=$1
+    local project_url=${2:-""}
+    local project_host_dir=${3:-"`whoami`@`hostname`"}
+    local theme_color=${4:-"000000"}
+
+    git_current
+
+    msteams_notify "${team_id}" '
+        {
+            "@context": "http://schema.org/extensions",
+            "@type": "MessageCard",
+            "themeColor": "'"${theme_color}"'",
+            "title": "'"${project_host_dir}"'",
+            "text": "Aloha. Project **<'"${project_url}"'>** is now updated at **'"${current_branch_name}"'** branch from **'"${current_repo_url}"'** repository :)",
+            "sections": [
+                {
+                    "startGroup": true,
+                    "activityImage": "'"${current_commit_author_gravatar}"'",
+                    "activityTitle": "'"${current_commit_author_name}"' <'"${current_commit_author_email}"'>",
+                    "activitySubtitle": "'"${current_commit_datetime}"'",
+                    "facts": [
+                        {
+                            "name": "Repository",
+                            "value": "'"${current_repo_url}"'"
+                        },
+                        {
+                            "name": "Branch",
+                            "value": "'"${current_branch_name}"'"
+                        },
+                        {
+                            "name": "Commit",
+                            "value": "'"${current_commit_id:0:8}"'"
+                        }
+                    ],
+                    "text": "'"${current_commit_message}"'",
+                    "potentialAction": [
+                        {
+                            "@type": "OpenUri",
+                            "name": "View repo",
+                            "targets": [
+                                { "os": "default", "uri": "'"${current_repo_web_url}"'" }
+                            ]
+                        },
+                        {
+                            "@type": "OpenUri",
+                            "name": "View branch",
+                            "targets": [
+                                { "os": "default", "uri": "'"${current_repo_web_url}"'/network/'"${current_branch_name}"'" }
+                            ]
+                        },
+                        {
+                            "@type": "OpenUri",
+                            "name": "View commit",
+                            "targets": [
+                                { "os": "default", "uri": "'"${current_repo_web_url}"'/commit/'"${current_commit_id}"'" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+        '
+}
