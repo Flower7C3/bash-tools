@@ -3,7 +3,13 @@
 ###############################################################
 
 function email_to_hash {
-    printf $1 | tr '[A-Z]' '[a-z]' | md5
+    if builtin command -v "md5" 2>/dev/null; then
+        printf $1 | tr '[A-Z]' '[a-z]' | md5
+    elif builtin command -v "md5sum" 2>/dev/null; then
+        printf $1 | md5sum
+    else
+        echo "undefined"
+    fi
 }
 
 function gravatar_url {
