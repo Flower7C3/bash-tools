@@ -76,6 +76,7 @@ function msteams_notify_project_updated {
                     "activityImage": "'"${current_commit_author_gravatar}"'",
                     "activityTitle": "'"${current_commit_author_name}"' <'"${current_commit_author_email}"'>",
                     "activitySubtitle": "'"${current_commit_datetime}"'",
+                    "activityText": "'"${current_commit_id:0:8}"'@'"${current_branch_name}"'",
                     "facts": [
                         {
                             "name": "Repository",
