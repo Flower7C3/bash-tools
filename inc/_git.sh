@@ -12,6 +12,7 @@ function email_to_hash {
     fi
 }
 
+
 function gravatar_url {
     local email=$1
     local size=${2:-'256'}
@@ -20,6 +21,7 @@ function gravatar_url {
     local URL="http://www.gravatar.com/avatar/${HASH}?s=${size}&d=${fallback}"
     printf $URL
 }
+
 
 function git_current {
     current_repo_url=$(git config --get remote.origin.url)
@@ -40,6 +42,12 @@ function git_current {
 function git_fetch {
     printf "${color_info_b}Git fetch data from upstream ${color_off} \n"
     git fetch
+}
+
+
+function git_fetch_tags {
+    printf "${color_info_b}Git fetch data and tags from upstream ${color_off} \n"
+    git fetch --tags
 }
 
 
