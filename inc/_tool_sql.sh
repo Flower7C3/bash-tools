@@ -112,8 +112,8 @@ function mysql_backup_via_symfony {
     local sql_pass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
     local sql_base=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
 
-    local backup_dir_path="dump/"
-    local backup_file_name=${1:-${sql_host}.${sql_base}.$(date "+%Y%m%d.%H%M%S").sql}
+    local backup_dir_path=${2:-'dump/'}
+    local backup_file_name="${sql_host}.${sql_base}.$(date "+%Y%m%d.%H%M%S").sql"
 
     printf "${color_info_b}Backup ${color_info_h}%s${color_info_b} MySQL database to ${color_info_h}%s${color_info_b} file (via Symfony config)${color_info} \n" "$sql_host:$sql_port/$sql_base" "$backup_dir_path$backup_file_name"
     mkdir -p ${backup_dir_path}
@@ -141,7 +141,8 @@ function mongo_backup_via_symfony {
         mongo_pass=''
     fi
     local mongo_base=$(sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
-    local backup_dir_path="dump/${mongo_base}/"
+    local backup_dir_name=${2:-'dump/'}
+    local backup_dir_path="${backup_dir_name}${mongo_base}/"
 
     printf "${color_info_b}Backup ${color_info_h}%s${color_info_b} Mongo database to ${color_info_h}%s${color_info_b} directory (via Symfony config)${color_info}\n" "$mongo_host/$mongo_base" "$backup_dir_path"
     mkdir -p ${backup_dir_path}
@@ -169,8 +170,9 @@ function mongo_restore_via_symfony {
         mongo_pass=''
     fi
     local mongo_base=$(sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
-    sourceBase=$1
-    local backup_dir_path="dump/${sourceBase}/"
+    local source_base=$2
+    local backup_dir_name=${3:-'dump/'}
+    local backup_dir_path="${backup_dir_name}${source_base}/"
 
     if [ -d "$backup_dir_path" ]; then
         printf "${color_info_b}Restore from ${color_info_h}%s${color_info_b} path to ${color_info_h}%s${color_info_b} mongo database (via Symfony config)${color_info}\n" "$backup_dir_path" "$mongo_host/$mongo_base"
