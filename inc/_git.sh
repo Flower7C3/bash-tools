@@ -3,12 +3,12 @@
 ###############################################################
 
 function email_to_hash {
-    if builtin command -v "md5" 2>/dev/null; then
+    if (hash "md5" 2>/dev/null); then
         printf $1 | tr '[A-Z]' '[a-z]' | md5
-    elif builtin command -v "md5sum" 2>/dev/null; then
-        printf $1 | md5sum
+    elif (hash "md5sum" 2>/dev/null); then
+        printf $1 | md5sum | cut -d ' ' -f 1
     else
-        echo "undefined"
+        printf "undefined"
     fi
 }
 
