@@ -33,7 +33,7 @@ function git_current {
     current_commit_datetime=$(git --no-pager log -1 --pretty='format:%cd')
     current_commit_author_name=$(git --no-pager log -1 --pretty=format:"%an" )
     current_commit_author_email=$(git --no-pager log -1 --pretty=format:"%ae" )
-    current_commit_author_gravatar=$(gravatar_url ${current_commit_author_email} 40)
+    current_commit_author_gravatar=$(gravatar_url ${current_commit_author_email} 80)
 
     printf "${color_info_b}Git current commit hash is ${color_info_h}${current_commit_id}${color_info_b}${color_off} \n"
 }
