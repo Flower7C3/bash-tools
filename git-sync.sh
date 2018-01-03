@@ -14,7 +14,9 @@ printf "You are in ${color_info_h}`pwd`${color_off} directory.\n"
 
 ## VARIABLES
 prompt_variable branches "Branches" "$_branches" 1 "$@"
+OLD_IFS=$IFS
 IFS=',' read -a branches <<< "$branches"
+IFS=$OLD_IFS
 prompt_variable prefix "Prefix" "" 2 "$@"
 
 
