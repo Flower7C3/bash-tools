@@ -76,13 +76,13 @@ function assets_clear {
     local application_dir_path=$1
     if [[ -n "$application_dir_path" ]]; then
         printf "${color_info_b}Cleanup old Symfony assets${color_info} \n"
-        rm -rf "$application_dir_path""web/bundles/*"
-        rm -rf "$application_dir_path""web/assetic/*"
-        rm -rf "$application_dir_path""web/fonts/*"
-        rm -rf "$application_dir_path""web/cache/*"
-        rm -rf "$application_dir_path""web/images/*"
-        rm -rf "$application_dir_path""web/css/*"
-        rm -rf "$application_dir_path""web/js/*"
+        rm -rf "$application_dir_path""web/bundles/"*
+        rm -rf "$application_dir_path""web/assetic/"*
+        rm -rf "$application_dir_path""web/fonts/"*
+        rm -rf "$application_dir_path""web/cache/"*
+        rm -rf "$application_dir_path""web/images/"*
+        rm -rf "$application_dir_path""web/css/"*
+        rm -rf "$application_dir_path""web/js/"*
     else
         printf "${color_error_b}ERROR: Cleanup old Symfony assets: no application dir defined!${color_error} \n"
     fi
@@ -92,7 +92,7 @@ function symfony_cache_clear {
     local symfony_cache_dir_path=$1
     if [[ -n "$symfony_cache_dir_path" ]]; then
         printf "${color_info_b}Cleanup Symfony cache ${color_info} \n"
-        rm -rf "$symfony_cache_dir_path""*"
+        rm -rf "$symfony_cache_dir_path"*
     else
         printf "${color_error_b}ERROR: Cleanup Symfony cache: no directories defined!${color_error} \n"
     fi
