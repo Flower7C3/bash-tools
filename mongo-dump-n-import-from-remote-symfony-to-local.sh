@@ -21,20 +21,21 @@ export_dir_name="backup_${remote_host}_$(date "+%Y%m%d-%H%M%S")"
 export_file_name="backup_${remote_host}_$(date "+%Y%m%d-%H%M%S").tar.gz"
 remote_data_dir_path='${HOME}/backup/'
 prompt_variable mongo_host "Local Mongo machine name (or Docker container name)" "$_mongo_host" 3 "$@"
-if [ ${_mongo_host} == "localhost" ];
-then
+if [ "$_mongo_host" == "localhost" ]; then
 	_is_docker=false
+	_mongo_host_type="host"
 	prompt_variable database "Local Mongo database name" "$_database" 4 "$@"
 	local_data_dir_path="${HOME}/backup/"
 else
 	_is_docker=true
+	_mongo_host_type="docker container"
 	prompt_variable database "Docker Mongo database name" "$_database" 4 "$@"
 	local_data_dir_path="${HOME}/www/database/mongo/${mongo_host}/data/"
 fi
 
 
 ## PROGRAM
-confirm_or_exit "Dump Mongo on ${color_question_h}${remote_host}${color_question} from directory ${color_question_h}${directory}${color_question} and save on docker ${color_question_h}${mongo_host}${color_question} container to ${color_question_h}${database}${color_question} database?"
+confirm_or_exit "Dump Mongo on ${color_question_h}${remote_host}${color_question} host from directory ${color_question_h}${directory}${color_question} and save on ${color_question_h}${mongo_host}${color_question} ${_mongo_host_type} to ${color_question_h}${database}${color_question} database?"
 
 sourced_scripts_list+=('mongo-dump-symfony.sh mongo-dump-symfony.sh')
 copy_scripts_to_host "$remote_host"
@@ -45,7 +46,7 @@ move_file_from_host_to_local "$remote_host" "$remote_data_dir_path" "$local_data
 
 remove_scripts_from_host "$remote_host"
 
-if [ ${_is_docker} == "true"]; then
+if [ "$_is_docker" == "true" ]; then
 	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-docker.sh "$mongo_host" "$database" "${export_dir_name}" "$export_file_name"
 else
 	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-local.sh "$mongo_host" "$database" "${export_dir_name}" "$export_file_name"

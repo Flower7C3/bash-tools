@@ -29,12 +29,12 @@ prompt_variable export_file_name "Export file name (from ${color_question_h}${lo
 ## PROGRAM
 confirm_or_exit "Import SQL to ${color_question_h}${database}${color_question} database at ${color_question_h}${docker_container_name}${color_question} docker container from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
 
-printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${database}${color_info_b} database on docker ${color_info} \n"
+printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${database}${color_info_b} database on ${color_info_h}${docker_container_name}${color_info_b} docker container ${color_info} \n"
 docker exec -i ${docker_container_name} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtual_data_dir_path}${export_file_name}
 printf "${color_off}"
 
 if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
-	printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${database}${color_info_b} database on docker ${color_info} \n"
+	printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${database}${color_info_b} database on ${color_info_h}${docker_container_name}${color_info_b} docker container ${color_info} \n"
 	docker exec -i ${docker_container_name} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtual_trigger_dir_path}${trigger_file_name}
 	printf "${color_off}"
 fi
