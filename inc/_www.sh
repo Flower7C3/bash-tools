@@ -34,8 +34,13 @@ function symfony_permissions_fix {
 
 function composer_install {
     local composer_command=${1:-"composer"}
+    local interactive=${2:-"y"}
     printf "${color_info_b}Install data from ${color_info_h}composer.lock${color_info_b} file${color_off} \n"
-    ${composer_command} install
+    if [[ "$interactive" == "n" ]]; then
+        ${composer_command} install --no-interaction
+    else
+        ${composer_command} install
+    fi
 }
 
 function symfony_assets_install {
