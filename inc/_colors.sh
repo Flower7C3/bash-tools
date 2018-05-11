@@ -1,3 +1,44 @@
+# https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
+# https://stackoverflow.com/a/26665998/2910183
+function rgb_to_ansi256 {
+    local r=$1
+    local g=$2
+    local b=$3
+
+    if [[ "$r" == "$g" && "$g" == "$b" ]]; then
+    	ansi=1
+        if [[ "$r" < 8 ]]; then
+            ansi=16
+        elif [[ "$r" > 248 ]]; then
+            ansi=231
+        else
+		    ansi=$(( ((($r - 8) / 247) * 24) + 232 ))
+	    fi
+    else
+	    local r_index=$(( (36 * ($r / 255 * 5)) ))
+	    local g_index=$(( (6 * ($g / 255 * 5)) ))
+	    local b_index=$(( ($b / 255 * 5) ))
+	    ansi=$(( 16 + $r_index + $g_index + $b_index ))
+    fi
+	printf ${ansi%.*}
+}
+
+function rgb_foreground {
+	local r=$1
+	local g=$2
+	local b=$3
+	local code=$(rgb_to_ansi256 $r $g $b)
+	printf "\033[38;5;%sm" "$code"
+}
+
+function rgb_background {
+	local r=$1
+	local g=$2
+	local b=$3
+	local code=$(rgb_to_ansi256 $r $g $b)
+	printf "\033[48;5;%sm" "$code"
+}
+
 # Reset
 color_off='\033[0m'       # Text Reset
 
