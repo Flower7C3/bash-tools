@@ -71,7 +71,7 @@ function program_error {
 
 # asks user for value
 function display_prompt {
-    local password=$1
+    local prompt_mode=$1
     local variable_name=$2
     local question=$3
     local default_value=$4
@@ -82,7 +82,7 @@ function display_prompt {
         variable_value=${!argNo}
     # or ask user for value
     else
-        if [ "$password" == "yes" ]; then
+        if [ "$prompt_mode" == "password" ]; then
             while true; do
                 printf "${color_question_b}"
                 printf "(Q) ${question}"
@@ -109,6 +109,22 @@ function display_prompt {
                     printf "${color_error_b}The top secret values do not match. Please retype it!\n${color_off}"
                 fi
             done
+        elif [ "$prompt_mode" == "not_null" ]; then
+            while true; do
+               printf "${color_question_b}"
+            printf "(Q) ${question}"
+            if [[ -n "${default_value}" ]]; then
+                printf " [${color_question_h}${default_value}${color_question_b}]"
+            fi
+            printf ": ${color_console}"
+            read -e input
+            printf "${color_off}"
+                if [[ "$input" == "" && "$default_value" == "" ]]; then
+                    printf "${color_error_b}Please enter not null value!\n${color_off}"
+                else
+                    break;
+                fi
+            done
         else
             printf "${color_question_b}"
             printf "(Q) ${question}"
@@ -127,12 +143,17 @@ function display_prompt {
 
 # asks user for variable value
 function prompt_variable {
-    display_prompt "no" "$@"
+    display_prompt "value" "$@"
+}
+
+# asks user for variable value
+function prompt_variable_not_null {
+    display_prompt "not_null" "$@"
 }
 
 # asks user for password value
 function prompt_password {
-    display_prompt "yes" "$@"
+    display_prompt "password" "$@"
 }
 
 # asks user for variable value, but accept only allowed values

@@ -12,6 +12,7 @@ sourced_scripts_list=(
 	'_inc_git.sh			    _inc_git.sh'
 	'_inc_www.sh			    _inc_www.sh'
 	'_inc_s3.sh			        _inc_s3.sh'
+	'_inc_ftp.sh			    _inc_ftp.sh'
 )
 
 for i in "${!sourced_scripts_list[@]}";

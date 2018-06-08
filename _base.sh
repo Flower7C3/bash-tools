@@ -11,6 +11,7 @@ sourced_scripts_list=(
 	'inc/_notify.sh			    _inc_notify.sh'
 	'inc/_git.sh			    _inc_git.sh'
 	'inc/_www.sh			    _inc_www.sh'
+	'inc/_ftp.sh			    _inc_ftp.sh'
 	'inc/_s3.sh			        _inc_s3.sh'
 )
 
