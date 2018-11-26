@@ -10,6 +10,7 @@ program_title "OpenSSL domain check"
 ## VARIABLES
 prompt_variable_not_null domain_name "Domain name" "" 1 "$@"
 prompt_variable_fixed dry_run "Dry run" "y" "y n" 2 "$@"
+dry_run=y
 user=$(id -u)
 group=$(id -g)
 source "$(dirname ${BASH_SOURCE})/config/_certbot.${domain_name}.sh"
