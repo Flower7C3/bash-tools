@@ -78,11 +78,17 @@ function display_prompt {
     local argNo=$(expr ${5:-1} + 5)
     local args=$#
     # get value defined in argv
-    if [ ${args} -ge ${argNo} ]; then
+    if [[ ${args} -ge ${argNo} ]]; then
         variable_value=${!argNo}
+        printf "${color_question_b}"
+        printf "(Q) ${question}"
+        printf ": ${color_console}"
+        printf ${variable_value}
+        printf "${color_off}"
+        printf "\n"
     # or ask user for value
     else
-        if [ "$prompt_mode" == "password" ]; then
+        if [[ "$prompt_mode" == "password" ]]; then
             while true; do
                 printf "${color_question_b}"
                 printf "(Q) ${question}"
@@ -103,22 +109,22 @@ function display_prompt {
                 printf "${color_off}"
                 printf "\n"
                 if [[ "$input1" == "$input2" ]]; then
-                    input=$input1
+                    input=${input1}
                     break;
                 else
                     printf "${color_error_b}The top secret values do not match. Please retype it!\n${color_off}"
                 fi
             done
-        elif [ "$prompt_mode" == "not_null" ]; then
+        elif [[ "$prompt_mode" == "not_null" ]]; then
             while true; do
-               printf "${color_question_b}"
-            printf "(Q) ${question}"
-            if [[ -n "${default_value}" ]]; then
-                printf " [${color_question_h}${default_value}${color_question_b}]"
-            fi
-            printf ": ${color_console}"
-            read -e input
-            printf "${color_off}"
+                printf "${color_question_b}"
+                printf "(Q) ${question}"
+                if [[ -n "${default_value}" ]]; then
+                    printf " [${color_question_h}${default_value}${color_question_b}]"
+                fi
+                printf ": ${color_console}"
+                read -e input
+                printf "${color_off}"
                 if [[ "$input" == "" && "$default_value" == "" ]]; then
                     printf "${color_error_b}Please enter not null value!\n${color_off}"
                 else
@@ -151,6 +157,25 @@ function prompt_variable_not_null {
     display_prompt "not_null" "$@"
 }
 
+# asks user for variable value
+function prompt_variable_not {
+    local variable_name=$1
+    local question=$2
+    local default_value=$3
+    local prohibited_values=($4)
+    shift 4
+    # ask user for value from allowed list
+    while true; do
+        prompt_variable "$variable_name" "$question" "$default_value" "$@"
+        prompt_response=`eval echo '$'"${variable_name}"`
+        if test "`echo " ${prohibited_values[*]} " | grep " ${prompt_response} "`"; then
+            printf "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Prohibited values are ${color_error_h}${prohibited_values[*]}${color_error_b}!\n${color_off}"
+        else
+            break
+        fi
+    done
+}
+
 # asks user for password value
 function prompt_password {
     display_prompt "password" "$@"
@@ -168,7 +193,7 @@ function prompt_variable_fixed {
         prompt_variable "$variable_name" "$question" "$default_value" "$@"
         prompt_response=`eval echo '$'"${variable_name}"`
         if test "`echo " ${allowed_values[*]} " | grep " ${prompt_response} "`"; then
-             break
+            break
         else
             printf "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Allowed values are ${color_error_h}${allowed_values[*]}${color_error_b}!\n${color_off}"
         fi

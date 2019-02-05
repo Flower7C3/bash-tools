@@ -29,11 +29,17 @@ program_title "Docksal configuration warmup"
 
 
 ## VARIABLES
-prompt_variable project_name "Project name (relative path)" "$_project_name" 1 "$@"
-prompt_variable_fixed php_version "PHP version ($_php_versions)" "$_php_version" "$_php_versions" 2 "$@"
-prompt_variable_fixed mysql_version "MySQL version ($_mysql_versions)" "$_mysql_version" "$_mysql_versions" 3 "$@"
-prompt_variable_fixed node_version "Node version ($_node_versions)" "$_node_version" "$_node_versions" 4 "$@"
-prompt_variable www_docroot "WWW dockroot" "$_www_docroot" 5 "$@"
+prompt_variable_not_null project_name "Project name (relative path)" "$_project_name" 1 "$@"
+_domain_name=${project_name}
+if [[ "$project_name" == "." ]]; then
+    confirm_or_exit "Really want to install docksal in ${color_question_b}$(pwd)${color_question} directory?"
+    _domain_name=$(basename `pwd`)
+fi
+prompt_variable_not domain_name "Domain name (without .docksal tld)" "$_domain_name" "." 2 "$@"
+prompt_variable_fixed php_version "PHP version ($_php_versions)" "$_php_version" "$_php_versions" 3 "$@"
+prompt_variable_fixed mysql_version "MySQL version ($_mysql_versions)" "$_mysql_version" "$_mysql_versions" 4 "$@"
+prompt_variable_fixed node_version "Node version ($_node_versions)" "$_node_version" "$_node_versions" 5 "$@"
+prompt_variable www_docroot "WWW dockroot" "$_www_docroot" 6 "$@"
 
 
 ## PROGRAM
@@ -52,6 +58,7 @@ if [[ "$mysql_version" == "no" ]]; then
 	docksal_stack="default-nodb"
 fi
 fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
+fin config set VIRTUAL_HOST="${domain_name}"
 fin config set CLI_IMAGE="docksal/cli:2.5-php${php_version}"
 if [[ "$mysql_version" != "no" ]]; then
 	fin config set DB_IMAGE="docksal/db:1.1-mysql-${mysql_version}"
