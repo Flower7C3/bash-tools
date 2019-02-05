@@ -2,13 +2,6 @@
 
 source $(dirname ${BASH_SOURCE})/_base.sh
 
-function read_file_to_file {
-	local source_file_name=$1
-	local destination_file_name=$2
-	mkdir -p $(dirname ${destination_file_name})
-	echo -e "$(eval "echo -e \"`<${source_file_name}`\"")" >> ${destination_file_name}
-}
-
 function copy_command {
 	local command_name=$1
 	local source_file_name=${_script_dir_path}/docksal/commands/${command_name}
@@ -32,11 +25,11 @@ _www_docroot="web"
 
 
 ## WELCOME
-program_title "Docksal init"
+program_title "Docksal configuration warmup"
 
 
 ## VARIABLES
-prompt_variable project_name "Project name" "$_project_name" 1 "$@"
+prompt_variable project_name "Project name (relative path)" "$_project_name" 1 "$@"
 prompt_variable_fixed php_version "PHP version ($_php_versions)" "$_php_version" "$_php_versions" 2 "$@"
 prompt_variable_fixed mysql_version "MySQL version ($_mysql_versions)" "$_mysql_version" "$_mysql_versions" 3 "$@"
 prompt_variable_fixed node_version "Node version ($_node_versions)" "$_node_version" "$_node_versions" 4 "$@"
@@ -46,11 +39,12 @@ prompt_variable www_docroot "WWW dockroot" "$_www_docroot" 5 "$@"
 ## PROGRAM
 confirm_or_exit "Build configuration?"
 
-printf "${color_info_b}Create ${color_info_h}%s${color_info_b} project directory ${color_info} \n" "$project_name"
-rm -rf ${project_name}
-mkdir -p ${project_name}
-cd ${project_name}/
-printf "${color_off}"
+if [[ "$project_name" != "." ]]; then
+    printf "${color_info_b}Create ${color_info_h}%s${color_info_b} project directory ${color_info} \n" "$project_name"
+    mkdir -p ${project_name}
+    cd ${project_name}
+    printf "${color_off}"
+fi
 
 printf "${color_info_b}Create basic configuration \n"
 docksal_stack="default"
