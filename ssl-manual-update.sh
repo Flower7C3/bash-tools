@@ -15,6 +15,7 @@ prompt_variable_not_null domain_name "Domain name" "" 1 "$@"
 domain_config_file_path="$(dirname ${BASH_SOURCE})/config/_certbot.${domain_name}.sh"
 prompt_variable_fixed staging_env "Staging ENV" "n" "y n" 2 "$@"
 prompt_variable_fixed dry_run "Dry run" "y" "y n" 3 "$@"
+prompt_variable_fixed preferred_challenges "Preffered challenge" "file" "file dns" 4 "$@"
 if [[ ! -f "$domain_config_file_path" ]]; then
     display_error "There is not config file ${domain_name} domain"
     confirm_or_exit "Do you wan to generate config file for ${color_question_h}${domain_name}${color_question} domain?"
@@ -79,22 +80,29 @@ for _domain_name in "${DOMAIN_NAMES_ARR[@]}"; do
     certificates_params="${certonly_params} -d ${_domain_name}"
     certonly_params="${certonly_params} -d ${_domain_name}"
 done
-certonly_params="${certonly_params} --manual-auth-hook ${certbot_manual_auth_script_hook_path}"
-certonly_params="${certonly_params} --manual-cleanup-hook ${certbot_manual_cleanup_script_hook_path}"
+if [[ "$preferred_challenges" == "file" ]]; then
+    certonly_params="${certonly_params} --manual-auth-hook ${certbot_manual_auth_script_hook_path}"
+    certonly_params="${certonly_params} --manual-cleanup-hook ${certbot_manual_cleanup_script_hook_path}"
+fi
+certonly_params="${certonly_params} --preferred-challenges ${preferred_challenges}"
 if [[ "$staging_env" == "y" ]]; then
     certonly_params="${certonly_params} --staging"
 fi
 if [[ "$dry_run" == "y" ]]; then
     certonly_params="${certonly_params} --dry-run"
 fi
+if [[ "$dry_run" == "y" ]]; then
+    certonly_params="${certonly_params} --dry-run"
+fi
 certonly_params="${certonly_params} -a manual --manual-public-ip-logging-ok --rsa-key-size ${KEY_SIZE}"
 
-printf "${color_info_b}Get info about certificate${color_info} \n"
-${CERTBOT_AUTO_FILE_PATH} certificates ${certificates_params} 
+# printf "${color_info_b}Get info about certificate${color_info} \n"
+# ${CERTBOT_AUTO_FILE_PATH} certificates ${certificates_params}
+# read -p "Press ENTER to continue..."
 
 printf "${color_info_b}Update certificate${color_info} \n"
 ${CERTBOT_AUTO_FILE_PATH} certonly ${certonly_params}
-
+read -p "Press ENTER to continue..."
 
 bash ${ssl_ftp_upload_script_path} ${domain_name} ${dry_run}
 bash ${ssl_check_script_path} ${domain_name}
