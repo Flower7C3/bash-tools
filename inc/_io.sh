@@ -14,6 +14,14 @@ function app_bye {
     program_end
 }
 
+function join_by {
+    local d=$1
+    shift
+    echo -n "$1"
+    shift
+    printf "%s" "${@/#/$d}"
+}
+
 ###############################################################
 ### Program info
 ###############################################################
@@ -48,12 +56,12 @@ function printfln {
 
 function display_info {
     local message=$1
-    printf "${color_info_b}(I) ${message}\n"
+    printf "${color_info_b}☞ ${message}\n"
 }
 
 function display_error {
     local message=$1
-    printf "${color_error_b}(E) ${message}\n" >&2
+    printf "${color_error_b}⚠ ${message}\n" >&2
 }
 
 function program_end {
@@ -81,7 +89,7 @@ function display_prompt {
     if [[ ${args} -ge ${argNo} ]]; then
         variable_value=${!argNo}
         printf "${color_question_b}"
-        printf "(Q) ${question}"
+        printf "✎ ${question}"
         printf ": ${color_console}"
         printf ${variable_value}
         printf "${color_off}"
@@ -91,18 +99,18 @@ function display_prompt {
         if [[ "$prompt_mode" == "password" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "(Q) ${question}"
+                printf "✎ ${question}"
                 if [[ -n "${default_value}" ]]; then
-                    printf " [${color_question_h}${default_value}${color_question_b}]"
+                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
                 printf ": ${color_console}"
                 read -s input1
                 printf "${color_off}"
                 printf "\n"
                 printf "${color_question_b}"
-                printf "(Q) ${question}"
+                printf "✎ ${question}"
                 if [[ -n "${default_value}" ]]; then
-                    printf " [${color_question_h}${default_value}${color_question_b}]"
+                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
                 printf " - repeat: ${color_console}"
                 read -s input2
@@ -118,9 +126,9 @@ function display_prompt {
         elif [[ "$prompt_mode" == "not_null" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "(Q) ${question}"
+                printf "✎ ${question}"
                 if [[ -n "${default_value}" ]]; then
-                    printf " [${color_question_h}${default_value}${color_question_b}]"
+                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
                 printf ": ${color_console}"
                 read -e input
@@ -133,9 +141,9 @@ function display_prompt {
             done
         else
             printf "${color_question_b}"
-            printf "(Q) ${question}"
+            printf "✎ ${question}"
             if [[ -n "${default_value}" ]]; then
-                printf " [${color_question_h}${default_value}${color_question_b}]"
+                printf " (default: ${color_question_h}${default_value}${color_question_b})"
             fi
             printf ": ${color_console}"
             read -e input
@@ -169,7 +177,8 @@ function prompt_variable_not {
         prompt_variable "$variable_name" "$question" "$default_value" "$@"
         prompt_response=`eval echo '$'"${variable_name}"`
         if test "`echo " ${prohibited_values[*]} " | grep " ${prompt_response} "`"; then
-            printf "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Prohibited values are ${color_error_h}${prohibited_values[*]}${color_error_b}!\n${color_off}"
+            display_error "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Prohibited values are: ${color_error_h}$(join_by '/' ${prohibited_values[*]})${color_error_b}!"
+            set -- "${@:1:1}"
         else
             break
         fi
@@ -187,15 +196,22 @@ function prompt_variable_fixed {
     local question=$2
     local default_value=$3
     local allowed_values=($4)
+    local argNo=$5
     shift 4
     # ask user for value from allowed list
     while true; do
-        prompt_variable "$variable_name" "$question" "$default_value" "$@"
+        question_string="$question"
+        local args=$#
+        if [[ ${args} -le ${argNo} ]]; then
+            question_string="$question [$(join_by '/' ${allowed_values[*]})]"
+        fi
+        prompt_variable "$variable_name" "$question_string" "$default_value" "$@"
         prompt_response=`eval echo '$'"${variable_name}"`
         if test "`echo " ${allowed_values[*]} " | grep " ${prompt_response} "`"; then
             break
         else
-            printf "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Allowed values are ${color_error_h}${allowed_values[*]}${color_error_b}!\n${color_off}"
+            display_error "${color_error_b}Wrong ${color_error_h}${question}${color_error_b} value. Allowed is one of: ${color_error_h}$(join_by '/' ${allowed_values[*]})${color_error_b}!"
+            set -- "${@:0:0}"
         fi
     done
 }
@@ -213,8 +229,7 @@ function confirm_or_exit {
     local question=$1
     prompt_variable_fixed run "${question}" "n" "y n"
     printf "\n"
-    if [[ "$run" != "y" ]]
-    then
+    if [[ "$run" != "y" ]]; then
         exit -1
     fi
 }

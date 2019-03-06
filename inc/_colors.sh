@@ -116,6 +116,13 @@ On_IWhite='\033[0;107m'   # White
 
 # Events
 
+color_default=${White}
+color_default_u=${UWhite}
+color_default_b=${BWhite}
+color_default_h=${BIWhite}
+color_default_i=${IWhite}
+color_default_g=${On_White}
+
 color_log=${Purple}
 color_log_u=${UPurple}
 color_log_b=${BPurple}
