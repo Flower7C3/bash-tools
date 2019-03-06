@@ -7,6 +7,9 @@
 # Abort if anything fails
 set -e
 
+# fix profile
+source ~/.profile
+
 #-------------------------- Execution --------------------------------
 cd ${PROJECT_ROOT}
 gulp ${@:-"build"}

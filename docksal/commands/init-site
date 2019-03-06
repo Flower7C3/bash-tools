@@ -9,14 +9,76 @@
 # Abort if anything fails
 set -e
 
+# fix profile
+source ~/.profile
+
 #-------------------------- Settings --------------------------------
+symfony_secret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+#symfony_base_url=""
 #-------------------------- END: Settings --------------------------------
 
 #-------------------------- Helper functions --------------------------------
+function copy_settings_file()
+{
+	local source="$1"
+	local dest="$2"
+
+	if [[ ! -f ${dest} ]]; then
+		echo "Copying ${dest}..."
+		cp ${source} ${dest}
+	else
+		echo "${dest} already in place."
+	fi
+}
 #-------------------------- END: Helper functions --------------------------------
 
 #-------------------------- Functions --------------------------------
+function cache_clean(){
+    cd ${PROJECT_ROOT}
+    rm -rf app/cache/*
+}
+function composer_install(){
+    cd ${PROJECT_ROOT}
+    composer install
+}
+function nvm_install(){
+    cd ${PROJECT_ROOT}
+    nvm install
+}
+function npm_install(){
+    cd ${PROJECT_ROOT}
+    npm install
+}
+function gulp_build(){
+    cd ${PROJECT_ROOT}
+    gulp build
+}
+function symfony_assets_build(){
+    cd ${PROJECT_ROOT}
+    php app/console assetic:dump --env=dev
+    php app/console assets:install
+}
+function symlinks_create() {
+    cd ${PROJECT_ROOT}
+    ln -sf .htaccess.docksal web/.htaccess
+}
+function update_settings_file() {
+	local dest="$1"
+    cd ${PROJECT_ROOT}
+#    symfony_base_url=$(printf ${symfony_base_url} | sed 's:/:\\/:g')
+    sed -i "s/secret: \(.*\)/secret: "${symfony_secret}"/g" ${dest}
+#    sed -i "s/base_url: \(.*\)/base_url: "${symfony_base_url}"/g" ${dest}
+}
 #-------------------------- END: Functions --------------------------------
 
 #-------------------------- Execution --------------------------------
+#copy_settings_file ${PROJECT_ROOT}/.docksal/dist/cli/parameters.yml ${PROJECT_ROOT}/app/config/parameters.yml
+#update_settings_file ${PROJECT_ROOT}/app/config/parameters.yml
+#symlinks_create
+#cache_clean
+#nvm_install
+#npm_install
+#gulp_build
+#composer_install
+#symfony_assets_build
 #-------------------------- END: Execution --------------------------------

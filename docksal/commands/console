@@ -2,9 +2,7 @@
 
 #: exec_target = cli
 
-## Execute
-##
-## Usage: fin npm
+## Usage: fin console
 
 # Abort if anything fails
 set -e
@@ -14,5 +12,5 @@ source ~/.profile
 
 #-------------------------- Execution --------------------------------
 cd ${PROJECT_ROOT}
-npm ${@:-"install"}
+php bin/console ${@}
 #-------------------------- END: Execution --------------------------------
