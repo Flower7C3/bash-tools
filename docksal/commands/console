@@ -2,6 +2,8 @@
 
 #: exec_target = cli
 
+## Execute Symfony console
+##
 ## Usage: fin console
 
 # Abort if anything fails

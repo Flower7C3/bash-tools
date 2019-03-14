@@ -2,7 +2,7 @@
 
 #: exec_target = cli
 
-## Execute
+## Execute npm command
 ##
 ## Usage: fin npm
 

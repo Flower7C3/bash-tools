@@ -13,8 +13,6 @@ set -e
 source ~/.profile
 
 #-------------------------- Settings --------------------------------
-symfony_secret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-#symfony_base_url=""
 #-------------------------- END: Settings --------------------------------
 
 #-------------------------- Helper functions --------------------------------
@@ -62,23 +60,15 @@ function symlinks_create() {
     cd ${PROJECT_ROOT}
     ln -sf .htaccess.docksal web/.htaccess
 }
-function update_settings_file() {
-	local dest="$1"
-    cd ${PROJECT_ROOT}
-#    symfony_base_url=$(printf ${symfony_base_url} | sed 's:/:\\/:g')
-    sed -i "s/secret: \(.*\)/secret: "${symfony_secret}"/g" ${dest}
-#    sed -i "s/base_url: \(.*\)/base_url: "${symfony_base_url}"/g" ${dest}
-}
 #-------------------------- END: Functions --------------------------------
 
 #-------------------------- Execution --------------------------------
-#copy_settings_file ${PROJECT_ROOT}/.docksal/dist/cli/parameters.yml ${PROJECT_ROOT}/app/config/parameters.yml
-#update_settings_file ${PROJECT_ROOT}/app/config/parameters.yml
-#symlinks_create
-#cache_clean
-#nvm_install
-#npm_install
-#gulp_build
-#composer_install
-#symfony_assets_build
+#uncomment#copy_settings_file ${PROJECT_ROOT}/.docksal/dist/cli/parameters.yml ${PROJECT_ROOT}/app/config/parameters.yml
+#uncomment#symlinks_create
+#uncomment#cache_clean
+#uncomment#nvm_install
+#uncomment#npm_install
+#uncomment#gulp_build
+#uncomment#composer_install
+#uncomment#symfony_assets_build
 #-------------------------- END: Execution --------------------------------

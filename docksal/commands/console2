@@ -2,9 +2,9 @@
 
 #: exec_target = cli
 
-## Execute gulp command
+## Execute Symfony2 console
 ##
-## Usage: fin gulp
+## Usage: fin console2
 
 # Abort if anything fails
 set -e
@@ -14,5 +14,5 @@ source ~/.profile
 
 #-------------------------- Execution --------------------------------
 cd ${PROJECT_ROOT}
-gulp ${@:-"build"}
+php app/console ${@}
 #-------------------------- END: Execution --------------------------------

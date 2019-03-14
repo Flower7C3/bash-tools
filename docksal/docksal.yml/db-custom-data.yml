@@ -1,0 +1,3 @@
+   db:
+       volumes:
+           - ${PROJECT_ROOT}/.docksal/dist/db/:/docker-entrypoint-initdb.d:ro
