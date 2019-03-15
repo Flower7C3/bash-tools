@@ -181,3 +181,10 @@ box_ht='\e(0\x76\e(B' # ┴
 box_x='\e(0\x6e\e(B' # ┼
 box_h='\e(0\x71\e(B' # ─
 box_v='\e(0\x78\e(B' # │
+
+icon_white_right_pointing_index='\xE2\x98\x9E'
+icon_lower_right_pencil='\xE2\x9C\x8E'
+icon_enter='\xe2\x86\xb3'
+icon_zigzag='\xe2\x86\xaf'
+icon_warning_sign='\xE2\x9A\xA0'
+icon_position_indicator='\xE2\x8C\x96'

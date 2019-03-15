@@ -56,12 +56,16 @@ function printfln {
 
 function display_info {
     local message=$1
-    printf "${color_info_b}☞ ${message}\n"
+    printf "${color_info_b}${icon_white_right_pointing_index} ${message}\n"
 }
 
 function display_error {
     local message=$1
-    printf "${color_error_b}⚠ ${message}\n" >&2
+    printf "${color_error_b}${icon_warning_sign} ${message}\n" >&2
+}
+function display_success {
+    local message=$1
+    printf "${color_success_b}${icon_position_indicator} ${message}\n"
 }
 
 function program_end {
@@ -70,7 +74,7 @@ function program_end {
 
 function program_error {
     program_end
-    exit 1
+    exit ${1:-'1'}
 }
 
 ###############################################################
@@ -89,7 +93,7 @@ function display_prompt {
     if [[ ${args} -ge ${argNo} ]]; then
         variable_value=${!argNo}
         printf "${color_question_b}"
-        printf "✎ ${question}"
+        printf "${icon_enter} ${question}"
         printf ": ${color_console}"
         printf ${variable_value}
         printf "${color_off}"
@@ -99,7 +103,7 @@ function display_prompt {
         if [[ "$prompt_mode" == "password" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "✎ ${question}"
+                printf "${icon_enter} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -108,7 +112,7 @@ function display_prompt {
                 printf "${color_off}"
                 printf "\n"
                 printf "${color_question_b}"
-                printf "✎ ${question}"
+                printf "${icon_enter} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -120,13 +124,13 @@ function display_prompt {
                     input=${input1}
                     break;
                 else
-                    printf "${color_error_b}The top secret values do not match. Please retype it!\n${color_off}"
+                    display_error "The top secret values do not match. Please retype it!"
                 fi
             done
         elif [[ "$prompt_mode" == "not_null" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "✎ ${question}"
+                printf "${icon_enter} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -134,14 +138,23 @@ function display_prompt {
                 read -e input
                 printf "${color_off}"
                 if [[ "$input" == "" && "$default_value" == "" ]]; then
-                    printf "${color_error_b}Please enter not null value!\n${color_off}"
+                    display_error "Please enter not null value!"
                 else
                     break;
                 fi
             done
+        elif [[ "$prompt_mode" == "or_exit" ]]; then
+            printf "${color_question_b}"
+            printf "${icon_zigzag} ${question}"
+            if [[ -n "${default_value}" ]]; then
+                printf " (default: ${color_question_h}${default_value}${color_question_b})"
+            fi
+            printf ": ${color_console}"
+            read -e input
+            printf "${color_off}"
         else
             printf "${color_question_b}"
-            printf "✎ ${question}"
+            printf "${icon_enter} ${question}"
             if [[ -n "${default_value}" ]]; then
                 printf " (default: ${color_question_h}${default_value}${color_question_b})"
             fi
@@ -158,6 +171,11 @@ function display_prompt {
 # asks user for variable value
 function prompt_variable {
     display_prompt "value" "$@"
+}
+
+# asks user for variable value
+function prompt_variable_or_exit {
+    display_prompt "or_exit" "$@"
 }
 
 # asks user for variable value
@@ -216,6 +234,32 @@ function prompt_variable_fixed {
     done
 }
 
+# asks user for variable value, but accept only allowed values
+function prompt_variable_fixed_or_exit {
+    local variable_name=$1
+    local question=$2
+    local default_value=$3
+    local allowed_values=($4)
+    local argNo=$5
+    shift 5
+    # ask user for value from allowed list
+    while true; do
+        question_string="$question"
+        local args=$#
+        if [[ ${args} -le ${argNo} ]]; then
+            question_string="$question [$(join_by '/' ${allowed_values[*]})]"
+        fi
+        prompt_variable_or_exit "$variable_name" "$question_string" "$default_value" "$@"
+        prompt_response=`eval echo '$'"${variable_name}"`
+        if test "`echo " ${allowed_values[*]} " | grep " ${prompt_response} "`"; then
+            break
+        else
+            display_error "${color_error_b}Wrong ${color_error_h}${question}${color_error_b} value. Allowed is one of: ${color_error_h}$(join_by '/' ${allowed_values[*]})${color_error_b}!"
+            set -- "${@:0:0}"
+        fi
+    done
+}
+
 # set variable value
 function set_variable {
     local variable_name=$1
@@ -227,9 +271,14 @@ function set_variable {
 # user must press y and enter, or program will end
 function confirm_or_exit {
     local question=$1
-    prompt_variable_fixed run "${question}" "n" "y n"
+    local fallback_message=$2
+    printf "\n"
+    prompt_variable_fixed_or_exit run "${question}" "n" "y n" ""
     printf "\n"
     if [[ "$run" != "y" ]]; then
+        if [[ "$fallback_message" != "" ]]; then
+            display_info "$fallback_message"
+        fi
         exit -1
     fi
 }

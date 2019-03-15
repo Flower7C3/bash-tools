@@ -9,7 +9,8 @@ docksal_cli_version="2.6"
 docksal_db_version="1.1"
 docksal_example_dir="$(dirname ${BASH_SOURCE})/docksal/"
 _project_name="example_$(date "+%Y%m%d_%H%M%S")"
-_project_name="test"
+_application_stack="custom"
+_application_stacks="custom php php-no-db node symfony4 drupal8"
 _apache_version="2.4"
 _apache_versions="no 2.2 2.4"
 _php_version="7.2"
@@ -23,6 +24,8 @@ _java_version="no"
 _java_versions="no 8"
 _www_docroot="web"
 _symfony_config="no"
+symfony4_git_path="https://github.com/docksal/example-symfony-skeleton.git"
+drupal8_git_path="https://github.com/docksal/drupal8.git"
 
 function copy_file {
     local src_file_name=$1
@@ -49,41 +52,84 @@ fi
 prompt_variable_not domain_name "Domain name (without .docksal tld)" "$_domain_name" "." 2 "$@"
 domain_name="${domain_name}.docksal"
 domain_url="http://${domain_name}"
-while true; do
-    display_info "More info about ${color_info_h}web${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/web/${color_info_b}"
-    prompt_variable_fixed apache_version "Apache version" "$_apache_version" "$_apache_versions" 3 "$@"
-    display_info "More info about ${color_info_h}cli${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/cli/${color_info_b}"
-    prompt_variable_fixed php_version "PHP version" "$_php_version" "$_php_versions" 4 "$@"
-    prompt_variable_fixed node_version "Node version" "$_node_version" "$_node_versions" 5 "$@"
-    prompt_variable_fixed java_version "JAVA version" "$_java_version" "$_java_versions" 6 "$@"
-    display_info "More info about ${color_info_h}db${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b}"
-    prompt_variable_fixed mysql_version "MySQL version" "$_mysql_version" "$_mysql_versions" 7 "$@"
-    docksal_stack=""
-    if [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" != "no" ]]; then
-        docksal_stack="default"
-    elif [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" == "no" ]]; then
-        docksal_stack="default-nodb"
-    elif [[ "$apache_version" == "no" && "$php_version" == "no" && "$mysql_version" == "no" && "$node_version" != "no" ]]; then
-        docksal_stack="node"
-    fi
-    if [[ "$docksal_stack" == "" ]]; then
-        _apache_version="$apache_version"
-        _php_version="$php_version"
-        _node_version="$node_version"
-        _java_version="$java_version"
-        _mysql_version="$mysql_version"
-        set -- "${@:1:2}"
-        display_error "Docksal stack not set. Please fix versions!"
-        display_info "Possible configurations: ${color_info_h}Apache+PHP+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node${color_info_b} or ${color_info_h}Node${color_info_b}."
-    else
-        display_info "Docksal stack set to ${color_info_h}$docksal_stack${color_info_b}."
-        break
-    fi
-done
 
-prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot" 8 "$@"
-prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no" 9 "$@"
-prompt_variable_fixed symfony_config "Init example Symfony Framework config" "$_symfony_config" "yes no" 10 "$@"
+prompt_variable_fixed application_stack "Application stack" "$_application_stack" "$_application_stacks" 3 "$@"
+if [[ "$application_stack" == "node" ]]; then
+    _mysql_version="no"
+fi
+
+if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+    while true; do
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" ]]; then
+            display_info "More info about ${color_info_h}web${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/web/${color_info_b}"
+            prompt_variable_fixed apache_version "Apache version on web container" "$_apache_version" "$_apache_versions"
+        else
+            apache_version="no"
+        fi
+        display_info "More info about ${color_info_h}cli${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/cli/${color_info_b}"
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" ]]; then
+            prompt_variable_fixed php_version "PHP version on cli container" "$_php_version" "$_php_versions"
+        else
+            php_version="no"
+        fi
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+            prompt_variable_fixed node_version "Node version on cli container" "$_node_version" "$_node_versions"
+        else
+            node_version="no"
+        fi
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+            prompt_variable_fixed java_version "JAVA version on cli container" "$_java_version" "$_java_versions"
+        else
+            java_version="no"
+        fi
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "node" ]]; then
+            display_info "More info about ${color_info_h}db${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b}"
+            prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
+        else
+            mysql_version="no"
+        fi
+        docksal_stack=""
+        if [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" != "no" ]]; then
+            docksal_stack="default"
+        elif [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" == "no" ]]; then
+            docksal_stack="default-nodb"
+        elif [[ "$apache_version" == "no" && "$php_version" == "no" && "$mysql_version" == "no" && "$node_version" != "no" ]]; then
+            docksal_stack="node"
+        fi
+        if [[ "$docksal_stack" == "" ]]; then
+            _apache_version="$apache_version"
+            _php_version="$php_version"
+            _node_version="$node_version"
+            _java_version="$java_version"
+            _mysql_version="$mysql_version"
+            set -- "${@:1:2}"
+            display_error "Docksal stack not set. Please fix versions!"
+            display_info "Possible configurations: ${color_info_h}Apache+PHP+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node${color_info_b} or ${color_info_h}Node${color_info_b}."
+        else
+            display_info "Docksal stack set to ${color_info_h}$docksal_stack${color_info_b}."
+            break
+        fi
+    done
+else
+    apache_version="no"
+    php_version="no"
+    node_version="no"
+    java_version="no"
+    mysql_version="no"
+    docksal_stack="no"
+fi
+
+prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot"
+if [[ "$mysql_version" != "no" ]]; then
+    prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
+else
+    mysql_import="no"
+fi
+if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" && "$php_version" != "no" ]]; then
+    prompt_variable_fixed symfony_config "Init example Symfony Framework config" "$_symfony_config" "yes no"
+else
+    symfony_config="no"
+fi
 
 # PROGRAM
 confirm_or_exit "Build Docksal configuration?"
@@ -100,29 +146,40 @@ if [[ -d .docksal ]]; then
     confirm_or_exit "Override Docksal configuration?"
 fi
 
-display_info "Create basic configuration"
-fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
+if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
+    display_info "Create basic configuration"
+    fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
+    docksal_web_image="docksal/web:${docksal_web_version}-apache${apache_version}"
+    fin config set WEB_IMAGE="$docksal_web_image"
+    docksal_cli_image="docksal/cli:${docksal_cli_version}-php${php_version}"
+    fin config set CLI_IMAGE="$docksal_cli_image"
+    if [[ "$mysql_version" != "no" ]]; then
+        fin config set DB_IMAGE="docksal/db:${docksal_db_version}-mysql-${mysql_version}"
+    fi
+    if [[ "$node_version" != "no" ]]; then
+        display_info "More info about ${color_info_h}.nvmrc${color_info_b} file on ${color_info_h}https://github.com/creationix/nvm#nvmrc"
+        echo ${node_version} > .nvmrc
+    fi
+    if [[ "$mysql_import" == "yes" || "$java_version" != "no" ]]; then
+        echo "services:" >> .docksal/docksal.yml
+    fi
+else
+    display_info "Import preconfigured repository"
+    if [[ "$application_stack" == "symfony4" ]]; then
+        git clone ${symfony4_git_path} .
+    elif [[ "$application_stack" == "drupal8" ]]; then
+        git clone ${drupal8_git_path} .
+    fi
+fi
 fin config set VIRTUAL_HOST="${domain_name}"
-docksal_web_image="docksal/web:${docksal_web_version}-apache${apache_version}"
-fin config set WEB_IMAGE="$docksal_web_image"
-docksal_cli_image="docksal/cli:${docksal_cli_version}-php${php_version}"
-fin config set CLI_IMAGE="$docksal_cli_image"
-if [[ "$mysql_version" != "no" ]]; then
-	fin config set DB_IMAGE="docksal/db:${docksal_db_version}-mysql-${mysql_version}"
-fi
-if [[ "$node_version" != "no" ]]; then
-    display_info "More info about ${color_info_h}.nvmrc${color_info_b} file on ${color_info_h}https://github.com/creationix/nvm#nvmrc"
-	echo ${node_version} > .nvmrc
-fi
-if [[ "$mysql_import" == "yes" || "$java_version" != "no" ]]; then
-    echo "services:" >> .docksal/docksal.yml
-fi
 printf "${color_off}"
 
 display_info "Add custom commands"
-copy_file "commands/init"
-copy_file "commands/init-site"
-sed -i '' -e "s/symfony_base_url=\"\(.*\)\"/symfony_base_url=\""$(echo "$domain_url" | sed 's/\//\\\//g' )"\"/g" .docksal/commands/init-site
+if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
+    copy_file "commands/init"
+    copy_file "commands/init-site"
+    sed -i '' -e "s/symfony_base_url=\"\(.*\)\"/symfony_base_url=\""$(echo "$domain_url" | sed 's/\//\\\//g' )"\"/g" .docksal/commands/init-site
+fi
 if [[ "$node_version" != "no" ]]; then
     copy_file "commands/gulp"
     copy_file "commands/npm"
@@ -179,10 +236,11 @@ if [[ "$symfony_config" != "no" ]]; then
     printf "${color_off}"
 fi
 
+display_success "Docksal configuration is ready."
 
-display_info "Initialize docker project (execute ${color_info_h}fin init${color_info_b} command)""
+confirm_or_exit "Initialize docker project?" "You can init project manually with ${color_info_h}fin init${color_info_b} command."
+display_info "Initialize docker project (execute ${color_info_h}fin init${color_info_b} command)"
 fin init
 printf "${color_off}"
-
 
 program_end
