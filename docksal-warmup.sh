@@ -7,7 +7,7 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 docksal_web_version="2.1"
 docksal_cli_version="2.6"
 docksal_db_version="1.1"
-docksal_example_dir="$(dirname ${BASH_SOURCE})/docksal/"
+docksal_example_dir="$(dirname ${BASH_SOURCE})/blueprint/docksal/"
 _project_name="example_$(date "+%Y%m%d_%H%M%S")"
 _application_stack="custom"
 _application_stacks="custom php php-no-db node symfony4 drupal8"

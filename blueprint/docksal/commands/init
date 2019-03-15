@@ -34,7 +34,6 @@ if [[ "$(fin config | grep mysql)" ]]; then
 	echo "Waiting 10s for MySQL to initialize...";
 	sleep 10
 fi
-fin exec "nvm install"
 
 
 # Site initialization
