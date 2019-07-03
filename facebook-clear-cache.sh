@@ -4,8 +4,8 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 
 ## CONFIG
-_url="http://localhost/"
-sitemap=sitemap.xml
+_base_url="http://localhost"
+_sitemap_path=""
 
 
 ## WELCOME
@@ -13,19 +13,20 @@ program_title "Clean Facebook cache"
 
 
 ## VARIABLES
-prompt_variable url "Url to rescrape" "$_url" 1 "$@"
+prompt_variable access_token "Facebook access token (generate one at https://developers.facebook.com/tools/explorer page)" "" 1 "$@"
+prompt_variable base_url "URL to rescrape" "$_base_url" 2 "$@"
+prompt_variable sitemap_path "Sitemap path" "$_sitemap_path" 3 "$@"
 
 
 ## PROGRAM
-if [[ "$url" == *$sitemap ]]; then
+if [[ "$sitemap_path" != "" ]]; then
 
-	confirm_or_exit "Really rescrap all pages from ${color_question_h}${url}${color_question} sitemap?"
-	url=${url/$sitemap/}
-	facebook_cache_clean_by_sitemap $url $sitemap
+	confirm_or_exit "Really rescrap all pages from ${color_question_h}${base_url}${sitemap_path}${color_question} sitemap?"
+	facebook_cache_clean_by_sitemap ${access_token} ${base_url} ${sitemap_path}
 
 else
 
-	confirm_or_exit "Really rescrap all pages from ${color_question_h}${url}${color_question} page?"
-	facebook_cache_clean $url
+	confirm_or_exit "Really rescrap all pages from ${color_question_h}${base_url}${color_question} page?"
+	facebook_cache_clean ${access_token} ${base_url}
 
 fi

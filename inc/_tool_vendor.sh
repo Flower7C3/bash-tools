@@ -1,25 +1,34 @@
 ###############################################################
 ### Facebook cache
+### generate access token at https://developers.facebook.com/tools/explorer page
 ###############################################################
 
 function facebook_cache_clean_by_sitemap {
-    local baseURL=${1:-http://localhost/}
-    local sitemapFile=${2:-sitemap.xml}
+    local access_token=$1
+    local base_url=${2:-"http://localhost"}
+    local sitemap_path=${3:-"/sitemap.xml"}
 
-    printf "${color_info_b}Clean facebook cache for ${color_info_h}${baseURL}${color_info_b} ${color_info} \n"
-    wget -q ${baseURL}${sitemapFile} --no-check-certificate --no-cache -O - | egrep -o "${baseURL}[^ \"()\<>]*" | while read url;
+    printf "${color_info_b}Clean facebook cache for ${color_info_h}${base_url}${sitemap_path}${color_info_b} sitemap ${color_info} \n"
+    curl -s ${base_url}${sitemap_path} | egrep -o "${base_url}[^ \"()\<>]*" | while read url;
     do
-        facebook_cache_clean $url
+        if [[ "$url" == *sitemap*.xml ]]; then
+            facebook_cache_clean_by_sitemap ${access_token} ${base_url} ${url/$base_url/}
+        else
+            facebook_cache_clean ${access_token} ${url}
+        fi
     done
 }
 
+# more info in docs https://developers.facebook.com/docs/graph-api/reference/v3.1/url
 function facebook_cache_clean {
-    local url=${1:-http://localhost/}
+    local access_token=$1
+    local url=${2:-"http://localhost"}
 
     printf "${color_info_b}Clean facebook cache for ${color_info_h}${url}${color_info_b} page${color_off} \n"
-    curl -X POST \
+    curl -s -X POST \
         -F "id=${url}" \
         -F "scrape=true" \
-        "https://graph.facebook.com"
+        -F "access_token=${access_token}" \
+        "https://graph.facebook.com" | jq
     echo ""
 }
