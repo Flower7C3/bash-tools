@@ -15,11 +15,11 @@ prompt_variable_not_null domain_name "Domain name" "" 1 "$@"
 domain_config_file_path="$(dirname ${BASH_SOURCE})/config/_certbot.${domain_name}.sh"
 prompt_variable_fixed staging_env "Staging ENV" "n" "y n" 2 "$@"
 prompt_variable_fixed dry_run "Dry run" "y" "y n" 3 "$@"
-prompt_variable_fixed preferred_challenges "Preffered challenge" "file" "file dns" 4 "$@"
+prompt_variable_fixed preferred_challenges "Preffered challenge" "http" "http dns" 4 "$@"
 if [[ ! -f "$domain_config_file_path" ]]; then
     display_error "There is not config file ${domain_name} domain"
     confirm_or_exit "Do you wan to generate config file for ${color_question_h}${domain_name}${color_question} domain?"
-    prompt_variable_not_null DOMAIN_NAMES "All domain names" "${domain_name}"
+    prompt_variable_not_null DOMAIN_NAMES "All domain names (separated with space)" "${domain_name}"
     prompt_variable_not_null KEY_SIZE "SSL key size" "4096"
     prompt_variable_not_null ACME_PATH "Acme well known challenge path" ".well-known/acme-challenge/"
     prompt_variable_not_null DOMAIN_EMAIL "Domain email" "$(whoami)@$(uname -n)"
@@ -80,7 +80,7 @@ for _domain_name in "${DOMAIN_NAMES_ARR[@]}"; do
     certificates_params="${certonly_params} -d ${_domain_name}"
     certonly_params="${certonly_params} -d ${_domain_name}"
 done
-if [[ "$preferred_challenges" == "file" ]]; then
+if [[ "$preferred_challenges" == "http" ]]; then
     certonly_params="${certonly_params} --manual-auth-hook ${certbot_manual_auth_script_hook_path}"
     certonly_params="${certonly_params} --manual-cleanup-hook ${certbot_manual_cleanup_script_hook_path}"
 fi
