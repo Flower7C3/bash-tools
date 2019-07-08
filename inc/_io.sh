@@ -17,7 +17,7 @@ function app_bye {
 function join_by {
     local d=$1
     shift
-    echo -n "$1"
+    printf "$1"
     shift
     printf "%s" "${@/#/$d}"
 }

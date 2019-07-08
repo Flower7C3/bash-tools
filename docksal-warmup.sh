@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+    #!/usr/bin/env bash
 
 source $(dirname ${BASH_SOURCE})/_base.sh
 
@@ -10,10 +10,10 @@ docksal_db_version="1.1"
 docksal_example_dir="$(dirname ${BASH_SOURCE})/blueprint/docksal/"
 _project_name="example_$(date "+%Y%m%d_%H%M%S")"
 _application_stack="custom"
-_application_stacks="custom php php-no-db node symfony4 drupal8"
+_application_stacks="custom php php-nodb node symfony4 drupal8"
 _apache_version="2.4"
 _apache_versions="no 2.2 2.4"
-_php_version="7.2"
+_php_version="7.3"
 _php_versions="no 5.6 7.0 7.1 7.2 7.3"
 _node_version="10"
 _node_versions="no 6 8 10 11"
@@ -22,7 +22,7 @@ _mysql_versions="no 5.5 5.6 5.7 8.0"
 _mysql_import="no"
 _java_version="no"
 _java_versions="no 8"
-_www_docroot="web"
+_www_docroot="docroot"
 _symfony_config="no"
 symfony4_git_path="https://github.com/docksal/example-symfony-skeleton.git"
 drupal8_git_path="https://github.com/docksal/drupal8.git"
@@ -43,7 +43,8 @@ program_title "Docksal configuration warmup"
 
 
 ## VARIABLES
-prompt_variable_not_null project_name "Project name (relative path)" "$_project_name" 1 "$@"
+display_info "Configure ${color_info_h}project${color_info_b} properties"
+prompt_variable_not_null project_name "Project name (lowercase alphanumeric, underscore, and hyphen)" "$_project_name" 1 "$@"
 _domain_name=${project_name}
 if [[ "$project_name" == "." ]]; then
     confirm_or_exit "Really want to install docksal in ${color_question_b}$(pwd)${color_question} directory?"
@@ -58,35 +59,38 @@ if [[ "$application_stack" == "node" ]]; then
     _mysql_version="no"
 fi
 
-if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" || "$application_stack" == "node" ]]; then
     while true; do
-        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" ]]; then
-            display_info "More info about ${color_info_h}web${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/web/${color_info_b}"
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
+            display_info "Configure ${color_info_h}web${color_info_b} container (read more on ${color_info_h}https://hub.docker.com/r/docksal/web/${color_info_b})"
             prompt_variable_fixed apache_version "Apache version on web container" "$_apache_version" "$_apache_versions"
         else
             apache_version="no"
         fi
-        display_info "More info about ${color_info_h}cli${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/cli/${color_info_b}"
-        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" ]]; then
+        display_info "Configure ${color_info_h}cli${color_info_b} container (read more on${color_info_h}https://hub.docker.com/r/docksal/cli/${color_info_b})"
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
             prompt_variable_fixed php_version "PHP version on cli container" "$_php_version" "$_php_versions"
         else
             php_version="no"
         fi
-        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" || "$application_stack" == "node" ]]; then
             prompt_variable_fixed node_version "Node version on cli container" "$_node_version" "$_node_versions"
         else
             node_version="no"
         fi
-        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-no-db" || "$application_stack" == "node" ]]; then
+        if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" || "$application_stack" == "node" ]]; then
             prompt_variable_fixed java_version "JAVA version on cli container" "$_java_version" "$_java_versions"
         else
             java_version="no"
         fi
+        prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "node" ]]; then
-            display_info "More info about ${color_info_h}db${color_info_b} container on ${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b}"
+            display_info "Configure ${color_info_h}db${color_info_b} container (read more on${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b})"
             prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
+            prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
         else
             mysql_version="no"
+            mysql_import="no"
         fi
         docksal_stack=""
         if [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" != "no" ]]; then
@@ -119,12 +123,6 @@ else
     docksal_stack="no"
 fi
 
-prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot"
-if [[ "$mysql_version" != "no" ]]; then
-    prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
-else
-    mysql_import="no"
-fi
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" && "$php_version" != "no" ]]; then
     prompt_variable_fixed symfony_config "Init example Symfony Framework config" "$_symfony_config" "yes no"
 else
@@ -140,6 +138,7 @@ if [[ "$project_name" != "." ]]; then
     cd ${project_name}
     printf "${color_off}"
 fi
+project_path=$(realpath .)
 
 if [[ -d .docksal ]]; then
     display_error "Docksal config already exists!"
@@ -238,8 +237,8 @@ fi
 
 display_success "Docksal configuration is ready."
 
-confirm_or_exit "Initialize docker project?" "You can init project manually with ${color_info_h}fin init${color_info_b} command."
-display_info "Initialize docker project (execute ${color_info_h}fin init${color_info_b} command)"
+confirm_or_exit "Initialize docker project?" "You can init project manually with ${color_info_h}fin init${color_info_b} command in ${color_info_h}${project_path}${color_info_b} directory."
+display_info "Initialize docker project (executing ${color_info_h}fin init${color_info_b} command in ${color_info_h}${project_path}${color_info_b} directory.)"
 fin init
 printf "${color_off}"
 
