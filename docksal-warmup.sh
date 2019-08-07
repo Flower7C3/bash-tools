@@ -87,7 +87,9 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "node" ]]; then
             display_info "Configure ${color_info_h}db${color_info_b} container (read more on${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b})"
             prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
-            prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
+            if [[ "$mysql_version" != "no" ]]; then
+                prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
+            fi
         else
             mysql_version="no"
             mysql_import="no"
