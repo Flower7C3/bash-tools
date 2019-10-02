@@ -7,15 +7,13 @@ program_title "Update SSL for domain"
 
 
 ## VARIABLES
-certbot_manual_auth_script_hook_path="$(dirname ${BASH_SOURCE})/ssl-hook-ftp-auth.sh"
-certbot_manual_cleanup_script_hook_path="$(dirname ${BASH_SOURCE})/ssl-hook-ftp-cleanup.sh"
-ssl_ftp_upload_script_path="$(dirname ${BASH_SOURCE})/ssl-upload-to-ftp.sh"
 ssl_check_script_path="$(dirname ${BASH_SOURCE})/ssl-check.sh"
 prompt_variable_not_null domain_name "Domain name" "" 1 "$@"
 domain_config_file_path="$(dirname ${BASH_SOURCE})/config/_certbot.${domain_name}.sh"
 prompt_variable_fixed staging_env "Staging ENV" "n" "y n" 2 "$@"
 prompt_variable_fixed dry_run "Dry run" "y" "y n" 3 "$@"
 prompt_variable_fixed preferred_challenges "Preffered challenge" "http" "http dns" 4 "$@"
+prompt_variable_fixed challenge_protocol "Preffered challenge" "ftp" "ftp ssh" 5 "$@"
 if [[ ! -f "$domain_config_file_path" ]]; then
     display_error "There is not config file ${domain_name} domain"
     confirm_or_exit "Do you wan to generate config file for ${color_question_h}${domain_name}${color_question} domain?"
@@ -23,11 +21,20 @@ if [[ ! -f "$domain_config_file_path" ]]; then
     prompt_variable_not_null KEY_SIZE "SSL key size" "4096"
     prompt_variable_not_null ACME_PATH "Acme well known challenge path" ".well-known/acme-challenge/"
     prompt_variable_not_null DOMAIN_EMAIL "Domain email" "$(whoami)@$(uname -n)"
-    prompt_variable_not_null FTP_HOST "FTP host name" ""
-    prompt_variable_not_null FTP_USER "FTP user name" ""
-    prompt_password FTP_PASS "FTP password" ""
-    prompt_variable_not_null FTP_DOMAIN_PATH "FTP domain root path" "/public_html/"
-    prompt_variable FTP_SSL_PATH "FTP SSL store path" ""
+    if [[ "$challenge_protocol" == "ftp" ]]; then
+        prompt_variable_not_null FTP_HOST "FTP host name" ""
+        prompt_variable_not_null FTP_USER "FTP user name" ""
+        prompt_password FTP_PASS "FTP password" ""
+        prompt_variable_not_null FTP_DOMAIN_PATH "FTP domain root path" "/public_html/"
+        prompt_variable FTP_SSL_PATH "FTP SSL store path" ""
+    fi
+    if [[ "$challenge_protocol" == "ssh" ]]; then
+        prompt_variable_not_null SSH_HOST "SSH host name" ""
+        prompt_variable_not_null SSH_USER "SSH user name" ""
+        prompt_password SSH_PORT "SSH port" ""
+        prompt_variable_not_null SSH_DOMAIN_PATH "SSH domain root path" "/public_html/"
+        prompt_variable SSH_SSL_PATH "SSH SSL store path" ""
+    fi
     confirm_or_exit "Save above data to ${color_question_h}${domain_config_file_path}${color_question} config file?"
     touch ${domain_config_file_path}
     echo 'CERTBOT_BINARIES_DIR_PATH="$(dirname ${BASH_SOURCE})/../vendor/certbot/"' >> ${domain_config_file_path}
@@ -37,11 +44,20 @@ if [[ ! -f "$domain_config_file_path" ]]; then
     echo 'DOMAIN_EMAIL='"'${DOMAIN_EMAIL}'" >> ${domain_config_file_path}
     echo 'DOMAIN_NAME='"'${DOMAIN_NAME}'" >> ${domain_config_file_path}
     echo 'DOMAIN_NAMES='"'${DOMAIN_NAMES}'" >> ${domain_config_file_path}
-    echo 'FTP_HOST='"'${FTP_HOST}'" >> ${domain_config_file_path}
-    echo 'FTP_USER='"'${FTP_USER}'" >> ${domain_config_file_path}
-    echo 'FTP_PASS='"'${FTP_PASS}'" >> ${domain_config_file_path}
-    echo 'FTP_DOMAIN_PATH='"'${FTP_DOMAIN_PATH}'" >> ${domain_config_file_path}
-    echo 'FTP_SSL_PATH='"'${FTP_SSL_PATH}'" >> ${domain_config_file_path}
+    if [[ "$challenge_protocol" == "ftp" ]]; then
+        echo 'FTP_HOST='"'${FTP_HOST}'" >> ${domain_config_file_path}
+        echo 'FTP_USER='"'${FTP_USER}'" >> ${domain_config_file_path}
+        echo 'FTP_PASS='"'${FTP_PASS}'" >> ${domain_config_file_path}
+        echo 'FTP_DOMAIN_PATH='"'${FTP_DOMAIN_PATH}'" >> ${domain_config_file_path}
+        echo 'FTP_SSL_PATH='"'${FTP_SSL_PATH}'" >> ${domain_config_file_path}
+    fi
+    if [[ "$challenge_protocol" == "ssh" ]]; then
+        echo 'SSH_HOST='"'${SSH_HOST}'" >> ${domain_config_file_path}
+        echo 'SSH_USER='"'${SSH_USER}'" >> ${domain_config_file_path}
+        echo 'SSH_PORT='"'${SSH_PORT}'" >> ${domain_config_file_path}
+        echo 'SSH_DOMAIN_PATH='"'${SSH_DOMAIN_PATH}'" >> ${domain_config_file_path}
+        echo 'SSH_SSL_PATH='"'${SSH_SSL_PATH}'" >> ${domain_config_file_path}
+    fi
     printf "${color_info_b}File saved!${color_info} \n"
     DOMAIN_NAMES_ARR=($(echo $DOMAIN_NAMES))
     for _domain_name in "${DOMAIN_NAMES_ARR[@]}"; do
@@ -80,9 +96,13 @@ for _domain_name in "${DOMAIN_NAMES_ARR[@]}"; do
     certificates_params="${certonly_params} -d ${_domain_name}"
     certonly_params="${certonly_params} -d ${_domain_name}"
 done
-if [[ "$preferred_challenges" == "http" ]]; then
-    certonly_params="${certonly_params} --manual-auth-hook ${certbot_manual_auth_script_hook_path}"
-    certonly_params="${certonly_params} --manual-cleanup-hook ${certbot_manual_cleanup_script_hook_path}"
+if [[ "$challenge_protocol" == "ftp" ]]; then
+    certonly_params="${certonly_params} --manual-auth-hook $(dirname ${BASH_SOURCE})/ssl-hook-ftp-auth.sh"
+    certonly_params="${certonly_params} --manual-cleanup-hook $(dirname ${BASH_SOURCE})/ssl-hook-ftp-cleanup.sh"
+fi
+if [[ "$challenge_protocol" == "ssh" ]]; then
+    certonly_params="${certonly_params} --manual-auth-hook $(dirname ${BASH_SOURCE})/ssl-hook-ssh-auth.sh"
+    certonly_params="${certonly_params} --manual-cleanup-hook $(dirname ${BASH_SOURCE})/ssl-hook-ssh-cleanup.sh"
 fi
 certonly_params="${certonly_params} --preferred-challenges ${preferred_challenges}"
 if [[ "$staging_env" == "y" ]]; then
@@ -104,7 +124,10 @@ printf "${color_info_b}Update certificate${color_info} \n"
 ${CERTBOT_AUTO_FILE_PATH} certonly ${certonly_params}
 read -p "Press ENTER to continue..."
 
-bash ${ssl_ftp_upload_script_path} ${domain_name} ${dry_run}
+if [[ "$challenge_protocol" == "ftp" ]]; then
+    ssl_ftp_upload_script_path="$(dirname ${BASH_SOURCE})/ssl-upload-to-ftp.sh"
+    bash ${ssl_ftp_upload_script_path} ${domain_name} ${dry_run}
+fi
 bash ${ssl_check_script_path} ${domain_name}
 
 program_end
