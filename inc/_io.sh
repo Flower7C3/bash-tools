@@ -45,7 +45,7 @@ function program_title {
        printf "${box_h}"
     done
     printf "${box_h}${box_br}\n"
-    
+
     printf "${color_off}"
 }
 
@@ -58,14 +58,17 @@ function display_info {
     local message=$1
     printf "${color_info_b}${icon_white_right_pointing_index} ${message}\n"
 }
-
+function display_command {
+    local message=$1
+    printf "${color_info_b}${icon_command} ${message}\n"
+}
 function display_error {
     local message=$1
     printf "${color_error_b}${icon_warning_sign} ${message}\n" >&2
 }
 function display_success {
     local message=$1
-    printf "${color_success_b}${icon_position_indicator} ${message}\n"
+    printf "${color_success_b}${icon_check} ${message}\n"
 }
 
 function program_end {
@@ -95,7 +98,11 @@ function display_prompt {
         printf "${color_question_b}"
         printf "${icon_enter} ${question}"
         printf ": ${color_console}"
-        printf ${variable_value}
+        if [[ "$prompt_mode" == "password" ]]; then
+            printf "***"
+        else
+            printf ${variable_value}
+        fi
         printf "${color_off}"
         printf "\n"
     # or ask user for value
@@ -281,4 +288,14 @@ function confirm_or_exit {
         fi
         exit -1
     fi
+}
+
+# read variable from given ini file
+function read_variable_from_config() {
+    local bash_variable_name=$1
+    local config_variable_name=$2
+    local config_file_path=$3
+    local default_value=$4
+    local variable_value=$(awk -F "=" '/^'$config_variable_name'/ {print $2}' ${config_file_path} | sed 's/\"//g' | sed 's/\'"'"'//g' | sed 's/^[ ]*//;s/[ ]*$//' | sed  -e 's/\'$'\t//g')
+    set_variable "$bash_variable_name" "$default_value" "$variable_value"
 }
