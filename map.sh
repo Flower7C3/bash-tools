@@ -106,4 +106,4 @@ done
 
 printf "${color_success_b}Saved as ${color_success_h}%s${color_success_b}${color_success}\n" "$map"
 
-program_end
+display_new_line

@@ -50,4 +50,4 @@ git push origin ${prefix}${branch_dst}
 printfln "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_src}${color_notice_b} ${color_notice} \n"
 git checkout ${prefix}${branch_src}
 
-program_end
+display_new_line

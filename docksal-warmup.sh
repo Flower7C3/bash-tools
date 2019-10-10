@@ -244,4 +244,4 @@ display_info "Initialize docker project (executing ${color_info_h}fin init${colo
 fin init
 printf "${color_off}"
 
-program_end
+display_new_line

@@ -41,4 +41,4 @@ fi
 
 remove_file_from_local "${local_data_dir_path}" "${export_file_name}"
 
-program_end
+display_new_line

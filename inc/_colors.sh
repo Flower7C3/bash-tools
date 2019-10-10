@@ -182,6 +182,8 @@ box_x='\e(0\x6e\e(B' # ┼
 box_h='\e(0\x71\e(B' # ─
 box_v='\e(0\x78\e(B' # │
 
+icon_pilcrow='\xC2\xB6' # ¶
+icon_double_angle_quotation='\xC2\xBB' # »
 icon_white_right_pointing_index='\xE2\x98\x9E'
 icon_lower_right_pencil='\xE2\x9C\x8E'
 icon_enter='\xe2\x86\xb3'

@@ -16,4 +16,4 @@ printf "${color_info_b}Check ${color_info_bi}%s${color_info_b} domain${color_inf
 #openssl s_client -showcerts -connect ${domain_name}:443
 echo | openssl s_client -servername ${domain_name} -connect ${domain_name}:443 2>/dev/null | openssl x509 -noout -dates
 
-program_end
+display_new_line

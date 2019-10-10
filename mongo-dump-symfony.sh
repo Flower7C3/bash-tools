@@ -54,4 +54,4 @@ if [[ $backup_time > 0 ]]; then
 	find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
 fi
 
-program_end
+display_new_line

@@ -130,4 +130,4 @@ if [[ "$challenge_protocol" == "ftp" ]]; then
 fi
 bash ${ssl_check_script_path} ${domain_name}
 
-program_end
+display_new_line

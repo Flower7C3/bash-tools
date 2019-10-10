@@ -13,7 +13,7 @@ function app_hello {
 
 function app_bye {
     printf "${color_log}Bye bye. See You Later, Alligator ${color_log_b};)${color_log} \n"
-    program_end
+    display_new_line
 }
 
 function join_by {
@@ -50,33 +50,58 @@ function program_title {
 }
 
 function printfln {
-    local message=$1
-    printf "${message}\n"
+    local color_h
+    color_h=$(eval echo "\$color_${1}_h")
+    local color_b
+    color_b=$(eval echo "\$color_${1}_b")
+    shift
+    local icon=$1
+    shift
+    local prefix
+    if [[ "$1" == "TAB" ]]; then
+        prefix="\t"
+        shift
+    fi
+    local message="$1"
+    shift
+    printf "${prefix}${color_h}${icon}${color_b} ${message}${color_off}\n" $@
 }
 
+function display_header {
+    printfln "log" "$icon_pilcrow" "$@"
+}
 function display_info {
-    local message=$1
-    printf "${color_info_b}${icon_white_right_pointing_index} ${message}${color_off}\n"
+    printfln "info" "$icon_white_right_pointing_index" "$@"
 }
 function display_command {
-    local message=$1
-    printf "${color_info_b}${icon_command} ${message}${color_off}\n"
+    printfln "info" "$icon_command" "$@"
+}
+function display_log {
+    printfln "log" "$icon_double_angle_quotation" "$@"
 }
 function display_error {
-    local message=$1
-    printf "${color_error_b}${icon_warning_sign} ${message}${color_off}\n" >&2
+    printfln "error" "$icon_warning_sign" "$@"
 }
 function display_success {
-    local message=$1
-    printf "${color_success_b}${icon_check} ${message}${color_off}\n"
+    printfln "success" "$icon_check" "$@"
 }
 
-function program_end {
+function display_infolog {
+    local label=$1
+    local value=$2
+    if [[ -z "$value" ]]; then
+        printf "${color_info}%s: ${color_error_b}(undefined)${color_info}\n" "$label"
+    else
+        printf "${color_info}%s: ${color_success_b}%s${color_info}\n" "$label" "$value"
+    fi
+}
+
+function display_new_line {
     printf "${color_off}\n"
 }
 
 function program_error {
-    program_end
+    display_new_line
     exit ${1:-'1'}
 }
 
@@ -99,9 +124,11 @@ function display_prompt {
         printf "${icon_enter} ${question}"
         printf ": ${color_console}"
         if [[ "$prompt_mode" == "password" ]]; then
-            printf "***"
+            printf "${color_notice}<secret>${color_console}"
+        elif [[ -z "$variable_value" ]]; then
+            printf "${color_notice}<undefined>${color_console}"
         else
-            printf ${variable_value}
+            printf "$variable_value"
         fi
         printf "${color_off}"
         printf "\n"

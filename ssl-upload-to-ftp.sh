@@ -67,4 +67,4 @@ if [[ "$dry_run" == "n" ]]; then
 fi
 echo ""
 
-program_end
+display_new_line

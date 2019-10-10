@@ -33,4 +33,4 @@ move_file_from_host_to_local "${remote_host}" "${remote_data_dir_path}" "${local
 
 remove_scripts_from_host "$remote_host"
 
-program_end
+display_new_line

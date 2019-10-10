@@ -38,4 +38,4 @@ for index in "${!pages[@]}"; do
 	fi
 done
 
-program_end
+display_new_line

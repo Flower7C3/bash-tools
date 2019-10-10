@@ -34,4 +34,4 @@ do
 
 done
 
-program_end
+display_new_line
