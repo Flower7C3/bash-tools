@@ -2,9 +2,9 @@
 ### mySQL operations
 ###############################################################
 
-function symfony_database_migrate {
-	local symfony_console=$1
-	local interactive=${2:-"y"}
+function symfony_database_migrate() {
+    local symfony_console=$1
+    local interactive=${2:-"y"}
     local has_migrations=$(${symfony_console} doc:mig:sta --no-ansi | grep "New Migrations" | sed 's/[^0-9]//g')
 
     if [[ -n "$symfony_console" ]]; then
@@ -27,9 +27,9 @@ function symfony_database_migrate {
     fi
 }
 
-function mysql_remote_truncate_via_symfony {
-	local host_name=$1
-	local symfony_console=$2
+function mysql_remote_truncate_via_symfony() {
+    local host_name=$1
+    local symfony_console=$2
 
     if [[ -n "$host_name" ]]; then
         if [[ -n "$symfony_console" ]]; then
@@ -43,9 +43,9 @@ function mysql_remote_truncate_via_symfony {
     fi
 }
 
-function mysql_remote_check_via_symfony {
-   	local host_name=$1
-	local symfony_root_dir=$2
+function mysql_remote_check_via_symfony() {
+    local host_name=$1
+    local symfony_root_dir=$2
     local sql_status=$(ssh ${host_name} 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && mysql -f --skip-column-names --host=$sql_host --port=$sql_port --user=$sql_user --password=$sql_pass $sql_base -e "SELECT \"OK\" AS \"status\"" || { printf "No config file"; exit 1; }' 2>&1 | sed ':a;N;$!ba;s/\n//g' | sed 's/mysql\: \[Warning\] Using a password on the command line interface can be insecure.//g')
     printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t" "MYSQL" "${host_name}/${symfony_root_dir}"
     if [[ "$sql_status" == "OK" ]]; then
@@ -60,51 +60,51 @@ function mysql_remote_check_via_symfony {
     printf "%s\n${color_log}" "$sql_status"
 }
 
-function mysql_remote_query_via_symfony {
-	local host_name=$1
-	local symfony_root_dir=$2
-	local file_name=$3
-	file_name_check "$file_name"
+function mysql_remote_query_via_symfony() {
+    local host_name=$1
+    local symfony_root_dir=$2
+    local file_name=$3
+    file_name_check "$file_name"
 
-	printf "${color_info_b}Run query at ${color_info_h}${host_name}${color_info_b} in ${color_info_h}${symfony_root_dir}${color_info_b} directory${color_info}\n"
-	ssh ${host_name} 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && printf "'$sql_query'" | mysql --host=$sql_host --port=$sql_port --user=$sql_user --password=$sql_pass $sql_base'
+    printf "${color_info_b}Run query at ${color_info_h}${host_name}${color_info_b} in ${color_info_h}${symfony_root_dir}${color_info_b} directory${color_info}\n"
+    ssh ${host_name} 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && printf "'$sql_query'" | mysql --host=$sql_host --port=$sql_port --user=$sql_user --password=$sql_pass $sql_base'
 }
 
-function mysql_remote_export_via_symfony {
-	local host_name=$1
-	local symfony_root_dir=$2
-	local file_name=$3
-	file_name_check "$file_name"
+function mysql_remote_export_via_symfony() {
+    local host_name=$1
+    local symfony_root_dir=$2
+    local file_name=$3
+    file_name_check "$file_name"
 
-	printf "${color_info_b}Backup MySQL database at ${color_info_h}${host_name}${color_info_b} host in ${color_info_h}${symfony_root_dir}${color_info_b} director (via Symfony config)${color_info}\n"
-	ssh ${host_name} 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && mysqldump --routines --events --triggers --single-transaction --host=$sql_host --port=$sql_port --user=$sql_user --password=$sql_pass $sql_base > ${HOME}/'${file_name}''
+    printf "${color_info_b}Backup MySQL database at ${color_info_h}${host_name}${color_info_b} host in ${color_info_h}${symfony_root_dir}${color_info_b} director (via Symfony config)${color_info}\n"
+    ssh ${host_name} 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && mysqldump --routines --events --triggers --single-transaction --host=$sql_host --port=$sql_port --user=$sql_user --password=$sql_pass $sql_base > ${HOME}/'${file_name}''
 }
 
-function mysql_remote_import_via_symfony {
-	local host_name=$1
-	local symfony_root_dir=$2
-	local file_name=$3
-	file_name_check "$file_name"
+function mysql_remote_import_via_symfony() {
+    local host_name=$1
+    local symfony_root_dir=$2
+    local file_name=$3
+    file_name_check "$file_name"
 
-	printf "${color_info_b}Import MySQL database at ${color_info_h}${host_name}${color_info_b} host in ${color_info_h}${symfony_root_dir}${color_info_b} directory (via Symfony config)${color_info}\n"
-	ssh $host_name 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && mysql --host=$sql_host --user=$sql_user --port=$sql_port --password=$sql_pass $sql_base < ${HOME}/'${file_name}''
+    printf "${color_info_b}Import MySQL database at ${color_info_h}${host_name}${color_info_b} host in ${color_info_h}${symfony_root_dir}${color_info_b} directory (via Symfony config)${color_info}\n"
+    ssh $host_name 'symfony_config_file_path='${symfony_root_dir}'app/config/parameters.yml && sql_host=`sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then sql_host="localhost"; fi && sql_port=`sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then sql_port="3306"; fi && sql_user=`sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" $symfony_config_file_path | xargs`; if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then sql_user="root"; fi && sql_pass=`sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" $symfony_config_file_path | xargs` && sql_base=`sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" $symfony_config_file_path | xargs` && mysql --host=$sql_host --user=$sql_user --port=$sql_port --password=$sql_pass $sql_base < ${HOME}/'${file_name}''
 }
 
-function mysql_backup_via_symfony {
+function mysql_backup_via_symfony() {
     local symfony_root_dir=$1
     local symfony_config_file_path="${symfony_root_dir}app/config/parameters.yml"
 
     local sql_host=$(sed -n "s/\([ ]\{1,\}\)database_host:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
     if [[ "$sql_host" == "~" || "$sql_host" == "" || "$sql_host" == "null" ]]; then
-	    sql_host='localhost'
+        sql_host='localhost'
     fi
     local sql_port=$(sed -n "s/\([ ]\{1,\}\)database_port:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
     if [[ "$sql_port" == "~" || "$sql_port" == "" || "$sql_port" == "null" ]]; then
-	    sql_port='3306'
+        sql_port='3306'
     fi
     local sql_user=$(sed -n "s/\([ ]\{1,\}\)database_user:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
     if [[ "$sql_user" == "~" || "$sql_user" == "" || "$sql_user" == "null" ]]; then
-	    sql_user='root'
+        sql_user='root'
     fi
     local sql_pass=$(sed -n "s/\([ ]\{1,\}\)database_password:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
     local sql_base=$(sed -n "s/\([ ]\{1,\}\)database_name:\(.*\)/\2/p" ${symfony_config_file_path} | xargs)
@@ -114,10 +114,10 @@ function mysql_backup_via_symfony {
 
     printf "${color_info_b}Backup ${color_info_h}%s${color_info_b} MySQL database to ${color_info_h}%s${color_info_b} file (via Symfony config)${color_info} \n" "$sql_host:$sql_port/$sql_base" "$backup_dir_path$backup_file_name"
     mkdir -p ${backup_dir_path}
-    mysqldump --host="$sql_host" --port="$sql_port" --user="$sql_user" --password="$sql_pass" "$sql_base" > ${backup_dir_path}${backup_file_name}
+    mysqldump --host="$sql_host" --port="$sql_port" --user="$sql_user" --password="$sql_pass" "$sql_base" >${backup_dir_path}${backup_file_name}
 }
 
-function mongo_backup_via_symfony {
+function mongo_backup_via_symfony() {
     local symfony_root_dir=$1
     local symfony_config_file_path="${symfony_root_dir}app/config/parameters.yml"
 
@@ -146,7 +146,7 @@ function mongo_backup_via_symfony {
     mongodump --host "$mongo_host" --port "$mongo_port" --username "$mongo_user" --password "$mongo_pass" --db "$mongo_base"
 }
 
-function mongo_restore_via_symfony {
+function mongo_restore_via_symfony() {
     local symfony_root_dir=$1
     local symfony_config_file_path="${symfony_root_dir}app/config/parameters.yml"
 

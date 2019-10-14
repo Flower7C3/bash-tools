@@ -2,7 +2,7 @@
 ### Notify
 ###############################################################
 
-function slack_notify  {
+function slack_notify() {
     local service_identifier=$1
     local url="https://hooks.slack.com/services/${service_identifier}"
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
@@ -12,7 +12,7 @@ function slack_notify  {
     echo ""
 }
 
-function slack_notify_project_updated  {
+function slack_notify_project_updated() {
     local slack_id=$1
     local user_name=${2:-""}
     local user_icon=${3:-""}
@@ -45,7 +45,7 @@ function slack_notify_project_updated  {
         '
 }
 
-function msteams_notify {
+function msteams_notify() {
     local service_identifier=$1
     local url="https://outlook.office.com/webhook/${service_identifier}"
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
@@ -55,10 +55,10 @@ function msteams_notify {
     echo ""
 }
 
-function msteams_notify_project_updated {
+function msteams_notify_project_updated() {
     local team_id=$1
     local project_url=${2:-""}
-    local project_host_dir=${3:-"`whoami`@`hostname`"}
+    local project_host_dir=${3:-"$(whoami)@$(hostname)"}
     local theme_color=${4:-"000000"}
 
     git_current

@@ -2,11 +2,10 @@
 ### Scripts
 ###############################################################
 
-function copy_scripts_to_host {
+function copy_scripts_to_host() {
     local host=$1
     printf "${color_success_b}Copy scripts to ${color_success_h}${host}${color_success_b} host ${color_success} \n"
-    for i in "${!sourced_scripts_list[@]}"
-    do
+    for i in "${!sourced_scripts_list[@]}"; do
         file_info=(${sourced_scripts_list[$i]})
         local_file_name=${file_info[0]}
         file_nameRemote=${file_info[1]}
@@ -15,11 +14,10 @@ function copy_scripts_to_host {
     printf "${color_off}"
 }
 
-function remove_scripts_from_host {
+function remove_scripts_from_host() {
     local host=$1
     printf "${color_error_b}Cleanup scripts on ${color_error_h}${host}${color_error_b} host ${color_error} \n"
-    for i in "${!sourced_scripts_list[@]}"
-    do
+    for i in "${!sourced_scripts_list[@]}"; do
         file_info=(${sourced_scripts_list[$i]})
         file_nameRemote=${file_info[1]}
         ssh ${host} 'rm ${HOME}/'${file_nameRemote}
@@ -31,7 +29,7 @@ function remove_scripts_from_host {
 ### File operations over SSH
 ###############################################################
 
-function copy_file_between_hosts {
+function copy_file_between_hosts() {
     local sourceHost=$1
     local destHost=$2
     local file_name=$3
@@ -44,7 +42,7 @@ function copy_file_between_hosts {
     scp $file_name $destHost:$file_name
 }
 
-function remove_file_from_hosts {
+function remove_file_from_hosts() {
     local sourceHost=$1
     local destHost=$2
     local file_name=$3
@@ -60,7 +58,7 @@ function remove_file_from_hosts {
 ### Copy / move / remove on remote host
 ###############################################################
 
-function copy_file_from_host_to_local {
+function copy_file_from_host_to_local() {
     local host=$1
     local remote_data_dir_path=$2
     local local_data_dir_path=$3
@@ -71,7 +69,7 @@ function copy_file_from_host_to_local {
     printf "${color_off}"
 }
 
-function remove_file_from_host {
+function remove_file_from_host() {
     local host=$1
     local remote_data_dir_path=$2
     local file_name=$3
@@ -82,7 +80,7 @@ function remove_file_from_host {
     fi
 }
 
-function move_file_from_host_to_local {
+function move_file_from_host_to_local() {
     local host=$1
     local remote_data_dir_path=$2
     local local_data_dir_path=$3
@@ -95,7 +93,7 @@ function move_file_from_host_to_local {
 ### Remove on local host
 ###############################################################
 
-function remove_file_from_local {
+function remove_file_from_local() {
     local local_data_dir_path=$1
     local file_name=$2
 
@@ -106,8 +104,7 @@ function remove_file_from_local {
     fi
 }
 
-
-function remove_dir_from_local {
+function remove_dir_from_local() {
     local local_data_dir_path=$1
     local dir_name=$2
 

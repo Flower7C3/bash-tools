@@ -2,7 +2,7 @@
 ### Web htaccess
 ###############################################################
 
-function web_htaccess_symlink {
+function web_htaccess_symlink() {
     local application_dir_path=$1
     local linkType=${2:-maintenance}
     if [[ -n "$application_dir_path" ]]; then
@@ -19,7 +19,7 @@ function web_htaccess_symlink {
 ### Symfony and assets
 ###############################################################
 
-function symfony_permissions_fix {
+function symfony_permissions_fix() {
     local symfony_cache_dir_path=$1
     local symfony_log_dir_path=$2
     if [[ -n "$symfony_cache_dir_path" ]] && [[ -n "$symfony_log_dir_path" ]]; then
@@ -32,7 +32,7 @@ function symfony_permissions_fix {
     fi
 }
 
-function composer_install {
+function composer_install() {
     local composer_command=${1:-"composer"}
     local interactive=${2:-"y"}
     printf "${color_info_b}Install data from ${color_info_h}composer.lock${color_info_b} file${color_off} \n"
@@ -43,7 +43,7 @@ function composer_install {
     fi
 }
 
-function symfony_assets_install {
+function symfony_assets_install() {
     local symfony_console=$1
     local symfony_env=$2
 
@@ -60,7 +60,7 @@ function symfony_assets_install {
     fi
 }
 
-function symfony_assets_dump {
+function symfony_assets_dump() {
     local symfony_console=$1
     local symfony_env=$2
 
@@ -77,7 +77,7 @@ function symfony_assets_dump {
     fi
 }
 
-function assets_clear {
+function assets_clear() {
     local application_dir_path=$1
     if [[ -n "$application_dir_path" ]]; then
         printf "${color_info_b}Cleanup old Symfony assets${color_info} \n"
@@ -93,7 +93,7 @@ function assets_clear {
     fi
 }
 
-function symfony_cache_clear {
+function symfony_cache_clear() {
     local symfony_cache_dir_path=$1
     if [[ -n "$symfony_cache_dir_path" ]]; then
         printf "${color_info_b}Cleanup Symfony cache ${color_info} \n"

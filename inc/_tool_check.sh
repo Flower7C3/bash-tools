@@ -1,7 +1,7 @@
 ###############################################################
 ### File check
 ###############################################################
-function file_name_check {
+function file_name_check() {
     local file_name=$1
     if [ -z "$file_name" ]; then
         display_error "File name not specified!"
@@ -14,7 +14,7 @@ function file_name_check {
     fi
 }
 
-function dir_name_check {
+function dir_name_check() {
     local dir_name=$1
     if [ -z "$dir_name" ]; then
         display_error "Dir name not specified!"
@@ -30,7 +30,7 @@ function dir_name_check {
 ###############################################################
 ### Domain check
 ###############################################################
-function ssh_check {
+function ssh_check() {
     local username=$1
     local hostname=$2
     local keyfile=$3
@@ -38,15 +38,15 @@ function ssh_check {
     printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t${color_log_h}%s${color_info_b}\n${color_log}" "SSH" "${username}@${hostname}" "$sshStatus"
 }
 
-function domain_status_code_check {
+function domain_status_code_check() {
     local domain=$1
     local userpass=$2
     local statusCode=$(curl -H "Cache-Control: no-cache" -L -u "${userpass}" -s -o /dev/null -I -w "%{http_code}" ${domain})
     printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t" "DOMENA" "$domain"
-    if (( "$statusCode" >= 200 && "$statusCode" < 400 )); then
+    if (("$statusCode" >= 200 && "$statusCode" < 400)); then
         printf "${color_success_h}"
     else
-        if (( "$statusCode" >= 400 && "$statusCode" < 600 )); then
+        if (("$statusCode" >= 400 && "$statusCode" < 600)); then
             printf "${color_error_h}"
         else
             printf "${color_log_h}"
@@ -55,10 +55,10 @@ function domain_status_code_check {
     printf "%s\n${color_log}" $statusCode
 }
 
-function domain_status_code_check_or_rollback {
+function domain_status_code_check_or_rollback() {
     local url=${1:-http://localhost/}
 
-    local exists=$(curl -k -s --head ${url}  | head -n 1 | grep "HTTP/1.[01] [23]..")
+    local exists=$(curl -k -s --head ${url} | head -n 1 | grep "HTTP/1.[01] [23]..")
 
     if [ "$exists" == "" ]; then
 

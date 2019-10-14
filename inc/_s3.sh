@@ -1,4 +1,4 @@
-function s3_upload {
+function s3_upload() {
     aws_profile=$1
     aws_bucket=$2
     local_path=$3
@@ -15,7 +15,7 @@ function s3_upload {
     fi
 }
 
-function s3_download {
+function s3_download() {
     aws_profile=$1
     aws_bucket=$2
     aws_path=$3
@@ -28,11 +28,11 @@ function s3_download {
             aws s3 cp --profile "$aws_profile" "s3://${aws_bucket}/${aws_path}" "$local_path"
         fi
     else
-    display_error "S3 download fail: specify all required parameters!"
+        display_error "S3 download fail: specify all required parameters!"
     fi
 }
 
-function s3_remove {
+function s3_remove() {
     aws_profile=$1
     aws_bucket=$2
     aws_path=$3
