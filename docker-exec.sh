@@ -20,9 +20,9 @@ _auto_close="n"
 program_title "Execute command on Docker container"
 if [[ ${local_project_path} == ${local_www_path}* ]];
 then
-	printfln "You are in ${color_info_h}`pwd`${color_off} directory."
+	display_info "You are in ${color_info_h}`pwd`${color_info} directory."
 else
-	printfln "${color_error}You must be in ${color_error_h}${local_www_path}*${color_error} path to run this command!${color_off}"
+	display_error "You must be in ${color_error_h}${local_www_path}*${color_error_b} path to run this command!"
 	program_error
 fi
 

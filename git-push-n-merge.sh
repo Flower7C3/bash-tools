@@ -10,7 +10,7 @@ _branch_dst="master"
 
 ## WELCOME
 program_title "Merge GIT branches"
-printfln "You are in ${color_info_h}`pwd`${color_off} directory."
+display_info "You are in ${color_info_h}`pwd`${color_info_b} directory."
 
 
 ## VARIABLES
@@ -27,27 +27,27 @@ else
 	confirm_or_exit "Merge branch ${color_question_h}${prefix}${branch_src}${color_question_b} into ${color_question_h}${prefix}${branch_dst}${color_question_b}?"
 fi
 
-printfln "${color_success_b}Push ${color_success_h}${prefix}${branch_src}${color_success_b} to upstream ${color_success}"
+display_info "${color_success_b}Push ${color_success_h}${prefix}${branch_src}${color_success_b} to upstream ${color_success}"
 git push origin ${prefix}${branch_src}
 
-printfln "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_dst}${color_notice_b} ${color_notice}"
+display_info "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_dst}${color_notice_b} ${color_notice}"
 git checkout ${prefix}${branch_dst}
 
-printfln "${color_error_b}Pull ${color_error_h}${prefix}${branch_dst}${color_error_b} from upstream ${Red}"
+display_info "${color_error_b}Pull ${color_error_h}${prefix}${branch_dst}${color_error_b} from upstream ${Red}"
 git pull origin ${prefix}${branch_dst}
 
 if [[ "$noff" == "y" ]]; then
-	printfln "${color_notice_b}Merge with commit ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	display_info "${color_notice_b}Merge with commit ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
 	git merge ${prefix}${branch_src} --no-ff --no-edit
 else
-	printfln "${color_notice_b}Merge ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	display_info "${color_notice_b}Merge ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
 	git merge ${prefix}${branch_src}
 fi
 
-printfln "${color_success_b}Push ${color_success_h}${prefix}${branch_dst}${color_success_b} to upstream ${color_success}"
+display_info "${color_success_b}Push ${color_success_h}${prefix}${branch_dst}${color_success_b} to upstream ${color_success}"
 git push origin ${prefix}${branch_dst}
 
-printfln "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_src}${color_notice_b} ${color_notice} \n"
+display_info "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_src}${color_notice_b} ${color_notice} \n"
 git checkout ${prefix}${branch_src}
 
 display_new_line

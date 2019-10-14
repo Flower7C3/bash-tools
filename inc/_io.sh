@@ -90,7 +90,7 @@ function display_infolog {
     local label=$1
     local value=$2
     if [[ -z "$value" ]]; then
-        printf "${color_info}%s: ${color_error_b}(undefined)${color_info}\n" "$label"
+        printf "${color_info}%s: ${color_log_b}<undefined>${color_info}\n" "$label"
     else
         printf "${color_info}%s: ${color_success_b}%s${color_info}\n" "$label" "$value"
     fi
@@ -327,6 +327,7 @@ function confirm_or_exit {
         fi
         exit 1
     fi
+    printf "\n"
 }
 
 # read variable from given ini file
