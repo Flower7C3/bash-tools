@@ -4,19 +4,19 @@
 ### App
 ###############################################################
 
-function app_hello {
+function app_hello() {
     clear
     local name=${1:-World}
     local dirname=${2:-$(pwd)}
     program_title "Hello ${name}. Welcome at '${dirname}' directory."
 }
 
-function app_bye {
+function app_bye() {
     printf "${color_log}Bye bye. See You Later, Alligator ${color_log_b};)${color_log} \n"
     display_new_line
 }
 
-function join_by {
+function join_by() {
     local d=$1
     shift
     printf "$1"
@@ -27,7 +27,7 @@ function join_by {
 ###############################################################
 ### Program info
 ###############################################################
-function program_title {
+function program_title() {
     local title=$1
 
     printf "${color_log_h}"
@@ -49,7 +49,7 @@ function program_title {
     printf "${color_off}"
 }
 
-function printfln {
+function printfln() {
     local color_h
     color_h=$(eval echo "\$color_${1}_h")
     local color_b
@@ -67,26 +67,26 @@ function printfln {
     printf "${prefix}${color_h}${icon}${color_b} ${message}${color_off}\n" $@
 }
 
-function display_header {
+function display_header() {
     printfln "log" "$icon_pilcrow" "$@"
 }
-function display_info {
+function display_info() {
     printfln "info" "$icon_white_right_pointing_index" "$@"
 }
-function display_command {
+function display_command() {
     printfln "info" "$icon_command" "$@"
 }
-function display_log {
+function display_log() {
     printfln "log" "$icon_double_angle_quotation" "$@"
 }
-function display_error {
+function display_error() {
     printfln "error" "$icon_warning_sign" "$@"
 }
-function display_success {
+function display_success() {
     printfln "success" "$icon_check" "$@"
 }
 
-function display_infolog {
+function display_infolog() {
     local label=$1
     local value=$2
     if [[ -z "$value" ]]; then
@@ -96,11 +96,11 @@ function display_infolog {
     fi
 }
 
-function display_new_line {
+function display_new_line() {
     printf "${color_off}\n"
 }
 
-function program_error {
+function program_error() {
     display_new_line
     exit ${1:-'1'}
 }
@@ -110,7 +110,7 @@ function program_error {
 ###############################################################
 
 # asks user for value
-function display_prompt {
+function display_prompt() {
     local prompt_mode=$1
     local variable_name=$2
     local question=$3
@@ -144,11 +144,11 @@ function display_prompt {
                 printf ": ${color_console}"
                 if [[ "$prompt_mode" == "password" ]]; then
                     read -s input1
+                    printf "\n"
                 else
                     read -e input1
                 fi
                 printf "${color_off}"
-                printf "\n"
                 printf "${color_question_b}"
                 printf "${icon_enter} ${question}"
                 if [[ -n "${default_value}" ]]; then
@@ -157,11 +157,11 @@ function display_prompt {
                 printf " (repeat): ${color_console}"
                 if [[ "$prompt_mode" == "password" ]]; then
                     read -s input2
+                    printf "\n"
                 else
                     read -e input2
                 fi
                 printf "${color_off}"
-                printf "\n"
                 if [[ "$input1" == "$input2" ]]; then
                     input=${input1}
                     break
@@ -211,26 +211,26 @@ function display_prompt {
 }
 
 # asks user for variable value
-function prompt_variable {
+function prompt_variable() {
     display_prompt "value" "$@"
 }
 
-function prompt_variable_twice {
+function prompt_variable_twice() {
     display_prompt "repeated" "$@"
 }
 
 # asks user for variable value
-function prompt_variable_or_exit {
+function prompt_variable_or_exit() {
     display_prompt "or_exit" "$@"
 }
 
 # asks user for variable value
-function prompt_variable_not_null {
+function prompt_variable_not_null() {
     display_prompt "not_null" "$@"
 }
 
 # asks user for variable value
-function prompt_variable_not {
+function prompt_variable_not() {
     local variable_name=$1
     local question=$2
     local default_value=$3
@@ -250,12 +250,12 @@ function prompt_variable_not {
 }
 
 # asks user for password value
-function prompt_password {
+function prompt_password() {
     display_prompt "password" "$@"
 }
 
 # asks user for variable value, but accept only allowed values
-function prompt_variable_fixed {
+function prompt_variable_fixed() {
     local variable_name=$1
     local question=$2
     local default_value=$3
@@ -281,7 +281,7 @@ function prompt_variable_fixed {
 }
 
 # asks user for variable value, but accept only allowed values
-function prompt_variable_fixed_or_exit {
+function prompt_variable_fixed_or_exit() {
     local variable_name=$1
     local question=$2
     local default_value=$3
@@ -307,7 +307,7 @@ function prompt_variable_fixed_or_exit {
 }
 
 # set variable value
-function set_variable {
+function set_variable() {
     local variable_name=$1
     local default_value=$2
     local variable_value=${3:-$default_value}
@@ -315,7 +315,7 @@ function set_variable {
 }
 
 # user must press y and enter, or program will end
-function confirm_or_exit {
+function confirm_or_exit() {
     local question=$1
     local fallback_message=$2
     printf "\n"
@@ -331,7 +331,7 @@ function confirm_or_exit {
 }
 
 # read variable from given ini file
-function read_variable_from_config {
+function read_variable_from_config() {
     local bash_variable_name=$1
     local config_variable_name=$2
     local config_file_path=$3
