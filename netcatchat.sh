@@ -31,16 +31,10 @@ declare -r color_white='\033[0;37m'  # White
 ### CONFIG ###
 function config_setup() {
     netcat_kill
-    display_prompt 'App local port'
-    printf "${color_yellow}"
-    read -e -r -i "$sender_port" sender_port
-    printf "${color_off}"
+    display_prompt 'sender_port' "$sender_port" 'App local port'
     config_create 'sender_port' "$sender_port"
     while true; do
-        display_prompt 'Your Nickname'
-        printf "${color_yellow}"
-        read -e -r -i "$sender_nickname" sender_nickname
-        printf "${color_off}"
+        display_prompt 'sender_nickname' "$sender_nickname" 'Your Nickname'
         if [[ ! $(echo "$sender_nickname" | egrep -1 "\b@[A-Za-z0-9._%+-]+\b") ]]; then
             display_error "Invalid nickname, start with @ sign"
         elif [[ "$sender_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]] || [[ "$sender_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
@@ -102,17 +96,31 @@ function display_info() {
 function display_message() {
     local text="$1"
     shift
-    printf "${color_green}$text${color_off}\n" "$@"
+    printf "${color_white}$text${color_off}\n" "$@"
+}
+function display_success() {
+    local text="$1"
+    shift
+    printf "${color_green}# $text${color_off}\n" "$@"
 }
 function display_error() {
     local text="$1"
     shift
-    printf "${color_red}#! $text${color_off}\n" "$@"
+    printf "${color_red}# $text${color_off}\n" "$@"
 }
 function display_prompt() {
-    local text="$1"
+    local variable_name="$1"
+    local default_value="$2"
+    local text="$3"
     shift
-    printf "${color_yellow}#? $text: ${color_off}" "$@"
+    printf "${color_yellow}# $text: ${color_off}" "$@"
+    printf "${color_yellow}"
+    if [[ -n "$default_value" ]]; then
+        read -e -r -i "$default_value" "${variable_name}"
+    else
+        read -e -r "${variable_name}"
+    fi
+    printf "${color_off}"
 }
 
 ### NETCAT ###
@@ -142,28 +150,28 @@ function recipients_list() {
 }
 function recipient_add() {
     local remote_nickname="$1"
+    local recipient_name
     if [[ -z "$remote_nickname" ]]; then
         while true; do
-            display_prompt 'Recipient name'
-            printf "${color_yellow}"
-            read -e -r remote_nickname
-            printf "${color_off}"
+            display_prompt 'remote_nickname' '' 'Recipient name'
+            recipient_name=$(nickname_to_name "$remote_nickname")
             if [[ ! $(echo "$remote_nickname" | egrep -1 "\b@[A-Za-z0-9._%+-]+\b") ]]; then
                 display_error "Invalid nickname, start with @ sign"
             elif [[ "$remote_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]] || [[ "$remote_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
                 display_error "Invalid nickname, %s and %s is prohibited" "$NETCHAT_SYSTEM_NICKNAME" "$NETCHAT_BROADCAST_NICKNAME"
+            elif [[ -n "${chat_users[$recipient_name]}" ]]; then
+                display_error "User %s is already defined" "$remote_nickname"
             else
                 break
             fi
         done
+    else
+        recipient_name=$(nickname_to_name "$remote_nickname")
     fi
     local recipient_hostname="$2"
     if [[ -z "$recipient_hostname" ]]; then
         while true; do
-            display_prompt 'Recipient hostname'
-            printf "${color_yellow}"
-            read -e -r recipient_hostname
-            printf "${color_off}"
+            display_prompt 'recipient_hostname' '' 'Recipient hostname'
             if [[ ! $(echo "$recipient_hostname" | egrep -1 "\b[A-Za-z0-9._%+-]+\b") ]]; then
                 display_error "Prohibited IP addr"
             else
@@ -174,10 +182,7 @@ function recipient_add() {
     local recipient_port="$3"
     if [[ -z "$recipient_port" ]]; then
         while true; do
-            display_prompt 'Recipient port'
-            printf "${color_yellow}"
-            read -e -r -i $NETCHAT_APP_PORT recipient_port
-            printf "${color_off}"
+            display_prompt 'recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
             if [[ ! $(echo "$recipient_port" | egrep -1 "\b[0-9]+\b") ]]; then
                 display_error "Prohibited port number"
             else
@@ -185,18 +190,13 @@ function recipient_add() {
             fi
         done
     fi
-    local recipient_name
-    recipient_name=$(nickname_to_name "$remote_nickname")
     config_create "chat_users[${recipient_name}]" "$recipient_hostname $recipient_port"
 }
 function recipient_delete() {
     local remote_nickname="$1"
     if [[ -z "$remote_nickname" ]]; then
         while true; do
-            display_prompt 'Recipient name'
-            printf "${color_yellow}"
-            read -e -r remote_nickname
-            printf "${color_off}"
+            display_prompt 'remote_nickname' '' 'Recipient name'
             if [[ ! $(echo "$remote_nickname" | egrep -1 "\b@[A-Za-z0-9._%+-]+\b") ]]; then
                 display_error "Invalid nickname, start with @ sign"
             elif [[ "$remote_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]] || [[ "$remote_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
@@ -260,11 +260,11 @@ function message_unicast() {
     local recipient_address
     recipient_address=${chat_users[$recipient_name]}
     if [[ -z "$recipient_address" ]]; then
-        display_error "User $recipient_nickname is not recognized, use :ra to define new recipient"
+        display_error "User $recipient_nickname is not recognized, use :ra to define new recipient or :rl to list all recipients"
         return 99
     else
         # send message
-        display_message "\n$message" | nc ${recipient_address}
+        display_message "\n$message" | nc ${recipient_address} 2>/dev/null
         local send_status=$?
         # check response
         if [[ "$send_status" == "0" ]]; then
@@ -300,7 +300,7 @@ function app_init() {
 function help_screen() {
     display_info ':s - config setup'
     display_info ':rl - recipients list'
-    display_info ':ra <name> <ip/add> <port> - recipient add'
+    display_info ':ra <name> <ip/addr> <port> - recipient add'
     display_info ':rd <name> - recipient delete'
     display_info ':w - write message'
     display_info ':h - help screen'
@@ -352,8 +352,9 @@ while true; do
         option=':w'
         ;;
     :w)
-        printf '» '
+        printf "${color_white}» "
         read -e -r option
+        printf "${color_off}"
         ;;
     *)
         if [[ $option == \@* ]]; then
