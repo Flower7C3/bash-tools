@@ -1,4 +1,4 @@
-##!/usr/bin/env bash
+#!/usr/bin/env bash
 
 ### VARIABLES ###
 declare -r NETCHAT_SYSTEM_NICKNAME='@system'
@@ -8,6 +8,11 @@ declare -A chat_users
 nc_pid=-1
 declare -r config_file_path=$(dirname $0)'/config/netcatchat.sh'
 declare -r log_file_path=$(dirname $0)'/config/netcatchat.log'
+if uname | grep -iq Darwin; then
+    declare -r sender_hostname=$(ipconfig getifaddr en0)
+else
+    declare -r sender_hostname=$(ip route get 1 | awk '{print $NF;exit}')
+fi
 sender_port=''
 sender_nickname=''
 option=':w'
@@ -58,15 +63,14 @@ function config_load() {
         touch $log_file_path
     fi
     source $config_file_path
-    cat $config_file_path | grep -v '#'
 }
 function config_create() {
     local variable_name="$1"
     local variable_value="$2"
     config_delete "$variable_name" "n"
     display_info "Create config variable: %s=\"${variable_value}\"" "$variable_name"
-    #    printf '%s="%s"'"\n" "$variable_name" "$variable_value" >>$config_file_path
-    #    eval "${variable_name}"'=${variable_value}'
+    printf '%s="%s"'"\n" "$variable_name" "$variable_value" >>$config_file_path
+    eval "${variable_name}"'=${variable_value}'
 }
 function config_delete() {
     local variable_name="$1"
@@ -77,8 +81,8 @@ function config_delete() {
     local variable_name_escaped=$variable_name
     variable_name_escaped=${variable_name_escaped/\[/\\\[}
     variable_name_escaped=${variable_name_escaped/\]/\\\]}
-    #    sed -i '' '/'$variable_name_escaped'/d' $config_file_path
-    #    eval "unset ${variable_name}"
+    sed -i '' '/'$variable_name_escaped'/d' $config_file_path
+    eval "unset ${variable_name}"
 }
 
 ### NAMES ###
@@ -117,7 +121,7 @@ function netcat_start() {
         nc -l -k ${sender_port} &
         nc_pid=$!
         display_info 'Start netcat on %s port as %s pid' "$sender_port" "$nc_pid"
-        message_from_system "$sender_nickname in now connected to netchat!"
+        message_from_system "${sender_nickname} in now connected to netchat from ${sender_hostname} addr on ${sender_port} port"
     else
         display_error "Sender port is not defined"
     fi
