@@ -24,4 +24,4 @@ fi
 
 docker logs --follow --details --timestamps --tail 32 ${docker_container_name}
 
-display_new_line
+print_new_line

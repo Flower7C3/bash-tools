@@ -55,4 +55,4 @@ if [[ "$auto_close" == "y" ]]; then
 	printf "${color_off}"
 fi
 
-display_new_line
+print_new_line

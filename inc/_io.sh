@@ -13,7 +13,7 @@ function app_hello() {
 
 function app_bye() {
     printf "${color_log}Bye bye. See You Later, Alligator ${color_log_b};)${color_log} \n"
-    display_new_line
+    print_new_line
 }
 
 function join_by() {
@@ -68,22 +68,22 @@ function printfln() {
 }
 
 function display_header() {
-    printfln "log" "$icon_pilcrow" "$@"
+    printfln "log" "$icon_paragraph" "$@"
 }
 function display_info() {
-    printfln "info" "$icon_white_right_pointing_index" "$@"
+    printfln "info" "$icon_info" "$@"
 }
 function display_command() {
     printfln "info" "$icon_command" "$@"
 }
 function display_log() {
-    printfln "log" "$icon_double_angle_quotation" "$@"
+    printfln "log" "$icon_quotation" "$@"
 }
 function display_error() {
-    printfln "error" "$icon_warning_sign" "$@"
+    printfln "error" "$icon_error" "$@"
 }
 function display_success() {
-    printfln "success" "$icon_check" "$@"
+    printfln "success" "$icon_success" "$@"
 }
 
 function display_infolog() {
@@ -96,12 +96,12 @@ function display_infolog() {
     fi
 }
 
-function display_new_line() {
+function print_new_line() {
     printf "${color_off}\n"
 }
 
 function program_error() {
-    display_new_line
+    print_new_line
     exit ${1:-'1'}
 }
 
@@ -121,7 +121,7 @@ function display_prompt() {
     if [[ ${args} -ge ${argNo} ]]; then
         variable_value=${!argNo}
         printf "${color_question_b}"
-        printf "${icon_enter} ${question}"
+        printf "${icon_prompt} ${question}"
         printf ": ${color_console}"
         if [[ "$prompt_mode" == "password" ]]; then
             printf "${color_notice}<secret>${color_console}"
@@ -137,7 +137,7 @@ function display_prompt() {
         if [[ "$prompt_mode" == "password" ]] || [[ "$prompt_mode" == "repeated" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "${icon_enter} ${question}"
+                printf "${icon_prompt} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -150,7 +150,7 @@ function display_prompt() {
                 fi
                 printf "${color_off}"
                 printf "${color_question_b}"
-                printf "${icon_enter} ${question}"
+                printf "${icon_prompt} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -172,7 +172,7 @@ function display_prompt() {
         elif [[ "$prompt_mode" == "not_null" ]]; then
             while true; do
                 printf "${color_question_b}"
-                printf "${icon_enter} ${question}"
+                printf "${icon_prompt} ${question}"
                 if [[ -n "${default_value}" ]]; then
                     printf " (default: ${color_question_h}${default_value}${color_question_b})"
                 fi
@@ -187,7 +187,7 @@ function display_prompt() {
             done
         elif [[ "$prompt_mode" == "or_exit" ]]; then
             printf "${color_question_b}"
-            printf "${icon_zigzag} ${question}"
+            printf "${icon_prompt} ${question}"
             if [[ -n "${default_value}" ]]; then
                 printf " (default: ${color_question_h}${default_value}${color_question_b})"
             fi
@@ -196,7 +196,7 @@ function display_prompt() {
             printf "${color_off}"
         else
             printf "${color_question_b}"
-            printf "${icon_enter} ${question}"
+            printf "${icon_prompt} ${question}"
             if [[ -n "${default_value}" ]]; then
                 printf " (default: ${color_question_h}${default_value}${color_question_b})"
             fi
@@ -336,6 +336,7 @@ function read_variable_from_config() {
     local config_variable_name=$2
     local config_file_path=$3
     local default_value=$4
-    local variable_value=$(awk -F "=" '/^'$config_variable_name'/ {print $2}' ${config_file_path} | sed 's/\"//g' | sed 's/\'"'"'//g' | sed 's/^[ ]*//;s/[ ]*$//' | sed -e 's/\'$'\t//g')
+    local variable_value
+    variable_value=$(awk -F "=" '/^'$config_variable_name'/ {print $2}' ${config_file_path} | sed 's/\"//g' | sed 's/\'"'"'//g' | sed 's/^[ ]*//;s/[ ]*$//' | sed -e 's/\'$'\t//g')
     set_variable "$bash_variable_name" "$default_value" "$variable_value"
 }

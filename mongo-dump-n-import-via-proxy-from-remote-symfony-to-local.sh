@@ -52,4 +52,4 @@ else
 	yes | bash $(dirname ${BASH_SOURCE})/mongo-import-local.sh "$mongo_host" "$database" "${export_dir_name}" "$export_file_name"
 fi
 
-display_new_line
+print_new_line

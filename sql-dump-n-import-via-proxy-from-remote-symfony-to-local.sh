@@ -52,4 +52,4 @@ else
 	yes | bash $(dirname ${BASH_SOURCE})/sql-import-local.sh "$sql_host" "$database" "$export_file_name"
 fi
 
-display_new_line
+print_new_line

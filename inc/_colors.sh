@@ -40,152 +40,149 @@ function rgb_background() {
 }
 
 # Reset
-color_off='\033[0m'      # Text Reset
+declare -r color_off='\033[0m'      # Text Reset
 
 # Regular Colors
-Black='\033[0;30m'       # Black
-Red='\033[0;31m'         # Red
-Green='\033[0;32m'       # Green
-Yellow='\033[0;33m'      # Yellow
-Blue='\033[0;34m'        # Blue
-Purple='\033[0;35m'      # Purple
-Cyan='\033[0;36m'        # Cyan
-White='\033[0;37m'       # White
+declare -r Black='\033[0;30m'       # Black
+declare -r Red='\033[0;31m'         # Red
+declare -r Green='\033[0;32m'       # Green
+declare -r Yellow='\033[0;33m'      # Yellow
+declare -r Blue='\033[0;34m'        # Blue
+declare -r Purple='\033[0;35m'      # Purple
+declare -r Cyan='\033[0;36m'        # Cyan
+declare -r White='\033[0;37m'       # White
 
 # Bold
-BBlack='\033[1;30m'      # Black
-BRed='\033[1;31m'        # Red
-BGreen='\033[1;32m'      # Green
-BYellow='\033[1;33m'     # Yellow
-BBlue='\033[1;34m'       # Blue
-BPurple='\033[1;35m'     # Purple
-BCyan='\033[1;36m'       # Cyan
-BWhite='\033[1;37m'      # White
+declare -r BBlack='\033[1;30m'      # Black
+declare -r BRed='\033[1;31m'        # Red
+declare -r BGreen='\033[1;32m'      # Green
+declare -r BYellow='\033[1;33m'     # Yellow
+declare -r BBlue='\033[1;34m'       # Blue
+declare -r BPurple='\033[1;35m'     # Purple
+declare -r BCyan='\033[1;36m'       # Cyan
+declare -r BWhite='\033[1;37m'      # White
 
 # Underline
-UBlack='\033[4;30m'      # Black
-URed='\033[4;31m'        # Red
-UGreen='\033[4;32m'      # Green
-UYellow='\033[4;33m'     # Yellow
-UBlue='\033[4;34m'       # Blue
-UPurple='\033[4;35m'     # Purple
-UCyan='\033[4;36m'       # Cyan
-UWhite='\033[4;37m'      # White
+declare -r UBlack='\033[4;30m'      # Black
+declare -r URed='\033[4;31m'        # Red
+declare -r UGreen='\033[4;32m'      # Green
+declare -r UYellow='\033[4;33m'     # Yellow
+declare -r UBlue='\033[4;34m'       # Blue
+declare -r UPurple='\033[4;35m'     # Purple
+declare -r UCyan='\033[4;36m'       # Cyan
+declare -r UWhite='\033[4;37m'      # White
 
 # Background
-On_Black='\033[40m'      # Black
-On_Red='\033[41m'        # Red
-On_Green='\033[42m'      # Green
-On_Yellow='\033[43m'     # Yellow
-On_Blue='\033[44m'       # Blue
-On_Purple='\033[45m'     # Purple
-On_Cyan='\033[46m'       # Cyan
-On_White='\033[47m'      # White
+declare -r On_Black='\033[40m'      # Black
+declare -r On_Red='\033[41m'        # Red
+declare -r On_Green='\033[42m'      # Green
+declare -r On_Yellow='\033[43m'     # Yellow
+declare -r On_Blue='\033[44m'       # Blue
+declare -r On_Purple='\033[45m'     # Purple
+declare -r On_Cyan='\033[46m'       # Cyan
+declare -r On_White='\033[47m'      # White
 
 # High Intensity
-IBlack='\033[0;90m'      # Black
-IRed='\033[0;91m'        # Red
-IGreen='\033[0;92m'      # Green
-IYellow='\033[0;93m'     # Yellow
-IBlue='\033[0;94m'       # Blue
-IPurple='\033[0;95m'     # Purple
-ICyan='\033[0;96m'       # Cyan
-IWhite='\033[0;97m'      # White
+declare -r IBlack='\033[0;90m'      # Black
+declare -r IRed='\033[0;91m'        # Red
+declare -r IGreen='\033[0;92m'      # Green
+declare -r IYellow='\033[0;93m'     # Yellow
+declare -r IBlue='\033[0;94m'       # Blue
+declare -r IPurple='\033[0;95m'     # Purple
+declare -r ICyan='\033[0;96m'       # Cyan
+declare -r IWhite='\033[0;97m'      # White
 
 # Bold High Intensity
-BIBlack='\033[1;90m'     # Black
-BIRed='\033[1;91m'       # Red
-BIGreen='\033[1;92m'     # Green
-BIYellow='\033[1;93m'    # Yellow
-BIBlue='\033[1;94m'      # Blue
-BIPurple='\033[1;95m'    # Purple
-BICyan='\033[1;96m'      # Cyan
-BIWhite='\033[1;97m'     # White
+declare -r BIBlack='\033[1;90m'     # Black
+declare -r BIRed='\033[1;91m'       # Red
+declare -r BIGreen='\033[1;92m'     # Green
+declare -r BIYellow='\033[1;93m'    # Yellow
+declare -r BIBlue='\033[1;94m'      # Blue
+declare -r BIPurple='\033[1;95m'    # Purple
+declare -r BICyan='\033[1;96m'      # Cyan
+declare -r BIWhite='\033[1;97m'     # White
 
 # High Intensity backgrounds
-On_IBlack='\033[0;100m'  # Black
-On_IRed='\033[0;101m'    # Red
-On_IGreen='\033[0;102m'  # Green
-On_IYellow='\033[0;103m' # Yellow
-On_IBlue='\033[0;104m'   # Blue
-On_IPurple='\033[0;105m' # Purple
-On_ICyan='\033[0;106m'   # Cyan
-On_IWhite='\033[0;107m'  # White
+declare -r On_IBlack='\033[0;100m'  # Black
+declare -r On_IRed='\033[0;101m'    # Red
+declare -r On_IGreen='\033[0;102m'  # Green
+declare -r On_IYellow='\033[0;103m' # Yellow
+declare -r On_IBlue='\033[0;104m'   # Blue
+declare -r On_IPurple='\033[0;105m' # Purple
+declare -r On_ICyan='\033[0;106m'   # Cyan
+declare -r On_IWhite='\033[0;107m'  # White
 
 # Events
 
-color_default=${White}
-color_default_u=${UWhite}
-color_default_b=${BWhite}
-color_default_h=${BIWhite}
-color_default_i=${IWhite}
-color_default_g=${On_White}
+declare -r color_default=${White}
+declare -r color_default_u=${UWhite}
+declare -r color_default_b=${BWhite}
+declare -r color_default_h=${BIWhite}
+declare -r color_default_i=${IWhite}
+declare -r color_default_g=${On_White}
 
-color_log=${Purple}
-color_log_u=${UPurple}
-color_log_b=${BPurple}
-color_log_h=${BIPurple}
-color_log_i=${IPurple}
-color_log_g=${On_Purple}
+declare -r color_log=${Purple}
+declare -r color_log_u=${UPurple}
+declare -r color_log_b=${BPurple}
+declare -r color_log_h=${BIPurple}
+declare -r color_log_i=${IPurple}
+declare -r color_log_g=${On_Purple}
 
-color_info=${Cyan}
-color_info_u=${UCyan}
-color_info_b=${BCyan}
-color_info_h=${BICyan}
-color_info_i=${ICyan}
-color_info_g=${On_Cyan}
+declare -r color_info=${Cyan}
+declare -r color_info_u=${UCyan}
+declare -r color_info_b=${BCyan}
+declare -r color_info_h=${BICyan}
+declare -r color_info_i=${ICyan}
+declare -r color_info_g=${On_Cyan}
 
-color_question=${Yellow}
-color_question_u=${UYellow}
-color_question_b=${BYellow}
-color_question_h=${BIYellow}
-color_question_i=${IYellow}
-color_question_g=${On_Yellow}
+declare -r color_question=${Yellow}
+declare -r color_question_u=${UYellow}
+declare -r color_question_b=${BYellow}
+declare -r color_question_h=${BIYellow}
+declare -r color_question_i=${IYellow}
+declare -r color_question_g=${On_Yellow}
 
-color_notice=${Blue}
-color_notice_u=${UBlue}
-color_notice_b=${BBlue}
-color_notice_h=${BIBlue}
-color_notice_i=${IBlue}
-color_notice_g=${On_Blue}
+declare -r color_notice=${Blue}
+declare -r color_notice_u=${UBlue}
+declare -r color_notice_b=${BBlue}
+declare -r color_notice_h=${BIBlue}
+declare -r color_notice_i=${IBlue}
+declare -r color_notice_g=${On_Blue}
 
-color_success=${Green}
-color_success_u=${UGreen}
-color_success_b=${BGreen}
-color_success_h=${BIGreen}
-color_success_i=${IGreen}
-color_success_g=${On_Green}
+declare -r color_success=${Green}
+declare -r color_success_u=${UGreen}
+declare -r color_success_b=${BGreen}
+declare -r color_success_h=${BIGreen}
+declare -r color_success_i=${IGreen}
+declare -r color_success_g=${On_Green}
 
-color_error=${Red}
-color_error_u=${URed}
-color_error_b=${BRed}
-color_error_h=${BIRed}
-color_error_i=${IRed}
-color_error_g=${On_IRed}
+declare -r color_error=${Red}
+declare -r color_error_u=${URed}
+declare -r color_error_b=${BRed}
+declare -r color_error_h=${BIRed}
+declare -r color_error_i=${IRed}
+declare -r color_error_g=${On_IRed}
 
-color_console="${Black}${On_Cyan}"
+declare -r color_console="${Black}${On_Cyan}"
 
 # Lines
 
-box_tl='\e(0\x6c\e(B'                  # ┌
-box_bl='\e(0\x6d\e(B'                  # └
-box_tr='\e(0\x6b\e(B'                  # ┐
-box_br='\e(0\x6a\e(B'                  # ┘
-box_hb='\e(0\x77\e(B'                  # ┬
-box_vr='\e(0\x74\e(B'                  # ├
-box_vl='\e(0\x75\e(B'                  # ┤
-box_ht='\e(0\x76\e(B'                  # ┴
-box_x='\e(0\x6e\e(B'                   # ┼
-box_h='\e(0\x71\e(B'                   # ─
-box_v='\e(0\x78\e(B'                   # │
+declare -r box_tl='\e(0\x6c\e(B'                          # ┌
+declare -r box_bl='\e(0\x6d\e(B'                          # └
+declare -r box_tr='\e(0\x6b\e(B'                          # ┐
+declare -r box_br='\e(0\x6a\e(B'                          # ┘
+declare -r box_hb='\e(0\x77\e(B'                          # ┬
+declare -r box_vr='\e(0\x74\e(B'                          # ├
+declare -r box_vl='\e(0\x75\e(B'                          # ┤
+declare -r box_ht='\e(0\x76\e(B'                          # ┴
+declare -r box_x='\e(0\x6e\e(B'                           # ┼
+declare -r box_h='\e(0\x71\e(B'                           # ─
+declare -r box_v='\e(0\x78\e(B'                           # │
 
-icon_pilcrow='\xC2\xB6'                # ¶
-icon_double_angle_quotation='\xC2\xBB' # »
-icon_white_right_pointing_index='\xE2\x98\x9E'
-icon_lower_right_pencil='\xE2\x9C\x8E'
-icon_enter='\xe2\x86\xb3'
-icon_zigzag='\xe2\x86\xaf'
-icon_warning_sign='\xE2\x9A\xA0'
-icon_position_indicator='\xE2\x8C\x96'
-icon_check='\xE2\x9C\x93'
-icon_command='$'
+declare -r icon_paragraph='¶'
+declare -r icon_quotation='»'
+declare -r icon_info='☞'
+declare -r icon_success='✓'
+declare -r icon_error='✗'
+declare -r icon_prompt='↳'
+declare -r icon_command='$'

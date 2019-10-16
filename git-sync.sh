@@ -34,4 +34,4 @@ do
 
 done
 
-display_new_line
+print_new_line

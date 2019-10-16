@@ -61,4 +61,4 @@ printf "${color_off}"
 printf "${Green}\n"
 echo ${response} | python -m json.tool
 
-display_new_line
+print_new_line

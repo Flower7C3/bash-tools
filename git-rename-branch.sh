@@ -25,4 +25,4 @@ git push origin :$old_branch
 display_info "${color_success_b}Push the new branch ${color_success_h}${new_branch}${color_success_b} and set local branch to track the new remote ${color_success} "
 git push --set-upstream origin $new_branch
 
-display_new_line
+print_new_line
