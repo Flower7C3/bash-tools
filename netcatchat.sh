@@ -128,8 +128,10 @@ function app_setup_nickname() {
             fi
         done
     fi
+    local old_sender_nickname=$sender_nickname
     display_success "Sender nickname set to %s" "$sender_nickname"
     config_create 'sender_nickname' "$sender_nickname"
+    message_from_system "$old_sender_nickname is now known as $sender_nickname"
 }
 function config_load() {
     if [[ ! -f "$config_file_path" ]]; then
@@ -147,10 +149,15 @@ function config_load() {
     if [[ -z "$sender_nickname" ]]; then
         app_setup_nickname '@'$(whoami)
     fi
-
     if [[ "${#chat_users[*]}" -eq "0" ]]; then
         display_info "No recpients found - create new one"
         recipient_create
+    fi
+    local has_previous_process=($(ps -a | grep "nc -l -k ${sender_port}" | grep -v 'grep' | awk '{print $1;}'))
+    if [[ "${#has_previous_process[*]}" -gt "0" ]]; then
+        for pid in "${has_previous_process[@]}"; do
+            kill $pid
+        done
     fi
 }
 function config_create() {
@@ -222,15 +229,15 @@ function netcat_start() {
     if [[ -n "$sender_port" ]]; then
         nc -l -k ${sender_port} &
         nc_pid=$!
-        display_info 'Start netcat server on %s port at %s pid' "$sender_port" "$nc_pid"
-        message_from_system "${sender_nickname} in now connected to netchat from ${sender_hostname} addr on ${sender_port} port"
+        display_info 'Start netcat server on "%s" port at "%s" pid' "$sender_port" "$nc_pid"
+        message_from_system "${sender_nickname} in now connected to netchat from ${sender_hostname} ${sender_port}"
     else
         display_error "Sender port is not defined"
     fi
 }
 function netcat_kill() {
     if [[ "$nc_pid" -gt "0" ]]; then
-        display_info 'Closing netcat pid %s' "$nc_pid"
+        display_info 'Closing netcat pid "%s"' "$nc_pid"
         message_from_system "$sender_nickname has left the building!"
         kill ${nc_pid}
     fi
@@ -270,201 +277,228 @@ function hosts_scan_and_recipient_create() {
     done
 }
 function recipient_create() {
-    local recipient_nickname="$1"
-    local recipient_nickname_error
-    if [[ -n "$recipient_nickname" ]]; then
-        recipient_nickname_error=$(validate_nickname "$recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
+    local new_recipient_nickname="$1"
+    local new_recipient_nickname_error
+    if [[ -n "$new_recipient_nickname" ]]; then
+        new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
     fi
-    if [[ -z "$recipient_nickname" ]] || [[ -n "$recipient_nickname_error" ]]; then
+    if [[ -z "$new_recipient_nickname" ]] || [[ -n "$new_recipient_nickname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_nickname_error" ]]; then
-                echo "$recipient_nickname_error"
+            if [[ -n "$new_recipient_nickname_error" ]]; then
+                echo "$new_recipient_nickname_error"
             fi
-            display_prompt 'recipient_nickname' '' 'Recipient name'
-            recipient_nickname_error=$(validate_nickname "$recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
-            if [[ -z "$recipient_nickname_error" ]]; then
+            display_prompt 'new_recipient_nickname' '' 'Recipient name'
+            new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
+            if [[ -z "$new_recipient_nickname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_name
-    recipient_name=$(nickname_to_name "$recipient_nickname")
-    local recipient_hostname="$2"
-    local recipient_hostname_error
-    if [[ -n "$recipient_hostname" ]]; then
-        recipient_hostname_error=$(validate_hostname "$recipient_hostname")
+    local new_recipient_name
+    new_recipient_name=$(nickname_to_name "$new_recipient_nickname")
+    local new_recipient_hostname="$2"
+    local new_recipient_hostname_error
+    if [[ -n "$new_recipient_hostname" ]]; then
+        new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
     fi
-    if [[ -z "$recipient_hostname" ]] || [[ -n "$recipient_hostname_error" ]]; then
+    if [[ -z "$new_recipient_hostname" ]] || [[ -n "$new_recipient_hostname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_hostname_error" ]]; then
-                echo "$recipient_hostname_error"
+            if [[ -n "$new_recipient_hostname_error" ]]; then
+                echo "$new_recipient_hostname_error"
             fi
-            display_prompt 'recipient_hostname' '' 'Recipient hostname'
-            recipient_hostname_error=$(validate_hostname "$recipient_hostname")
-            if [[ -z "$recipient_hostname_error" ]]; then
+            display_prompt 'new_recipient_hostname' '' 'Recipient hostname'
+            new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
+            if [[ -z "$new_recipient_hostname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_port="$3"
-    local recipient_port_error
-    if [[ -n "$recipient_port" ]]; then
-        recipient_port_error=$(validate_port "$recipient_port")
+    local new_recipient_port="$3"
+    local new_recipient_port_error
+    if [[ -n "$new_recipient_port" ]]; then
+        new_recipient_port_error=$(validate_port "$new_recipient_port")
     fi
-    if [[ -z "$recipient_port" ]] || [[ -n "$recipient_port_error" ]]; then
+    if [[ -z "$new_recipient_port" ]] || [[ -n "$new_recipient_port_error" ]]; then
         while true; do
-            if [[ -n "$recipient_port_error" ]]; then
-                echo "$recipient_port_error"
+            if [[ -n "$new_recipient_port_error" ]]; then
+                echo "$new_recipient_port_error"
             fi
-            display_prompt 'recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
-            recipient_port_error=$(validate_port "$recipient_port")
-            if [[ -z "$recipient_port_error" ]]; then
+            display_prompt 'new_recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
+            new_recipient_port_error=$(validate_port "$new_recipient_port")
+            if [[ -z "$new_recipient_port_error" ]]; then
                 break
             fi
         done
     fi
-    display_success "Recipient %s created on %s %s" "$recipient_nickname_new" "$recipient_hostname" "$recipient_port"
-    config_create "chat_users[${recipient_name}]" "$recipient_hostname $recipient_port"
+    local new_recipient_address
+    new_recipient_address="$new_recipient_hostname $new_recipient_port"
+    for recipient_name in "${!chat_users[@]}"; do
+        local recipient_nickname
+        recipient_nickname=$(name_to_nickname "$recipient_name")
+        if [[ "${chat_users[$recipient_name]}" == "$new_recipient_address" ]]; then
+            display_error "Recipient already defined as @%s nickname" "$recipient_name"
+            return 1
+        fi
+    done
+    display_success "Recipient %s created on %s" "$new_recipient_nickname" "$new_recipient_address"
+    config_create "chat_users[${new_recipient_name}]" "$new_recipient_address"
 }
 function recipient_update() {
-    local recipient_nickname_old="$1"
-    local recipient_nickname_old_error
-    if [[ -n "$recipient_nickname_old" ]]; then
-        recipient_nickname_old_error=$(validate_nickname "$recipient_nickname_old" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
+    local old_recipient_nickname="$1"
+    local old_recipient_nickname_error
+    if [[ -n "$old_recipient_nickname" ]]; then
+        old_recipient_nickname_error=$(validate_nickname "$old_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
     fi
-    if [[ -z "$recipient_nickname_old" ]] || [[ -n "$recipient_nickname_old_error" ]]; then
+    if [[ -z "$old_recipient_nickname" ]] || [[ -n "$old_recipient_nickname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_nickname_old_error" ]]; then
-                echo "$recipient_nickname_old_error"
+            if [[ -n "$old_recipient_nickname_error" ]]; then
+                echo "$old_recipient_nickname_error"
             fi
-            display_prompt 'recipient_nickname_old' '' 'Recipient old name'
-            recipient_nickname_old_error=$(validate_nickname "$recipient_nickname_old" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
-            if [[ -z "$recipient_nickname_old_error" ]]; then
+            display_prompt 'old_recipient_nickname' '' 'Recipient old name'
+            old_recipient_nickname_error=$(validate_nickname "$old_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
+            if [[ -z "$old_recipient_nickname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_name_old
-    recipient_name_old=$(nickname_to_name "$recipient_nickname_old")
-    local recipient_address_old=(${chat_users[${recipient_name_old}]})
-    local recipient_hostname_old
-    recipient_hostname_old="${recipient_address_old[0]}"
-    local recipient_port_old
-    recipient_port_old="${recipient_address_old[1]}"
-    local recipient_nickname_new="$2"
-    local recipient_nickname_new_error
-    if [[ -n "$recipient_nickname_new" ]]; then
-        recipient_nickname_new_error=$(validate_nickname "$recipient_nickname_new" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
+    local old_recipient_name
+    old_recipient_name=$(nickname_to_name "$old_recipient_nickname")
+    local old_recipient_address=(${chat_users[${old_recipient_name}]})
+    local old_recipient_hostname
+    old_recipient_hostname="${old_recipient_address[0]}"
+    local old_recipient_port
+    old_recipient_port="${old_recipient_address[1]}"
+    local new_recipient_nickname="$2"
+    local new_recipient_nickname_error
+    if [[ -n "$new_recipient_nickname" ]]; then
+        new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
     fi
-    if [[ -z "$recipient_nickname_new" ]] || [[ -n "$recipient_nickname_new_error" ]]; then
+    if [[ -z "$new_recipient_nickname" ]] || [[ -n "$new_recipient_nickname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_nickname_new_error" ]]; then
-                echo "$recipient_nickname_new_error"
+            if [[ -n "$new_recipient_nickname_error" ]]; then
+                echo "$new_recipient_nickname_error"
             fi
-            display_prompt 'recipient_nickname_new' '' 'Recipient new name'
-            recipient_nickname_new_error=$(validate_nickname "$recipient_nickname_new" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
-            if [[ -z "$recipient_nickname_new_error" ]]; then
+            display_prompt 'new_recipient_nickname' '' 'Recipient new name'
+            new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
+            if [[ -z "$new_recipient_nickname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_name_new
-    recipient_name_new=$(nickname_to_name "$recipient_nickname_new")
-    local recipient_hostname="$3"
-    local recipient_hostname_error
-    if [[ -n "$recipient_hostname" ]]; then
-        recipient_hostname_error=$(validate_hostname "$recipient_hostname")
+    local new_recipient_hostname="$3"
+    local new_recipient_hostname_error
+    if [[ -n "$new_recipient_hostname" ]]; then
+        new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
     fi
-    if [[ -z "$recipient_hostname" ]] || [[ -n "$recipient_hostname_error" ]]; then
+    if [[ -z "$new_recipient_hostname" ]] || [[ -n "$new_recipient_hostname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_hostname_error" ]]; then
-                echo "$recipient_hostname_error"
+            if [[ -n "$new_recipient_hostname_error" ]]; then
+                echo "$new_recipient_hostname_error"
             fi
-            display_prompt 'recipient_hostname' "$recipient_hostname_old" 'Recipient hostname'
-            recipient_hostname_error=$(validate_hostname "$recipient_hostname")
-            if [[ -z "$recipient_hostname_error" ]]; then
+            display_prompt 'new_recipient_hostname' "$old_recipient_hostname" 'Recipient hostname'
+            new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
+            if [[ -z "$new_recipient_hostname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_port="$4"
-    local recipient_port_error
-    if [[ -n "$recipient_port" ]]; then
-        recipient_port_error=$(validate_port "$recipient_port")
+    local new_recipient_port="$4"
+    local new_recipient_port_error
+    if [[ -n "$new_recipient_port" ]]; then
+        new_recipient_port_error=$(validate_port "$new_recipient_port")
     fi
-    if [[ -z "$recipient_port" ]] || [[ -n "$recipient_port_error" ]]; then
+    if [[ -z "$new_recipient_port" ]] || [[ -n "$new_recipient_port_error" ]]; then
         while true; do
-            if [[ -n "$recipient_port_error" ]]; then
-                echo "$recipient_port_error"
+            if [[ -n "$new_recipient_port_error" ]]; then
+                echo "$new_recipient_port_error"
             fi
-            display_prompt 'recipient_port' "$recipient_port_old" 'Recipient port'
-            recipient_port_error=$(validate_port "$recipient_port")
-            if [[ -z "$recipient_port_error" ]]; then
+            display_prompt 'new_recipient_port' "$old_recipient_port" 'Recipient port'
+            new_recipient_port_error=$(validate_port "$new_recipient_port")
+            if [[ -z "$new_recipient_port_error" ]]; then
                 break
             fi
         done
     fi
-    display_success "Recipient %s deleted" "$recipient_nickname_old"
-    config_delete "chat_users[${recipient_name_old}]"
-    display_success "Recipient %s created on %s %s" "$recipient_nickname_new" "$recipient_hostname" "$recipient_port"
-    config_create "chat_users[${recipient_name_new}]" "$recipient_hostname $recipient_port"
+    local new_recipient_address
+    new_recipient_address="$new_recipient_hostname $new_recipient_port"
+    for recipient_name in "${!chat_users[@]}"; do
+        local recipient_nickname
+        recipient_nickname=$(name_to_nickname "$recipient_name")
+        if [[ "${chat_users[$recipient_name]}" == "$new_recipient_address" ]] && [[ "$recipient_nickname" != "$old_recipient_nickname" ]]; then
+            display_error "Recipient already defined as @%s nickname" "$recipient_name"
+            return 1
+        fi
+    done
+    local new_recipient_name
+    new_recipient_name=$(nickname_to_name "$new_recipient_nickname")
+    display_success "Recipient %s renamed to %s" "$old_recipient_nickname" "$new_recipient_nickname"
+    config_delete "chat_users[${old_recipient_name}]"
+    config_create "chat_users[${new_recipient_name}]" "$new_recipient_address"
 }
 function recipient_replace() {
-    local recipient_nickname="$1"
-    local recipient_nickname_error
-    if [[ -n "$recipient_nickname" ]]; then
-        recipient_nickname_error=$(validate_nickname "$recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
+    local new_recipient_nickname="$1"
+    local new_recipient_nickname_error
+    if [[ -n "$new_recipient_nickname" ]]; then
+        new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
     fi
-    if [[ -z "$recipient_nickname" ]] || [[ -n "$recipient_nickname_error" ]]; then
+    if [[ -z "$new_recipient_nickname" ]] || [[ -n "$new_recipient_nickname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_nickname_error" ]]; then
-                echo "$recipient_nickname_error"
+            if [[ -n "$new_recipient_nickname_error" ]]; then
+                echo "$new_recipient_nickname_error"
             fi
-            display_prompt 'recipient_nickname' '' 'Recipient name'
-            recipient_nickname_error=$(validate_nickname "$recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
-            if [[ -z "$recipient_nickname_error" ]]; then
+            display_prompt 'new_recipient_nickname' '' 'Recipient name'
+            new_recipient_nickname_error=$(validate_nickname "$new_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
+            if [[ -z "$new_recipient_nickname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_name
-    recipient_name=$(nickname_to_name "$recipient_nickname")
-    local recipient_hostname="$2"
-    local recipient_hostname_error
-    if [[ -n "$recipient_hostname" ]]; then
-        recipient_hostname_error=$(validate_hostname "$recipient_hostname")
+    local new_recipient_hostname="$2"
+    local new_recipient_hostname_error
+    if [[ -n "$new_recipient_hostname" ]]; then
+        new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
     fi
-    if [[ -z "$recipient_hostname" ]] || [[ -n "$recipient_hostname_error" ]]; then
+    if [[ -z "$new_recipient_hostname" ]] || [[ -n "$new_recipient_hostname_error" ]]; then
         while true; do
-            if [[ -n "$recipient_hostname_error" ]]; then
-                echo "$recipient_hostname_error"
+            if [[ -n "$new_recipient_hostname_error" ]]; then
+                echo "$new_recipient_hostname_error"
             fi
-            display_prompt 'recipient_hostname' '' 'Recipient hostname'
-            recipient_hostname_error=$(validate_hostname "$recipient_hostname")
-            if [[ -z "$recipient_hostname_error" ]]; then
+            display_prompt 'new_recipient_hostname' '' 'Recipient hostname'
+            new_recipient_hostname_error=$(validate_hostname "$new_recipient_hostname")
+            if [[ -z "$new_recipient_hostname_error" ]]; then
                 break
             fi
         done
     fi
-    local recipient_port="$3"
-    local recipient_port_error
-    if [[ -n "$recipient_port" ]]; then
-        recipient_port_error=$(validate_port "$recipient_port")
+    local new_recipient_port="$3"
+    local new_recipient_port_error
+    if [[ -n "$new_recipient_port" ]]; then
+        new_recipient_port_error=$(validate_port "$new_recipient_port")
     fi
-    if [[ -z "$recipient_port" ]] || [[ -n "$recipient_port_error" ]]; then
+    if [[ -z "$new_recipient_port" ]] || [[ -n "$new_recipient_port_error" ]]; then
         while true; do
-            if [[ -n "$recipient_port_error" ]]; then
-                echo "$recipient_port_error"
+            if [[ -n "$new_recipient_port_error" ]]; then
+                echo "$new_recipient_port_error"
             fi
-            display_prompt 'recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
-            recipient_port_error=$(validate_port "$recipient_port")
-            if [[ -z "$recipient_port_error" ]]; then
+            display_prompt 'new_recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
+            new_recipient_port_error=$(validate_port "$new_recipient_port")
+            if [[ -z "$new_recipient_port_error" ]]; then
                 break
             fi
         done
     fi
-    display_success "Recipient %s created on %s %s" "$recipient_nickname" "$recipient_hostname" "$recipient_port"
-    config_create "chat_users[${recipient_name}]" "$recipient_hostname $recipient_port"
+    local new_recipient_address
+    new_recipient_address="$new_recipient_hostname $new_recipient_port"
+    for recipient_name in "${!chat_users[@]}"; do
+        if [[ "${chat_users[$recipient_name]}" == "$new_recipient_address" ]]; then
+            display_error "Recipient already defined as @%s nickname" "$recipient_name"
+            return 1
+        fi
+    done
+    local new_recipient_name
+    new_recipient_name=$(nickname_to_name "$new_recipient_nickname")
+    display_success "Recipient %s created on %s %s" "$new_recipient_nickname" "$new_recipient_hostname" "$new_recipient_port"
+    config_create "chat_users[${new_recipient_name}]" "$new_recipient_address"
 }
 function recipient_delete() {
     local recipient_nickname="$1"
@@ -541,7 +575,7 @@ function message_unicast() {
         return 99
     else
         # send message
-        display_message "${NETCHAT_APP_BELL}${message}" | nc ${recipient_address} 2>/dev/null
+        display_message "${NETCHAT_APP_BELL}${message}" | nc -w 1 ${recipient_address}
         local send_status=$?
         # check response
         if [[ "$send_status" == "0" ]]; then
@@ -565,7 +599,7 @@ function message_write() {
 
 ### INIT ###
 function app_init() {
-    display_info 'Start netcat chat at %s pid' "$$BASHPID"
+    display_info 'Start netcat chat at "%s" pid' "$BASHPID"
     config_load
     netcat_start
     trap "echo '';netcat_kill" EXIT
@@ -580,7 +614,7 @@ function help_screen() {
     display_info ':rc <@nickname> <ip/addr> <port> - recipient create'
     display_info ':ru <@nickname_old> <@nickname_new> <ip/addr> <port> - recipient update'
     display_info ':rd <@nickname> - recipient delete'
-    display_info ':rl|:lookup - scan local network for hosts with open %s port' "$NETCHAT_APP_PORT"
+    display_info ':rl|:lookup - scan local network for hosts with open "%s" port' "$NETCHAT_APP_PORT"
     display_info ':help - help screen'
     display_info ':q|:exit|:quit|:bye - exit netchat'
 }
@@ -634,21 +668,21 @@ while true; do
         ;;
     :rc | :rc*)
         option_array=($option)
-        recipient_nickname=${option_array[1]}
-        recipient_hostname=${option_array[2]}
-        recipient_port=${option_array[3]}
+        new_recipient_nickname=${option_array[1]}
+        new_recipient_hostname=${option_array[2]}
+        new_recipient_port=${option_array[3]}
         unset option_array
-        recipient_create "$recipient_nickname" "$recipient_hostname" "$recipient_port"
+        recipient_create "$new_recipient_nickname" "$new_recipient_hostname" "$new_recipient_port"
         option=':w'
         ;;
     :ru | :ru*)
         option_array=($option)
-        recipient_nickname_old=${option_array[1]}
-        recipient_nickname_new=${option_array[2]}
-        recipient_hostname=${option_array[3]}
-        recipient_port=${option_array[4]}
+        old_recipient_nickname=${option_array[1]}
+        new_recipient_nickname=${option_array[2]}
+        new_recipient_hostname=${option_array[3]}
+        new_recipient_port=${option_array[4]}
         unset option_array
-        recipient_update "$recipient_nickname_old" "$recipient_nickname_new" "$recipient_hostname" "$recipient_port"
+        recipient_update "$old_recipient_nickname" "$new_recipient_nickname" "$new_recipient_hostname" "$new_recipient_port"
         option=':w'
         ;;
     :rd | :rd*)
