@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+if [[ "$BASH_VERSION" != 4* ]]; then
+    echo "Bash version is to low. Consider upgrading to bash 4.x".
+    if uname | grep -iq Darwin; then
+        echo "Read more on https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x/"
+    fi
+    exit 9
+fi
+
 ### VARIABLES ###
 declare -r NETCHAT_SYSTEM_NICKNAME='@system'
 declare -r NETCHAT_BROADCAST_NICKNAME='@all'
@@ -113,7 +121,7 @@ function app_setup_nickname() {
             if [[ -n "$sender_nickname_error" ]]; then
                 echo "$sender_nickname_error"
             fi
-            display_prompt 'sender_nickname' '' 'Recipient name'
+            display_prompt 'sender_nickname' '' 'Sender nickname'
             sender_nickname_error=$(validate_nickname "$sender_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
             if [[ -z "$sender_nickname_error" ]]; then
                 break
@@ -603,9 +611,9 @@ while true; do
         ;;
     :sn | :nickname | :sn* | :nickname*)
         option_array=($option)
-        recipient_nickname=${option_array[1]}
+        sender_nickname=${option_array[1]}
         unset option_array
-        app_setup_nickname "$recipient_nickname"
+        app_setup_nickname "$sender_nickname"
         option=':w'
         ;;
     :q | :exit | :quit | :bye)
