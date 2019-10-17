@@ -5,7 +5,6 @@ declare -r NETCHAT_SYSTEM_NICKNAME='@system'
 declare -r NETCHAT_BROADCAST_NICKNAME='@all'
 declare -r NETCHAT_APP_PORT='2812'
 declare -A chat_users
-nc_pid=-1
 declare -r config_file_path=$(dirname $0)'/config/netcatchat.sh'
 #declare -r log_file_path=$(dirname $0)'/config/netcatchat.log'
 if uname | grep -iq Darwin; then
@@ -13,6 +12,7 @@ if uname | grep -iq Darwin; then
 else
     declare -r sender_hostname=$(ip route get 1 | awk '{print $NF;exit}')
 fi
+nc_pid=-1
 sender_port=''
 sender_nickname=''
 option=':w'
@@ -149,7 +149,7 @@ function netcat_start() {
     if [[ -n "$sender_port" ]]; then
         nc -l -k ${sender_port} &
         nc_pid=$!
-        display_info 'Start netcat on %s port as %s pid' "$sender_port" "$nc_pid"
+        display_info 'Start netcat server on %s port at %s pid' "$sender_port" "$nc_pid"
         message_from_system "${sender_nickname} in now connected to netchat from ${sender_hostname} addr on ${sender_port} port"
     else
         display_error "Sender port is not defined"
@@ -424,6 +424,7 @@ function message_write() {
 
 ### INIT ###
 function app_init() {
+    display_info 'Start netcat chat at %s pid' "$$BASHPID"
     config_load
     netcat_start
     trap "echo '';netcat_kill" EXIT
