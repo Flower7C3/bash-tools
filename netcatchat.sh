@@ -175,7 +175,7 @@ function recipients_list() {
 }
 function check_nickname() {
     local recipient_nickname="$1"
-    local must_be_unique="${2:-n}"
+    local check_exists="$2"
     local recipient_name
     recipient_name=$(nickname_to_name "$recipient_nickname")
     if [[ ! $(echo "$recipient_nickname" | egrep -1 "\b@[A-Za-z0-9._%+-]+\b") ]]; then
@@ -184,9 +184,12 @@ function check_nickname() {
     elif [[ "$recipient_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]] || [[ "$recipient_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
         display_error "Values %s and %s are reserved nicknames" "$NETCHAT_SYSTEM_NICKNAME" "$NETCHAT_BROADCAST_NICKNAME"
         return 2
-    elif [[ -n "${chat_users[$recipient_name]}" ]] && [[ "$must_be_unique" == "y" ]]; then
+    elif [[ -n "${chat_users[$recipient_name]}" ]] && [[ "$check_exists" == "err_if_exists" ]]; then
         display_error "User %s is already defined" "$recipient_nickname"
         return 3
+    elif [[ -z "${chat_users[$recipient_name]}" ]] && [[ "$check_exists" == "err_if_not_exists" ]]; then
+        display_error "User %s is not defined" "$recipient_nickname"
+        return 4
     else
         return 0
     fi
@@ -216,7 +219,7 @@ function recipient_create() {
     local recipient_nickname="$1"
     local recipient_nickname_error
     if [[ -n "$recipient_nickname" ]]; then
-        recipient_nickname_error=$(check_nickname "$recipient_nickname" "y")
+        recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_exists")
     fi
     if [[ -z "$recipient_nickname" ]] || [[ -n "$recipient_nickname_error" ]]; then
         while true; do
@@ -224,7 +227,7 @@ function recipient_create() {
                 echo "$recipient_nickname_error"
             fi
             display_prompt 'recipient_nickname' '' 'Recipient name'
-            recipient_nickname_error=$(check_nickname "$recipient_nickname" "y")
+            recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_exists")
             if [[ -z "$recipient_nickname_error" ]]; then
                 break
             fi
@@ -272,7 +275,7 @@ function recipient_update() {
     local recipient_nickname="$1"
     local recipient_nickname_error
     if [[ -n "$recipient_nickname" ]]; then
-        recipient_nickname_error=$(check_nickname "$recipient_nickname")
+        recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_not_exists")
     fi
     if [[ -z "$recipient_nickname" ]] || [[ -n "$recipient_nickname_error" ]]; then
         while true; do
@@ -280,7 +283,7 @@ function recipient_update() {
                 echo "$recipient_nickname_error"
             fi
             display_prompt 'recipient_nickname' '' 'Recipient name'
-            recipient_nickname_error=$(check_nickname "$recipient_nickname")
+            recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_not_exists")
             if [[ -z "$recipient_nickname_error" ]]; then
                 break
             fi
@@ -288,6 +291,7 @@ function recipient_update() {
     fi
     local recipient_name
     recipient_name=$(nickname_to_name "$recipient_nickname")
+
     local recipient_hostname="$2"
     local recipient_hostname_error
     if [[ -n "$recipient_hostname" ]]; then
@@ -315,7 +319,7 @@ function recipient_update() {
             if [[ -n "$recipient_port_error" ]]; then
                 echo "$recipient_port_error"
             fi
-            display_prompt 'recipient_port' "$NETCHAT_APP_PORT" 'Recipient port'
+            display_prompt 'recipient_port' "" 'Recipient port'
             recipient_port_error=$(check_port "$recipient_port")
             if [[ -z "$recipient_port_error" ]]; then
                 break
@@ -328,7 +332,7 @@ function recipient_delete() {
     local recipient_nickname="$1"
     local recipient_nickname_error
     if [[ -n "$recipient_nickname" ]]; then
-        recipient_nickname_error=$(check_nickname "$recipient_nickname")
+        recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_not_exists")
     fi
     if [[ -z "$recipient_nickname" ]] || [[ -n "$recipient_nickname_error" ]]; then
         while true; do
@@ -336,7 +340,7 @@ function recipient_delete() {
                 echo "$recipient_nickname_error"
             fi
             display_prompt 'recipient_nickname' '' 'Recipient name'
-            recipient_nickname_error=$(check_nickname "$recipient_nickname")
+            recipient_nickname_error=$(check_nickname "$recipient_nickname" "err_if_not_exists")
             if [[ -z "$recipient_nickname_error" ]]; then
                 break
             fi
@@ -400,7 +404,7 @@ function message_unicast() {
         return 99
     else
         # send message
-        display_message "$message" | nc ${recipient_address} 2>/dev/null
+        display_message "\eg\a$message" | nc ${recipient_address} 2>/dev/null
         local send_status=$?
         # check response
         if [[ "$send_status" == "0" ]]; then
@@ -446,12 +450,15 @@ function help_screen() {
 app_init
 while true; do
     case $option in
-    :q | :exit | :quit | :bye)
-        netcat_kill
-        exit
+    :w)
+        message_write
         ;;
-    :h)
-        help_screen
+    \@*)
+        recipient_nickname=$(echo "$option" | awk '{print $1;}')
+        message_text=$(echo "$option" | cut -d' ' -f2-)
+        if [[ -n "$message_text" ]] && [[ "$message_text" != "@" ]] && [[ "$recipient_nickname" != "$message_text" ]]; then
+            message_to_user "$sender_nickname" "$recipient_nickname" "$message_text"
+        fi
         option=':w'
         ;;
     :s)
@@ -460,15 +467,19 @@ while true; do
         netcat_start
         option=':w'
         ;;
+    :q | :exit | :quit | :bye)
+        netcat_kill
+        exit
+        ;;
+    :h)
+        help_screen
+        option=':w'
+        ;;
     :rl)
         recipients_list
         option=':w'
         ;;
-    :rc)
-        recipient_create
-        option=':w'
-        ;;
-    :rc*)
+    :rc | :rc*)
         option_array=($option)
         recipient_nickname=${option_array[1]}
         recipient_hostname=${option_array[2]}
@@ -477,11 +488,7 @@ while true; do
         recipient_create "$recipient_nickname" "$recipient_hostname" "$recipient_port"
         option=':w'
         ;;
-    :ru)
-        recipient_update
-        option=':w'
-        ;;
-    :ru*)
+    :ru | :ru*)
         option_array=($option)
         recipient_nickname=${option_array[1]}
         recipient_hostname=${option_array[2]}
@@ -490,11 +497,7 @@ while true; do
         recipient_update "$recipient_nickname" "$recipient_hostname" "$recipient_port"
         option=':w'
         ;;
-    :rd)
-        recipient_delete
-        option=':w'
-        ;;
-    :rd*)
+    :rd | :rd*)
         option_array=($option)
         recipient_nickname=${option_array[1]}
         unset option_array
@@ -502,16 +505,8 @@ while true; do
         option=':w'
         ;;
     *)
-        if [[ $option == \@* ]]; then
-            recipient_nickname=$(echo "$option" | awk '{print $1;}')
-            message_text=$(echo "$option" | cut -d' ' -f2-)
-            if [[ -n "$message_text" ]] && [[ "$message_text" != "@" ]] && [[ "$recipient_nickname" != "$message_text" ]]; then
-                message_to_user "$sender_nickname" "$recipient_nickname" "$message_text"
-            fi
-            option=':w'
-        else
-            message_write
-        fi
+        display_error "Command not found"
+        option=':w'
         ;;
     esac
 done
