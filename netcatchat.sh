@@ -35,7 +35,6 @@ declare -r icon_prompt='↳'
 
 ### CONFIG ###
 function config_setup() {
-    netcat_kill
     display_prompt 'sender_port' "$sender_port" 'App local port'
     config_create 'sender_port' "$sender_port"
     while true; do
@@ -49,26 +48,41 @@ function config_setup() {
         fi
     done
     config_create 'sender_nickname' "$sender_nickname"
-    netcat_start
 }
 function config_load() {
-    display_info 'Config read'
     if [[ ! -f "$config_file_path" ]]; then
+        display_info 'Config file create'
         mkdir -p $(dirname $config_file_path)
         touch $config_file_path
+        chmod 400 $config_file_path
+    else
+        display_info 'Config file read'
+        source $config_file_path
     fi
-#    if [[ ! -f "$log_file_path" ]]; then
-#        mkdir -p $(dirname $log_file_path)
-#        touch $log_file_path
-#    fi
-    source $config_file_path
+    if [[ -z "$sender_port" ]] || [[ -z "$sender_nickname" ]]; then
+        display_info "No config found - create new one"
+        sender_port=$NETCHAT_APP_PORT
+        sender_nickname='@'$(whoami)
+        config_setup
+    fi
+
+    if [[ "${#chat_users[*]}" -eq "0" ]]; then
+        display_info "No recpients found - create new one"
+        recipient_create
+    fi
+    #    if [[ ! -f "$log_file_path" ]]; then
+    #        mkdir -p $(dirname $log_file_path)
+    #        touch $log_file_path
+    #    fi
 }
 function config_create() {
     local variable_name="$1"
     local variable_value="$2"
     config_delete "$variable_name" "n"
     display_success "Config variable saved: %s=\"${variable_value}\"" "$variable_name"
+    chmod 600 $config_file_path
     printf '%s="%s"'"\n" "$variable_name" "$variable_value" >>$config_file_path
+    chmod 400 $config_file_path
     eval "${variable_name}"'=${variable_value}'
 }
 function config_delete() {
@@ -80,7 +94,9 @@ function config_delete() {
     local variable_name_escaped=$variable_name
     variable_name_escaped=${variable_name_escaped/\[/\\\[}
     variable_name_escaped=${variable_name_escaped/\]/\\\]}
+    chmod 600 $config_file_path
     sed -i '' '/'$variable_name_escaped'/d' $config_file_path
+    chmod 400 $config_file_path
     eval "unset ${variable_name}"
 }
 
@@ -141,8 +157,8 @@ function netcat_start() {
 }
 function netcat_kill() {
     if [[ "$nc_pid" -gt "0" ]]; then
-        message_from_system "$sender_nickname has left the building!"
         display_info 'Closing netcat pid %s' "$nc_pid"
+        message_from_system "$sender_nickname has left the building!"
         kill ${nc_pid}
     fi
 }
@@ -369,7 +385,7 @@ function message_to_user() {
         printf "${message_status}\n"
     fi
     # save logfile
-#    printf '[%s]\t%s\t%s\t%s\n' "$datetime" "$sender_nickname" "$recipient_nickname" "$message_text" >>"$log_file_path"
+    #    printf '[%s]\t%s\t%s\t%s\n' "$datetime" "$sender_nickname" "$recipient_nickname" "$message_text" >>"$log_file_path"
 }
 
 function message_unicast() {
@@ -409,16 +425,6 @@ function message_write() {
 ### INIT ###
 function app_init() {
     config_load
-    if [[ -z "$sender_port" ]] || [[ -z "$sender_nickname" ]]; then
-        sender_port=$NETCHAT_APP_PORT
-        sender_nickname='@'$(whoami)
-        config_setup
-    fi
-
-    if [[ "${#chat_users[*]}" -eq "0" ]]; then
-        recipient_create
-    fi
-
     netcat_start
     trap "echo '';netcat_kill" EXIT
 }
@@ -439,7 +445,7 @@ function help_screen() {
 app_init
 while true; do
     case $option in
-    :q | :exit | :quit | :bye )
+    :q | :exit | :quit | :bye)
         netcat_kill
         exit
         ;;
@@ -448,7 +454,9 @@ while true; do
         option=':w'
         ;;
     :s)
+        netcat_kill
         config_setup
+        netcat_start
         option=':w'
         ;;
     :rl)
