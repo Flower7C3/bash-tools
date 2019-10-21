@@ -159,7 +159,13 @@ function config_load() {
             display_info "$0 [-p <port>] [-n <@nickname>]"
             display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-p|--port <port> - sender port, default ${sender_port}"
             display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-n|--nickname <@nickname> - sender @nickname, default ${sender_nickname}"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-u|--update - update app"
             exit 0
+            ;;
+        -u | --update)
+            display_info "Downloading new app version"
+            curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/netcatchat.sh" >$0
+            exit
             ;;
         -p | --port)
             shift
@@ -606,15 +612,17 @@ function message_unicast() {
         _recipient_online_status=$(ping ${_recipient_hostname} -c 1 -t 1 2>/dev/null | grep -e 'packets' | awk '{print $4;}')
         if [[ "$_recipient_online_status" -gt "0" ]]; then
             # send message
-            display_message "$DISPLAY_SILENT_BELL" "${_message}" | nc -w 1 ${_recipient_address[*]} 2>/dev/null
-            local message_send_response=$?
+            local _formatted_message
+            _formatted_message="$(display_message "$DISPLAY_LINE_SILENT_BELL" "${_message}")"
+            echo "${_formatted_message}" | nc -G 1 ${_recipient_address[*]} 2>/dev/null
+            local _message_send_response=$?
             # check response
-            if [[ "$message_send_response" == "0" ]]; then
+            if [[ "$_message_send_response" == "0" ]]; then
                 display_message "$_message"
                 return 0
             else
                 display_error "Recipient %s is not connected on %s" "$_recipient_nickname" "${_recipient_address[*]}"
-                return $message_send_response
+                return $_message_send_response
             fi
         else
             display_error "Recipient %s is offline" "$_recipient_nickname"
@@ -636,7 +644,6 @@ function option_reset() {
 ### INIT ###
 function app_init() {
     trap "echo '';netcat_kill;" EXIT
-    trap "display_info $DISPLAY_LINE_PREPEND_NL 'Type "'`/exit`'" to close app'" SIGINT
     config_load "$@"
     netcat_start
     option_reset
