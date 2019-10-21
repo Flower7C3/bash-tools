@@ -11,7 +11,6 @@ fi
 ### VARIABLES ###
 declare -r NETCHAT_SYSTEM_NICKNAME='@system'
 declare -r NETCHAT_BROADCAST_NICKNAME='@all'
-declare -r NETCHAT_APP_BELL="\eg\a"
 declare -r NETCHAT_APP_PORT='2812'
 declare -r NICKNAME_CHECK_MODE_IGNORE='nickname_validate_mode_ignore'
 declare -r NICKNAME_CHECK_MODE_ERR_IF_EXISTS='nickname_validate_mode_err_if_exists'
@@ -30,21 +29,22 @@ sender_nickname=''
 option=''
 
 ### COLORS ###
-declare -r color_off='\033[0m'       # Text Reset
-declare -r color_black='\033[0;30m'  # Black
-declare -r color_red='\033[0;31m'    # Red
-declare -r color_green='\033[0;32m'  # Green
-declare -r color_yellow='\033[0;33m' # Yellow
-declare -r color_blue='\033[0;34m'   # Blue
-declare -r color_purple='\033[0;35m' # Purple
-declare -r color_cyan='\033[0;36m'   # Cyan
-declare -r color_white='\033[0;37m'  # White
-declare -r icon_info='☞'
-declare -r icon_success='✓'
-declare -r icon_error='✗'
-declare -r icon_message='✉'
-declare -r icon_prompt='↳'
+declare -r COLOR_OFF='\033[0m'       # Text Reset
+declare -r COLOR_BLACK='\033[0;30m'  # Black
+declare -r COLOR_RED='\033[0;31m'    # Red
+declare -r COLOR_GREEN='\033[0;32m'  # Green
+declare -r COLOR_YELLOW='\033[0;33m' # Yellow
+declare -r COLOR_BLUE='\033[0;34m'   # Blue
+declare -r COLOR_PURPLE='\033[0;35m' # Purple
+declare -r COLOR_CYAN='\033[0;36m'   # Cyan
+declare -r COLOR_WHITE='\033[0;37m'  # White
+declare -r ICON_INFO='☞'
+declare -r ICON_SUCCESS='✓'
+declare -r ICON_ERROR='✗'
+declare -r ICON_MESSAGE='✉'
+declare -r ICON_PROMPT='↳'
 declare -r DISPLAY_LINE_NO_ICON='display_line.no_icon'
+declare -r DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
 declare -r DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
 declare -r DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
 declare -r DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
@@ -63,6 +63,9 @@ function display_line() {
         case $1 in
         $DISPLAY_LINE_NO_ICON)
             _icon=""
+            ;;
+        $DISPLAY_LINE_SILENT_BELL)
+            _line_prepend="\eg\a\r"
             ;;
         $DISPLAY_LINE_PREPEND_NL)
             _line_prepend="\n"
@@ -89,19 +92,19 @@ function display_line() {
     shift
     local _text
     _text=$(printf "$_text_pattern" "$@")
-    echo -e -n "${_line_prepend}${_color}${_icon}${_text}${color_off}${_line_append}"
+    echo -e -n "${_line_prepend}${_color}${_icon}${_text}${COLOR_OFF}${_line_append}"
 }
 function display_info() {
-    display_line "$color_cyan" "$icon_info" "$@"
+    display_line "$COLOR_CYAN" "$ICON_INFO" "$@"
 }
 function display_message() {
-    display_line "$color_white" "$icon_message" "$@"
+    display_line "$COLOR_WHITE" "$ICON_MESSAGE" "$@"
 }
 function display_success() {
-    display_line "$color_green" "$icon_success" "$@"
+    display_line "$COLOR_GREEN" "$ICON_SUCCESS" "$@"
 }
 function display_error() {
-    display_line "$color_red" "$icon_error" "$@"
+    display_line "$COLOR_RED" "$ICON_ERROR" "$@"
 }
 function display_prompt() {
     local _variable_name="$1"
@@ -116,13 +119,13 @@ function display_prompt() {
             _question_text="${_question_text}: "
         fi
         local _prompt_text
-        _prompt_text=$(display_line "$color_yellow" "$icon_prompt" "$DISPLAY_LINE_APPEND_NULL" "$_question_text" "$@")
+        _prompt_text=$(display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_text" "$@")
         if [[ -n "$_default_value" ]]; then
             read -e -r -p "$_prompt_text" -i "$_default_value" "${_variable_name}"
         else
             read -e -r -p "$_prompt_text" "${_variable_name}"
         fi
-        echo -e -n "${color_off}"
+        echo -e -n "${COLOR_OFF}"
     fi
 }
 
@@ -603,7 +606,7 @@ function message_unicast() {
         _recipient_online_status=$(ping ${_recipient_hostname} -c 1 -t 1 2>/dev/null | grep -e 'packets' | awk '{print $4;}')
         if [[ "$_recipient_online_status" -gt "0" ]]; then
             # send message
-            display_message "${NETCHAT_APP_BELL}${_message}" | nc -w 1 ${_recipient_address[*]} 2>/dev/null
+            display_message "$DISPLAY_SILENT_BELL" "${_message}" | nc -w 1 ${_recipient_address[*]} 2>/dev/null
             local message_send_response=$?
             # check response
             if [[ "$message_send_response" == "0" ]]; then
