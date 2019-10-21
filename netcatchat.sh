@@ -108,13 +108,8 @@ function app_setup_port() {
             _new_sender_port=''
         fi
     done
-    local _fire_error
-    _fire_error=$(config_create 'sender_port' "$_new_sender_port")
-    if [[ -z "$_fire_error" ]]; then
-        display_success "Sender port set to %s" "$_new_sender_port"
-    else
-        display_error "Sender port not modified: %s" "$_fire_error"
-    fi
+    config_create 'sender_port' "$_new_sender_port"
+    display_success "Sender port set to %s" "$_new_sender_port"
 }
 function app_setup_nickname() {
     local _new_sender_nickname="${1:-$sender_nickname}"
@@ -130,15 +125,10 @@ function app_setup_nickname() {
         fi
     done
     local _old_sender_nickname=$sender_nickname
-    local _fire_error
-    _fire_error=$(config_create 'sender_nickname' "$_new_sender_nickname")
-    if [[ -z "$_fire_error" ]]; then
-        display_success "Sender nickname set to %s" "$_new_sender_nickname"
-        if [[ -n "$_old_sender_nickname" ]]; then
-            message_from_system "$_old_sender_nickname is now known as $_new_sender_nickname"
-        fi
-    else
-        display_error "Sender nickname not modified: %s" "$_fire_error"
+    config_create 'sender_nickname' "$_new_sender_nickname"
+    display_success "Sender nickname set to %s" "$_new_sender_nickname"
+    if [[ -n "$_old_sender_nickname" ]]; then
+        message_from_system "$_old_sender_nickname is now known as $_new_sender_nickname"
     fi
 }
 function config_load() {
@@ -204,37 +194,21 @@ function config_create() {
     local _variable_name="$1"
     local _variable_value="$2"
     local _variable_delete_error
-    _variable_delete_error=$(config_delete "$_variable_name")
-    if [[ -z "$_variable_delete_error" ]]; then
-        local variable_create_response
-        variable_create_response=$(eval "${_variable_name}"'=${_variable_value}' 2>&1)
-        if [[ -z "$variable_create_response" ]]; then
-            chmod 600 $config_file_path
-            printf '%s="%s"'"\n" "$_variable_name" "$_variable_value" >>$config_file_path
-            chmod 400 $config_file_path
-            return 0
-        fi
-        echo "$variable_create_response"
-        return 1
-    fi
-    echo "$_variable_delete_error"
-    return 2
+    config_delete "$_variable_name"
+    eval "${_variable_name}"'=${_variable_value}' 2>&1
+    chmod 600 $config_file_path
+    printf '%s="%s"'"\n" "$_variable_name" "$_variable_value" >>$config_file_path
+    chmod 400 $config_file_path
 }
 function config_delete() {
     local _variable_name="$1"
     local _variable_name_escaped=$_variable_name
     _variable_name_escaped=${_variable_name_escaped/\[/\\\[}
     _variable_name_escaped=${_variable_name_escaped/\]/\\\]}
-    local _variable_delete_response
-    _variable_delete_response=$(eval "unset ${_variable_name}" 2>&1)
-    if [[ -z "$_variable_delete_response" ]]; then
-        chmod 600 $config_file_path
-        sed -i '' '/'$_variable_name_escaped'/d' $config_file_path
-        chmod 400 $config_file_path
-        return 0
-    fi
-    echo "$_variable_delete_response"
-    return 1
+    eval "unset ${_variable_name}" 2>&1
+    chmod 600 $config_file_path
+    sed -i '' '/'$_variable_name_escaped'/d' $config_file_path
+    chmod 400 $config_file_path
 }
 
 ### HISTORY ###
@@ -446,13 +420,8 @@ function recipient_create() {
             return 1
         fi
     done
-    local _fire_error
-    _fire_error=$(config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}")
-    if [[ -z "$_fire_error" ]]; then
-        display_success "Recipient %s created on %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
-    else
-        display_error "Recipient not created: %s" "$_fire_error"
-    fi
+    config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
+    display_success "Recipient %s created on %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
 }
 function recipient_rename() {
     local old_recipient_nickname="$1"
@@ -485,13 +454,8 @@ function recipient_rename() {
     recipient_address=(${chat_users[${old_recipient_name}]})
     local _new_recipient_name
     _new_recipient_name=$(nickname_to_name "$_new_recipient_nickname")
-    local _fire_error
-    _fire_error=$(config_delete "chat_users[${old_recipient_name}]" && config_create "chat_users[${_new_recipient_name}]" "${recipient_address[*]}")
-    if [[ -z "$_fire_error" ]]; then
-        display_success "Recipient %s renamed to %s" "$old_recipient_nickname" "$_new_recipient_nickname"
-    else
-        display_error "Recipient not renamed: %s" "$_fire_error"
-    fi
+    config_delete "chat_users[${old_recipient_name}]" && config_create "chat_users[${_new_recipient_name}]" "${recipient_address[*]}"
+    display_success "Recipient %s renamed to %s" "$old_recipient_nickname" "$_new_recipient_nickname"
 }
 function recipient_update() {
     local _new_recipient_nickname="$1"
@@ -543,13 +507,8 @@ function recipient_update() {
             return 1
         fi
     done
-    local _fire_error
-    _fire_error=$(config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}")
-    if [[ -z "$_fire_error" ]]; then
-        display_success "Recipient %s updated to %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
-    else
-        display_error "Recipient not updated: %s" "$_fire_error"
-    fi
+    config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
+    display_success "Recipient %s updated to %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
 }
 function recipient_delete() {
     local _recipient_nickname="$1"
@@ -569,13 +528,8 @@ function recipient_delete() {
     if [[ -z "${chat_users[$_recipient_name]}" ]]; then
         display_error 'Recipient %s not found' "$_recipient_nickname"
     else
-        local _fire_error
-        _fire_error=$(config_delete "chat_users[${_recipient_name}]")
-        if [[ -z "$_fire_error" ]]; then
-            display_success 'Recipient %s deleted' "$_recipient_nickname"
-        else
-            display_error "Recipient not deleted: %s" "$_fire_error"
-        fi
+        config_delete "chat_users[${_recipient_name}]"
+        display_success 'Recipient %s deleted' "$_recipient_nickname"
     fi
 }
 
@@ -587,7 +541,7 @@ function message_to_user() {
     local _datetime
     _datetime=$(date +"%Y-%m-%d %H:%M:%S")
     local _message
-        local _message_status
+    local _message_status
     if [[ "$_recipient_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
         # generate message
         if [[ "$_sender_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]]; then
@@ -596,10 +550,10 @@ function message_to_user() {
             _message=$(printf "[%s] %s broadcast: %s" "$_datetime" "$_sender_nickname" "$_message_text")
         fi
         # display loopback
-        display_message "_$message"
+        display_message "$_message"
         # send message
         for _recipient_name in "${!chat_users[@]}"; do
-            _message_status=$(message_unicast "$(name_to_nickname "$_recipient_name")" "_$message")
+            _message_status=$(message_unicast "$(name_to_nickname "$_recipient_name")" "$_message")
         done
     else
         # generate message
@@ -609,7 +563,7 @@ function message_to_user() {
             _message="$(printf "[%s] %s » %s: %s" "$_datetime" "$_sender_nickname" "$_recipient_nickname" "$_message_text")"
         fi
         # send message
-        _message_status=$(message_unicast "$_recipient_nickname" "_$message")
+        _message_status=$(message_unicast "$_recipient_nickname" "$_message")
         # display loopback
         printf "${_message_status}\n"
     fi
