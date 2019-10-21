@@ -614,7 +614,7 @@ function message_unicast() {
             # send message
             local _formatted_message
             _formatted_message="$(display_message "$DISPLAY_LINE_SILENT_BELL" "${_message}")"
-            echo "${_formatted_message}" | nc -G 1 ${_recipient_address[*]} 2>/dev/null
+            echo "${_formatted_message}" | nc ${_recipient_address[*]} 2>/dev/null
             local _message_send_response=$?
             # check response
             if [[ "$_message_send_response" == "0" ]]; then
