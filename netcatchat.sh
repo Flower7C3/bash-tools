@@ -115,9 +115,7 @@ function display_prompt() {
         eval "${_variable_name}"'=${_variable_value}' 2>&1
     else
         shift
-        if [[ -n "$_question_text" ]]; then
-            _question_text="${_question_text}: "
-        fi
+        _question_text="${_question_text}: "
         local _prompt_text
         _prompt_text=$(display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_text" "$@")
         if [[ -n "$_default_value" ]]; then
@@ -235,9 +233,27 @@ function netcat_start() {
 function netcat_kill() {
     if [[ "$nc_pid" -gt "0" ]]; then
         message_from_system "${sender_nickname} has left the building!"
-        display_info 'Closing netcat pid "%s"' "$nc_pid"
+        display_info 'Closing netcat server at "%s" pid' "$nc_pid"
         kill ${nc_pid}
     fi
+}
+
+### TRAP ###
+_exit='n'
+function ctrlc_trap_init() {
+    _exit='n'
+    trap '_exit="y";return;' SIGINT
+}
+function ctrlc_trap_remove() {
+    trap - SIGINT
+}
+function ctrlc_trap_exec() {
+    if [[ "$_exit" == "y" ]]; then
+        echo
+        trap - SIGINT
+        return 0
+    fi
+    return 1
 }
 
 ### HISTORY ###
@@ -265,16 +281,16 @@ function validate_nickname() {
     local _name
     _name=$(nickname_to_name "$_nickname")
     if [[ ! "$_nickname?" == @* ]]; then
-        display_error "Nickname %s is invalid, all nicknames starts with @ sign" "$_nickname"
+        display_error 'Nickname "%s" is invalid, all nicknames starts with @ sign' "$_nickname"
         return 1
     elif [[ "$_nickname" == "$NETCHAT_SYSTEM_NICKNAME" ]] || [[ "$_nickname" == "$NETCHAT_BROADCAST_NICKNAME" ]]; then
-        display_error "Values %s and %s are reserved nicknames" "$NETCHAT_SYSTEM_NICKNAME" "$NETCHAT_BROADCAST_NICKNAME"
+        display_error 'Values "%s" and "%s" are reserved nicknames' "$NETCHAT_SYSTEM_NICKNAME" "$NETCHAT_BROADCAST_NICKNAME"
         return 2
     elif [[ -n "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS" ]]; then
-        display_error "Recipient %s is already defined" "$_nickname"
+        display_error 'Recipient "%s" is already defined' "$_nickname"
         return 3
     elif [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS" ]]; then
-        display_error "Recipient %s is not defined" "$_nickname"
+        display_error 'Recipient "%s" is not defined' "$_nickname"
         return 4
     else
         return 0
@@ -283,7 +299,7 @@ function validate_nickname() {
 function validate_hostname() {
     local _hostname=$1
     if [[ ! "$_hostname" =~ ^[A-Za-z0-9._%+-]+$ ]]; then
-        display_error "Hostname/IP address %s is invalid" "$_hostname"
+        display_error 'Hostname/IP address %s is invalid' "$_hostname"
         return 1
     else
         return 0
@@ -292,10 +308,10 @@ function validate_hostname() {
 function validate_port() {
     local _port=$1
     if [[ ! "$_port" =~ ^[0-9]+$ ]]; then
-        display_error "Port number %s is invalid" "$_port"
+        display_error 'Port number "%s" is invalid' "$_port"
         return 1
     elif [[ "$_port" -lt "1024" ]] || [[ "$_port" -gt "65536" ]]; then
-        display_error "Port number must be between 1024 and 65536"
+        display_error 'Port number must be between 1024 and 65536'
         return 2
     else
         return 0
@@ -303,10 +319,14 @@ function validate_port() {
 }
 ### SENDER ###
 function app_setup_port() {
+    ctrlc_trap_init
     local _new_sender_port="$1"
     local _new_sender_port_error
     while true; do
-        display_prompt '_new_sender_port' 'App local port' "$NETCHAT_APP_PORT" "$_new_sender_port"
+        display_prompt '_new_sender_port' 'Setup sender port number' "$NETCHAT_APP_PORT" "$_new_sender_port"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_sender_port_error=$(validate_port "$_new_sender_port")
         if [[ -z "$_new_sender_port_error" ]]; then
             break
@@ -317,12 +337,17 @@ function app_setup_port() {
     done
     config_create 'sender_port' "$_new_sender_port"
     display_success "Sender port set to %s" "$_new_sender_port"
+    ctrlc_trap_remove
 }
 function app_setup_nickname() {
+    ctrlc_trap_init
     local _new_sender_nickname="$1"
     local _new_sender_nickname_error
     while true; do
-        display_prompt '_new_sender_nickname' 'Sender nickname' "$sender_nickname" "$_new_sender_nickname"
+        display_prompt '_new_sender_nickname' 'Setup sender nickname' "$sender_nickname" "$_new_sender_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_sender_nickname_error=$(validate_nickname "$_new_sender_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
         if [[ -z "$_new_sender_nickname_error" ]]; then
             break
@@ -337,6 +362,7 @@ function app_setup_nickname() {
     if [[ -n "$_old_sender_nickname" ]]; then
         message_from_system "$_old_sender_nickname is now known as $_new_sender_nickname"
     fi
+    ctrlc_trap_remove
 }
 
 ### RECIPIENTS ###
@@ -398,10 +424,14 @@ function hosts_scan_and_recipient_create() {
     done
 }
 function recipient_create() {
+    ctrlc_trap_init
     local _new_recipient_nickname="$1"
     local _new_recipient_nickname_error
     while true; do
-        display_prompt '_new_recipient_nickname' 'Recipient name' '' "$_new_recipient_nickname"
+        display_prompt '_new_recipient_nickname' "New recipient's nickname" '' "$_new_recipient_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
         if [[ -z "$_new_recipient_nickname_error" ]]; then
             break
@@ -415,7 +445,10 @@ function recipient_create() {
     local _new_recipient_hostname="$2"
     local _new_recipient_hostname_error
     while true; do
-        display_prompt '_new_recipient_hostname' 'Recipient hostname' '' "$_new_recipient_hostname"
+        display_prompt '_new_recipient_hostname' "New recipient's hostname/IP address" '' "$_new_recipient_hostname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_hostname_error=$(validate_hostname "$_new_recipient_hostname")
         if [[ -z "$_new_recipient_hostname_error" ]]; then
             break
@@ -427,7 +460,10 @@ function recipient_create() {
     local _new_recipient_port="$3"
     local _new_recipient_port_error
     while true; do
-        display_prompt '_new_recipient_port' 'Recipient port' "$NETCHAT_APP_PORT" "$_new_recipient_port"
+        display_prompt '_new_recipient_port' "New recipient's port number" "$NETCHAT_APP_PORT" "$_new_recipient_port"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_port_error=$(validate_port "$_new_recipient_port")
         if [[ -z "$_new_recipient_port_error" ]]; then
             break
@@ -442,18 +478,24 @@ function recipient_create() {
         local _recipient_nickname
         _recipient_nickname=$(name_to_nickname "$_recipient_name")
         if [[ "${chat_users[$_recipient_name]}" == "${_new_recipient_address[*]}" ]]; then
-            display_error "Recipient already defined as %s nickname" "$_recipient_nickname"
+            display_error "Recipient's data already defined and known as %s" "$_recipient_nickname"
+            ctrlc_trap_remove
             return 1
         fi
     done
     config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
-    display_success "Recipient %s created on %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
+    display_success "Recipient %s created as \"%s\"" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
+    ctrlc_trap_remove
 }
 function recipient_rename() {
+    ctrlc_trap_init
     local old_recipient_nickname="$1"
     local old_recipient_nickname_error
     while true; do
-        display_prompt 'old_recipient_nickname' 'Recipient old name' "$old_recipient_nickname"
+        display_prompt 'old_recipient_nickname' "Recipient's old nickname" "$old_recipient_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         old_recipient_nickname_error=$(validate_nickname "$old_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
         if [[ -z "$old_recipient_nickname_error" ]]; then
             break
@@ -467,7 +509,10 @@ function recipient_rename() {
     local _new_recipient_nickname="$2"
     local _new_recipient_nickname_error
     while true; do
-        display_prompt '_new_recipient_nickname' 'Recipient new name' '' "$_new_recipient_nickname"
+        display_prompt '_new_recipient_nickname' "Recipient's new nickname" '' "$_new_recipient_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
         if [[ -z "$_new_recipient_nickname_error" ]]; then
             break
@@ -482,12 +527,17 @@ function recipient_rename() {
     _new_recipient_name=$(nickname_to_name "$_new_recipient_nickname")
     config_delete "chat_users[${old_recipient_name}]" && config_create "chat_users[${_new_recipient_name}]" "${recipient_address[*]}"
     display_success "Recipient %s renamed to %s" "$old_recipient_nickname" "$_new_recipient_nickname"
+    ctrlc_trap_remove
 }
 function recipient_update() {
+    ctrlc_trap_init
     local _new_recipient_nickname="$1"
     local _new_recipient_nickname_error
     while true; do
         display_prompt '_new_recipient_nickname' 'Recipient name' '' "$_new_recipient_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
         if [[ -z "$_new_recipient_nickname_error" ]]; then
             break
@@ -504,7 +554,10 @@ function recipient_update() {
     local _new_recipient_hostname="$2"
     local _new_recipient_hostname_error
     while true; do
-        display_prompt '_new_recipient_hostname' 'Recipient hostname' "${old_recipient_address[0]}" "$_new_recipient_hostname"
+        display_prompt '_new_recipient_hostname' "Recipient's updated hostname/IP address" "${old_recipient_address[0]}" "$_new_recipient_hostname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_hostname_error=$(validate_hostname "$_new_recipient_hostname")
         if [[ -z "$_new_recipient_hostname_error" ]]; then
             break
@@ -516,7 +569,10 @@ function recipient_update() {
     local _new_recipient_port="$3"
     local _new_recipient_port_error
     while true; do
-        display_prompt '_new_recipient_port' 'Recipient port' "${old_recipient_address[1]}" "$_new_recipient_port"
+        display_prompt '_new_recipient_port' "Recipient's updated port number" "${old_recipient_address[1]}" "$_new_recipient_port"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _new_recipient_port_error=$(validate_port "$_new_recipient_port")
         if [[ -z "$_new_recipient_port_error" ]]; then
             break
@@ -528,19 +584,26 @@ function recipient_update() {
     local _new_recipient_address
     _new_recipient_address=("$_new_recipient_hostname" "$_new_recipient_port")
     for _recipient_name in "${!chat_users[@]}"; do
-        if [[ "${chat_users[$_recipient_name]}" == "${_new_recipient_address[*]}" ]] && [[ "$_recipient_name" != "$_new_recipient_nickname" ]]; then
-            display_error "Recipient already defined as @%s nickname" "$_recipient_name"
+        if [[ "${chat_users[$_recipient_name]}" == "${_new_recipient_address[*]}" ]] && [[ "$_recipient_name" != "$_new_recipient_name" ]]; then
+            local _recipient_nickname=$(name_to_nickname "$_recipient_name")
+            display_error "Recipient's data \"%s\" already defined and known as %s" "${_new_recipient_address[*]}" "$_recipient_nickname"
+            ctrlc_trap_remove
             return 1
         fi
     done
     config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
-    display_success "Recipient %s updated to %s" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
+    display_success "Recipient %s updated as \"%s\"" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
+    ctrlc_trap_remove
 }
 function recipient_delete() {
+    ctrlc_trap_init
     local _recipient_nickname="$1"
     local _recipient_nickname_error
     while true; do
-        display_prompt '_recipient_nickname' 'Recipient name' '' "$_recipient_nickname"
+        display_prompt '_recipient_nickname' "Recipient's nickname to delete" '' "$_recipient_nickname"
+        if ctrlc_trap_exec; then
+            return
+        fi
         _recipient_nickname_error=$(validate_nickname "$_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
         if [[ -z "$_recipient_nickname_error" ]]; then
             break
@@ -557,6 +620,7 @@ function recipient_delete() {
         config_delete "chat_users[${_recipient_name}]"
         display_success 'Recipient %s deleted' "$_recipient_nickname"
     fi
+    ctrlc_trap_remove
 }
 
 ### MESSAGE ###
@@ -614,7 +678,7 @@ function message_unicast() {
             # send message
             local _formatted_message
             _formatted_message="$(display_message "$DISPLAY_LINE_SILENT_BELL" "${_message}")"
-            echo "${_formatted_message}" | nc ${_recipient_address[*]} 2>/dev/null
+            echo "${_formatted_message}" | nc -cu ${_recipient_address[*]} 2>/dev/null
             local _message_send_response=$?
             # check response
             if [[ "$_message_send_response" == "0" ]]; then
@@ -635,7 +699,7 @@ function message_from_system() {
     message_to_user "$NETCHAT_SYSTEM_NICKNAME" "$NETCHAT_BROADCAST_NICKNAME" "$_message_text"
 }
 function option_get() {
-    display_prompt 'option'
+    display_prompt 'option' 'Chat'
 }
 function option_reset() {
     option='/i'
@@ -643,10 +707,30 @@ function option_reset() {
 
 ### INIT ###
 function app_init() {
+    system_check
     trap "echo '';netcat_kill;" EXIT
     config_load "$@"
     netcat_start
     option_reset
+}
+function system_check() {
+    local _required_programs=(nc ping nmap grep)
+    local _is_system_ok='true'
+    for _cmd in "${_required_programs[@]}"; do
+        if ! hash "$_cmd" 2>/dev/null; then
+            _is_system_ok='false'
+            break
+        fi
+    done
+    if [[ "$_is_system_ok" == "false" ]]; then
+        display_error "Please install missing programs"
+        for _cmd in "${_required_programs[@]}"; do
+            if ! hash "$_cmd" 2>/dev/null; then
+                display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s" "$_cmd"
+            fi
+        done
+        exit 9
+    fi
 }
 
 ### HELP ###
@@ -675,8 +759,8 @@ while true; do
         option_array=($option)
         option_sender_port=${option_array[1]}
         unset option_array
-        netcat_kill
         app_setup_port "$option_sender_port"
+        netcat_kill
         netcat_start
         option_reset
         ;;
