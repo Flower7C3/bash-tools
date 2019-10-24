@@ -481,7 +481,7 @@ function recipient_rename() {
     local old_recipient_nickname="$1"
     local old_recipient_nickname_error
     while true; do
-        display_prompt 'old_recipient_nickname' "Recipient's old nickname" "$old_recipient_nickname"
+        display_prompt 'old_recipient_nickname' "Recipient's old nickname" '' "$old_recipient_nickname"
         if ctrlc_trap_exec; then
             return
         fi
