@@ -9,9 +9,9 @@ docker_container_name=$1
 
 ## PROGRAM
 if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
-	printf "${color_success}Starting container ${color_success_b}"
+	printf "${COLOR_SUCCESS}Starting container ${COLOR_SUCCESS_B}"
 	docker start ${docker_container_name}
-	printf "${color_off}"
+	color_reset
 fi
 
 docker exec -ti ${docker_container_name} bash

@@ -5,7 +5,7 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 ## WELCOME
 program_title "Create GIT tag"
-display_info "You are in ${color_info_h}`pwd`${color_off} directory."
+display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_OFF} directory."
 
 
 ## VARIABLES
@@ -15,19 +15,19 @@ prompt_variable tag_message "Tag message" "" 3 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Create ${color_question_h}${tag_name}${color_question} tag in ${color_question_h}${commit_hash}${color_question} commit hash?"
+confirm_or_exit "Create ${COLOR_QUESTION_H}${tag_name}${COLOR_QUESTION} tag in ${COLOR_QUESTION_H}${commit_hash}${COLOR_QUESTION} commit hash?"
 
-display_info "${color_success_b}Get current branch ${color_success}"
+display_info "${COLOR_SUCCESS_B}Get current branch ${COLOR_SUCCESS}"
 current_branch=$(git branch | grep '*' | cut -d ' ' -f 2)
 
-display_info "${color_success_b}Checkout to ${color_success_h}${commit_hash}${color_success_b} commit ${color_success}"
+display_info "${COLOR_SUCCESS_B}Checkout to ${COLOR_SUCCESS_H}${commit_hash}${COLOR_SUCCESS_B} commit ${COLOR_SUCCESS}"
 git checkout $commit_hash
 
-display_info "${color_success_b}Create new ${color_success_h}${tag_name}${color_success_b} tag with ${color_success_h}${tag_message}${color_success_b} message ${color_success}"
+display_info "${COLOR_SUCCESS_B}Create new ${COLOR_SUCCESS_H}${tag_name}${COLOR_SUCCESS_B} tag with ${COLOR_SUCCESS_H}${tag_message}${COLOR_SUCCESS_B} message ${COLOR_SUCCESS}"
 git tag -a "$tag_name" -m "$tag_message"
 
-display_info "${color_success_b}Push the new tag ${color_success_h}${new_tag_name}${color_success_b} to origin ${color_success} "
+display_info "${COLOR_SUCCESS_B}Push the new tag ${COLOR_SUCCESS_H}${new_tag_name}${COLOR_SUCCESS_B} to origin ${COLOR_SUCCESS} "
 git push origin --tags
 
-display_info "${color_success_b}Checkout to ${color_success_h}${current_branch}${color_success_b} branch ${color_success}"
+display_info "${COLOR_SUCCESS_B}Checkout to ${COLOR_SUCCESS_H}${current_branch}${COLOR_SUCCESS_B} branch ${COLOR_SUCCESS}"
 git checkout $current_branch

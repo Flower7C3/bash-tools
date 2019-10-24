@@ -10,7 +10,7 @@ _branch_dst="master"
 
 ## WELCOME
 program_title "Merge GIT branches"
-display_info "You are in ${color_info_h}`pwd`${color_info_b} directory."
+display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_INFO_B} directory."
 
 
 ## VARIABLES
@@ -22,32 +22,32 @@ prompt_variable_fixed noff "With merge commit (no fast forwad)" "y" "y n" 4 "$@"
 
 ## PROGRAM
 if [[ "$noff" == "y" ]]; then
-	confirm_or_exit "Merge with commit branch ${color_question_h}${prefix}${branch_src}${color_question_b} into ${color_question_h}${prefix}${branch_dst}${color_question_b}?"
+	confirm_or_exit "Merge with commit branch ${COLOR_QUESTION_H}${prefix}${branch_src}${COLOR_QUESTION_B} into ${COLOR_QUESTION_H}${prefix}${branch_dst}${COLOR_QUESTION_B}?"
 else
-	confirm_or_exit "Merge branch ${color_question_h}${prefix}${branch_src}${color_question_b} into ${color_question_h}${prefix}${branch_dst}${color_question_b}?"
+	confirm_or_exit "Merge branch ${COLOR_QUESTION_H}${prefix}${branch_src}${COLOR_QUESTION_B} into ${COLOR_QUESTION_H}${prefix}${branch_dst}${COLOR_QUESTION_B}?"
 fi
 
-display_info "${color_success_b}Push ${color_success_h}${prefix}${branch_src}${color_success_b} to upstream ${color_success}"
+display_info "${COLOR_SUCCESS_B}Push ${COLOR_SUCCESS_H}${prefix}${branch_src}${COLOR_SUCCESS_B} to upstream ${COLOR_SUCCESS}"
 git push origin ${prefix}${branch_src}
 
-display_info "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_dst}${color_notice_b} ${color_notice}"
+display_info "${COLOR_NOTICE_B}Checkout ${COLOR_NOTICE_H}${prefix}${branch_dst}${COLOR_NOTICE_B} ${COLOR_NOTICE}"
 git checkout ${prefix}${branch_dst}
 
-display_info "${color_error_b}Pull ${color_error_h}${prefix}${branch_dst}${color_error_b} from upstream ${Red}"
+display_info "${COLOR_ERROR_B}Pull ${COLOR_ERROR_H}${prefix}${branch_dst}${COLOR_ERROR_B} from upstream ${COLOR_RED}"
 git pull origin ${prefix}${branch_dst}
 
 if [[ "$noff" == "y" ]]; then
-	display_info "${color_notice_b}Merge with commit ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	display_info "${COLOR_NOTICE_B}Merge with commit ${COLOR_NOTICE_H}${prefix}${branch_src}${COLOR_NOTICE_B} branch into ${COLOR_NOTICE_H}${prefix}${branch_dst}${COLOR_NOTICE_B} branch${COLOR_NOTICE}"
 	git merge ${prefix}${branch_src} --no-ff --no-edit
 else
-	display_info "${color_notice_b}Merge ${color_notice_h}${prefix}${branch_src}${color_notice_b} branch into ${color_notice_h}${prefix}${branch_dst}${color_notice_b} branch${color_notice}"
+	display_info "${COLOR_NOTICE_B}Merge ${COLOR_NOTICE_H}${prefix}${branch_src}${COLOR_NOTICE_B} branch into ${COLOR_NOTICE_H}${prefix}${branch_dst}${COLOR_NOTICE_B} branch${COLOR_NOTICE}"
 	git merge ${prefix}${branch_src}
 fi
 
-display_info "${color_success_b}Push ${color_success_h}${prefix}${branch_dst}${color_success_b} to upstream ${color_success}"
+display_info "${COLOR_SUCCESS_B}Push ${COLOR_SUCCESS_H}${prefix}${branch_dst}${COLOR_SUCCESS_B} to upstream ${COLOR_SUCCESS}"
 git push origin ${prefix}${branch_dst}
 
-display_info "${color_notice_b}Checkout ${color_notice_h}${prefix}${branch_src}${color_notice_b} ${color_notice} \n"
+display_info "${COLOR_NOTICE_B}Checkout ${COLOR_NOTICE_H}${prefix}${branch_src}${COLOR_NOTICE_B} ${COLOR_NOTICE} \n"
 git checkout ${prefix}${branch_src}
 
 print_new_line

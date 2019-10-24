@@ -22,23 +22,23 @@ local_data_dir_path="${HOME}/backup/"
 local_trigger_dir_path="${HOME}/www/database/"
 trigger_file_name=${mongo_base}".json"
 
-prompt_variable export_dir_name "Export dir name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_dir_name" 3 "$@"
-prompt_variable export_file_name "Export file name (from ${color_question_h}${local_data_dir_path}${color_question_b} path)" "$_export_file_name" 4 "$@"
+prompt_variable export_dir_name "Export dir name (from ${COLOR_QUESTION_H}${local_data_dir_path}${COLOR_QUESTION_B} path)" "$_export_dir_name" 3 "$@"
+prompt_variable export_file_name "Export file name (from ${COLOR_QUESTION_H}${local_data_dir_path}${COLOR_QUESTION_B} path)" "$_export_file_name" 4 "$@"
 
 
 
 ## PROGRAM
-confirm_or_exit "Import SQL to ${color_question_h}${mongo_base}${color_question} database at ${color_question_h}${sql_host}${color_question} mysql host from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
+confirm_or_exit "Import SQL to ${COLOR_QUESTION_H}${mongo_base}${COLOR_QUESTION} database at ${COLOR_QUESTION_H}${sql_host}${COLOR_QUESTION} mysql host from ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION} export file and ${COLOR_QUESTION_H}${trigger_file_name}${COLOR_QUESTION} trigger file?"
 
-printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${mongo_base}${color_info_b} database on local ${color_info} \n"
+printf "${COLOR_INFO_B}Import ${COLOR_INFO_H}${export_file_name}${COLOR_INFO_B} export file to ${COLOR_INFO_H}${mongo_base}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
 $(cd ${local_data_dir_path} && tar xzf ${export_file_name})
 mongorestore --host ${mongo_host} --drop --db ${mongo_base} --gzip --dir ${local_data_dir_path}${export_dir_name}
-printf "${color_off}"
+color_reset
 
 if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
-  printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${mongo_base}${color_info_b} database on local ${color_info} \n"
+  printf "${COLOR_INFO_B}Execute ${COLOR_INFO_H}${trigger_file_name}${COLOR_INFO_B} trigger file to ${COLOR_INFO_H}${mongo_base}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
   mongo --host ${mongo_host} < ${local_trigger_dir_path}${trigger_file_name}
-  printf "${color_off}"
+  color_reset
 fi
 
 remove_file_from_local "${local_data_dir_path}" "${export_file_name}"

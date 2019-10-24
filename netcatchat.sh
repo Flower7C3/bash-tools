@@ -30,12 +30,9 @@ option=''
 
 ### COLORS ###
 declare -r COLOR_OFF='\033[0m'       # Text Reset
-declare -r COLOR_BLACK='\033[0;30m'  # Black
 declare -r COLOR_RED='\033[0;31m'    # Red
 declare -r COLOR_GREEN='\033[0;32m'  # Green
 declare -r COLOR_YELLOW='\033[0;33m' # Yellow
-declare -r COLOR_BLUE='\033[0;34m'   # Blue
-declare -r COLOR_PURPLE='\033[0;35m' # Purple
 declare -r COLOR_CYAN='\033[0;36m'   # Cyan
 declare -r COLOR_WHITE='\033[0;37m'  # White
 declare -r ICON_INFO='☞'

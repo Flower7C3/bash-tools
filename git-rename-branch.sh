@@ -5,7 +5,7 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 
 ## WELCOME
 program_title "Rename GIT branch"
-display_info "You are in ${color_info_h}`pwd`${color_info_b} directory."
+display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_INFO_B} directory."
 
 
 ## VARIABLES
@@ -14,15 +14,15 @@ prompt_variable new_branch "New branch name" "" 2 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Rename branch ${color_question_h}${old_branch}${color_question} to ${color_question_h}${new_branch}${color_question}?"
+confirm_or_exit "Rename branch ${COLOR_QUESTION_H}${old_branch}${COLOR_QUESTION} to ${COLOR_QUESTION_H}${new_branch}${COLOR_QUESTION}?"
 
-display_info "${color_success_b}Rename branch localy ${color_success_h}${old_branch}${color_success_b} to ${color_success_h}${new_branch} ${color_success}"
+display_info "${COLOR_SUCCESS_B}Rename branch localy ${COLOR_SUCCESS_H}${old_branch}${COLOR_SUCCESS_B} to ${COLOR_SUCCESS_H}${new_branch} ${COLOR_SUCCESS}"
 git branch -m $old_branch $new_branch
 
-display_info "${color_error_b}Remove remote old branch ${color_error_h}${old_branch} ${color_error}"
+display_info "${COLOR_ERROR_B}Remove remote old branch ${COLOR_ERROR_H}${old_branch} ${COLOR_ERROR}"
 git push origin :$old_branch 
 
-display_info "${color_success_b}Push the new branch ${color_success_h}${new_branch}${color_success_b} and set local branch to track the new remote ${color_success} "
+display_info "${COLOR_SUCCESS_B}Push the new branch ${COLOR_SUCCESS_H}${new_branch}${COLOR_SUCCESS_B} and set local branch to track the new remote ${COLOR_SUCCESS} "
 git push --set-upstream origin $new_branch
 
 print_new_line

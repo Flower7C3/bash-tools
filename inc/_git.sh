@@ -33,28 +33,28 @@ function git_current() {
     current_commit_author_email=$(git --no-pager log -1 --pretty=format:"%ae")
     current_commit_author_gravatar=$(gravatar_url ${current_commit_author_email} 80)
 
-    printf "${color_info_b}Git current commit hash is ${color_info_h}${current_commit_id}${color_info_b}${color_off} \n"
+    printf "${COLOR_INFO_B}Git current commit hash is ${COLOR_INFO_H}${current_commit_id}${COLOR_INFO_B}${COLOR_OFF} \n"
 }
 
 function git_fetch() {
-    printf "${color_info_b}Git fetch data from upstream ${color_off} \n"
+    printf "${COLOR_INFO_B}Git fetch data from upstream ${COLOR_OFF} \n"
     git fetch
 }
 
 function git_fetch_tags() {
-    printf "${color_info_b}Git fetch data and tags from upstream ${color_off} \n"
+    printf "${COLOR_INFO_B}Git fetch data and tags from upstream ${COLOR_OFF} \n"
     git fetch --tags
 }
 
 function git_checkout() {
     local branch=${1:-master}
 
-    printf "${color_info_b}Git checkout to ${color_info_h}${branch}${color_info_b} ${color_off} \n"
+    printf "${COLOR_INFO_B}Git checkout to ${COLOR_INFO_H}${branch}${COLOR_INFO_B} ${COLOR_OFF} \n"
     git checkout ${branch}
 }
 
 function git_revert_changes() {
-    printf "${color_info_b}Git revert changes ${color_off} \n"
+    printf "${COLOR_INFO_B}Git revert changes ${COLOR_OFF} \n"
     git checkout -- .
 }
 
@@ -63,6 +63,6 @@ function git_pull() {
 
     git_current
 
-    printf "${color_info_b}Git pull ${color_info_h}${branch}${color_info_b} branch from origin ${color_off} \n"
+    printf "${COLOR_INFO_B}Git pull ${COLOR_INFO_H}${branch}${COLOR_INFO_B} branch from origin ${COLOR_OFF} \n"
     git pull origin ${branch}
 }

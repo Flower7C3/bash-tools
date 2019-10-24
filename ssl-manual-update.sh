@@ -16,7 +16,7 @@ prompt_variable_fixed preferred_challenges "Preffered challenge" "http" "http dn
 prompt_variable_fixed challenge_protocol "Preffered challenge" "ftp" "ftp ssh" 5 "$@"
 if [[ ! -f "$domain_config_file_path" ]]; then
     display_error "There is not config file ${domain_name} domain"
-    confirm_or_exit "Do you wan to generate config file for ${color_question_h}${domain_name}${color_question} domain?"
+    confirm_or_exit "Do you wan to generate config file for ${COLOR_QUESTION_H}${domain_name}${COLOR_QUESTION} domain?"
     prompt_variable_not_null DOMAIN_NAMES "All domain names (separated with space)" "${domain_name}"
     prompt_variable_not_null KEY_SIZE "SSL key size" "4096"
     prompt_variable_not_null ACME_PATH "Acme well known challenge path" ".well-known/acme-challenge/"
@@ -35,7 +35,7 @@ if [[ ! -f "$domain_config_file_path" ]]; then
         prompt_variable_not_null SSH_DOMAIN_PATH "SSH domain root path" "/public_html/"
         prompt_variable SSH_SSL_PATH "SSH SSL store path" ""
     fi
-    confirm_or_exit "Save above data to ${color_question_h}${domain_config_file_path}${color_question} config file?"
+    confirm_or_exit "Save above data to ${COLOR_QUESTION_H}${domain_config_file_path}${COLOR_QUESTION} config file?"
     touch ${domain_config_file_path}
     echo 'CERTBOT_BINARIES_DIR_PATH="$(dirname ${BASH_SOURCE})/../vendor/certbot/"' >> ${domain_config_file_path}
     echo 'CERTBOT_DATA_DIR_PATH="$(dirname ${BASH_SOURCE})/../data/"' >> ${domain_config_file_path}
@@ -58,7 +58,7 @@ if [[ ! -f "$domain_config_file_path" ]]; then
         echo 'SSH_DOMAIN_PATH='"'${SSH_DOMAIN_PATH}'" >> ${domain_config_file_path}
         echo 'SSH_SSL_PATH='"'${SSH_SSL_PATH}'" >> ${domain_config_file_path}
     fi
-    printf "${color_info_b}File saved!${color_info} \n"
+    printf "${COLOR_INFO_B}File saved!${COLOR_INFO} \n"
     DOMAIN_NAMES_ARR=($(echo $DOMAIN_NAMES))
     for _domain_name in "${DOMAIN_NAMES_ARR[@]}"; do
         _domain_config_file_path="${domain_config_file_path/${domain_name}/${_domain_name}}"
@@ -67,14 +67,14 @@ if [[ ! -f "$domain_config_file_path" ]]; then
 fi
 source "$domain_config_file_path"
 CERTBOT_AUTO_FILE_PATH="${CERTBOT_BINARIES_DIR_PATH}certbot-auto"
-printf "${color_log_b}Please enter Your root password.${color_log} \n"
+printf "${COLOR_LOG_B}Please enter Your root password.${COLOR_LOG} \n"
 sudo echo ""
 
 ## PROGRAM
 
 # rm ${CERTBOT_AUTO_FILE_PATH}
 if [ ! -f "${CERTBOT_AUTO_FILE_PATH}" ]; then
-    printf "${color_info_b}Get certbot from GitHub${color_info} \n"
+    printf "${COLOR_INFO_B}Get certbot from GitHub${COLOR_INFO} \n"
 	# git clone https://github.com/certbot/certbot ${CERTBOT_BINARIES_DIR_PATH}
     mkdir -p ${CERTBOT_BINARIES_DIR_PATH}
     curl --output ${CERTBOT_AUTO_FILE_PATH} https://dl.eff.org/certbot-auto
@@ -116,11 +116,11 @@ if [[ "$dry_run" == "y" ]]; then
 fi
 certonly_params="${certonly_params} -a manual --manual-public-ip-logging-ok --rsa-key-size ${KEY_SIZE}"
 
-# printf "${color_info_b}Get info about certificate${color_info} \n"
+# printf "${COLOR_INFO_B}Get info about certificate${COLOR_INFO} \n"
 # ${CERTBOT_AUTO_FILE_PATH} certificates ${certificates_params}
 # read -p "Press ENTER to continue..."
 
-printf "${color_info_b}Update certificate${color_info} \n"
+printf "${COLOR_INFO_B}Update certificate${COLOR_INFO} \n"
 ${CERTBOT_AUTO_FILE_PATH} certonly ${certonly_params}
 read -p "Press ENTER to continue..."
 

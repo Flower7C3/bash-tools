@@ -17,9 +17,9 @@ prompt_variable docker_container_name "Container name" "${_docker_container_name
 
 ## PROGRAM
 if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
-	printf "${color_success}Starting container ${color_success_b}"
+	printf "${COLOR_SUCCESS}Starting container ${COLOR_SUCCESS_B}"
 	docker start ${docker_container_name}
-	printf "${color_off}"
+	color_reset
 fi
 
 docker logs --follow --details --timestamps --tail 32 ${docker_container_name}

@@ -6,98 +6,132 @@
 
 function app_hello() {
     clear
-    local name=${1:-World}
-    local dirname=${2:-$(pwd)}
-    program_title "Hello ${name}. Welcome at '${dirname}' directory."
+    local _name=${1:-World}
+    local _dirname=${2:-$(pwd)}
+    program_title "Hello ${_name}. Welcome at '${_dirname}' directory."
 }
 
 function app_bye() {
-    printf "${color_log}Bye bye. See You Later, Alligator ${color_log_b};)${color_log} \n"
+    printf "${COLOR_LOG}Bye bye. See You Later, Alligator ${COLOR_LOG_B};)${COLOR_LOG} \n"
     print_new_line
 }
 
 function join_by() {
-    local d=$1
+    local _delimiter=$1
     shift
     printf "$1"
     shift
-    printf "%s" "${@/#/$d}"
+    printf "%s" "${@/#/$_delimiter}"
 }
 
 ###############################################################
 ### Program info
 ###############################################################
 function program_title() {
-    local title=$1
+    local _title=$1
 
-    printf "${color_log_h}"
+    printf "${COLOR_LOG_H}"
 
-    printf "${box_tl}${box_h}"
-    for ((c = 1; c <= ${#title}; c++)); do
-        printf "${box_h}"
+    printf "${BOX_TL}${BOX_H}"
+    for ((c = 1; c <= ${#_title}; c++)); do
+        printf "${BOX_H}"
     done
-    printf "${box_h}${box_tr}\n"
+    printf "${BOX_H}${BOX_TR}\n"
 
-    printf "${box_v} ${title} ${box_v}\n"
+    printf "${BOX_V} ${_title} ${BOX_V}\n"
 
-    printf "${box_bl}${box_h}"
-    for ((c = 1; c <= ${#title}; c++)); do
-        printf "${box_h}"
+    printf "${BOX_BL}${BOX_H}"
+    for ((c = 1; c <= ${#_title}; c++)); do
+        printf "${BOX_H}"
     done
-    printf "${box_h}${box_br}\n"
+    printf "${BOX_H}${BOX_BR}\n"
 
-    printf "${color_off}"
+    color_reset
 }
 
-function printfln() {
-    local color_h
-    color_h=$(eval echo "\$color_${1}_h")
-    local color_b
-    color_b=$(eval echo "\$color_${1}_b")
+declare -r DISPLAY_LINE_NO_ICON='display_line.no_icon'
+declare -r DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
+declare -r DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
+declare -r DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
+declare -r DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
+declare -r DISPLAY_LINE_APPEND_NULL='display_line.line_append_null'
+declare -r DISPLAY_LINE_APPEND_NL='display_line.line_append_nl'
+function display_line() {
+    local _color="$1"
     shift
-    local icon=$1
+    local _icon="$1 "
     shift
-    local prefix
-    if [[ "$1" == "TAB" ]]; then
-        prefix="\t"
+    local _line_prepend=""
+    local _line_append="\n"
+    while true; do
+        case $1 in
+        $DISPLAY_LINE_NO_ICON)
+            _icon=""
+            ;;
+        $DISPLAY_LINE_SILENT_BELL)
+            _line_prepend="\eg\a\r"
+            ;;
+        $DISPLAY_LINE_PREPEND_NL)
+            _line_prepend="\n"
+            ;;
+        $DISPLAY_LINE_PREPEND_CR)
+            _line_prepend="\r"
+            ;;
+        $DISPLAY_LINE_PREPEND_TAB)
+            _line_prepend="\t"
+            ;;
+        $DISPLAY_LINE_APPEND_NL)
+            _line_append="\n"
+            ;;
+        $DISPLAY_LINE_APPEND_NULL)
+            _line_append=""
+            ;;
+        *)
+            break
+            ;;
+        esac
         shift
-    fi
-    local message="$1"
+    done
+    local _text_pattern="$1"
     shift
-    printf "${prefix}${color_h}${icon}${color_b} ${message}${color_off}\n" $@
+    local _text
+    _text=$(printf "$_text_pattern" "$@")
+    echo -e -n "${_line_prepend}${_color}${_icon}${_text}${COLOR_OFF}${_line_append}"
 }
-
+function color_reset() {
+    echo -e -n "${COLOR_OFF}"
+}
 function display_header() {
-    printfln "log" "$icon_paragraph" "$@"
+    display_line "$COLOR_LOG" "$ICON_PARAGRAPH" "$@"
 }
 function display_info() {
-    printfln "info" "$icon_info" "$@"
+    display_line "$COLOR_INFO" "$ICON_INFO" "$@"
 }
 function display_command() {
-    printfln "info" "$icon_command" "$@"
+    display_line "$COLOR_INFO" "$ICON_COMMAND" "$@"
 }
 function display_log() {
-    printfln "log" "$icon_quotation" "$@"
+    display_line "$COLOR_LOG" "$ICON_QUOTATION" "$@"
 }
 function display_error() {
-    printfln "error" "$icon_error" "$@"
+    display_line "$COLOR_ERROR" "$ICON_ERROR" "$@"
 }
 function display_success() {
-    printfln "success" "$icon_success" "$@"
+    display_line "$COLOR_SUCCESS" "$ICON_SUCCESS" "$@"
 }
 
 function display_infolog() {
-    local label=$1
-    local value=$2
-    if [[ -z "$value" ]]; then
-        printf "${color_info}%s: ${color_log_b}<undefined>${color_info}\n" "$label"
+    local _label=$1
+    local _value=$2
+    if [[ -z "$_value" ]]; then
+        printf "${COLOR_INFO}%s: ${COLOR_LOG_B}<undefined>${COLOR_INFO}\n" "$_label"
     else
-        printf "${color_info}%s: ${color_success_b}%s${color_info}\n" "$label" "$value"
+        printf "${COLOR_INFO}%s: ${COLOR_SUCCESS_B}%s${COLOR_INFO}\n" "$_label" "$_value"
     fi
 }
 
 function print_new_line() {
-    printf "${color_off}\n"
+    printf "${COLOR_OFF}\n"
 }
 
 function program_error() {
@@ -111,103 +145,89 @@ function program_error() {
 
 # asks user for value
 function display_prompt() {
-    local prompt_mode=$1
-    local variable_name=$2
-    local question=$3
-    local default_value=$4
-    local argNo=$(expr ${5:-1} + 5)
-    local args=$#
+    local _prompt_mode=$1
+    local _variable_name=$2
+    local _question_text=$3
+    local _question_text2=$3
+    local _default_value=$4
+    local _arg_no
+    _arg_no=$(expr ${5:-1} + 5)
+    local _args=$#
+    local _prompt_text
+    local _prompt_repeat
     # get value defined in argv
-    if [[ ${args} -ge ${argNo} ]]; then
-        variable_value=${!argNo}
-        printf "${color_question_b}"
-        printf "${icon_prompt} ${question}"
-        printf ": ${color_console}"
-        if [[ "$prompt_mode" == "password" ]]; then
-            printf "${color_notice}<secret>${color_console}"
-        elif [[ -z "$variable_value" ]]; then
-            printf "${color_notice}<undefined>${color_console}"
+    if [[ ${_args} -ge ${_arg_no} ]]; then
+        _variable_value=${!_arg_no}
+        local _input_text
+        if [[ "$_prompt_mode" == "password" ]]; then
+            _input_text=$(echo -e -n "${COLOR_NOTICE}<secret>")
+        elif [[ -z "$_variable_value" ]]; then
+            _input_text=$(echo -e -n "${COLOR_NOTICE}<undefined>")
         else
-            printf "$variable_value"
+            _input_text=$(echo -e -n "${COLOR_CONSOLE}${_variable_value}")
         fi
-        printf "${color_off}"
-        printf "\n"
+        display_line "$COLOR_QUESTION" "$ICON_PROMPT" "${_question_text}: ${_input_text}" "$@"
     # or ask user for value
     else
-        if [[ "$prompt_mode" == "password" ]] || [[ "$prompt_mode" == "repeated" ]]; then
+        _question_text2="${_question_text}: "
+        if [[ -n "${_default_value}" ]]; then
+            _question_text2="${_question_text} (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION_B}): "
+        fi
+        _prompt_text=$(display_line "$COLOR_QUESTION" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_text2" "$@")
+        _prompt_text=$(echo -e -n "${_prompt_text}${COLOR_CONSOLE}")
+        local _input_value
+        if [[ "$_prompt_mode" == "password" ]] || [[ "$_prompt_mode" == "repeated" ]]; then
+            local _input_value1
+            local _input_value2
+            local _question_repeat2="${_question_text} repeat: "
+            if [[ -n "${_default_value}" ]]; then
+                _question_repeat2="${_question_text} repeat (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION_B}): "
+            fi
+            _prompt_repeat=$(display_line "$COLOR_QUESTION" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_repeat2" "$@")
+            _prompt_repeat=$(echo -e -n "${_prompt_repeat}${COLOR_CONSOLE}")
             while true; do
-                printf "${color_question_b}"
-                printf "${icon_prompt} ${question}"
-                if [[ -n "${default_value}" ]]; then
-                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
-                fi
-                printf ": ${color_console}"
-                if [[ "$prompt_mode" == "password" ]]; then
-                    read -s input1
+                if [[ "$_prompt_mode" == "password" ]]; then
+                    read -r -p "${_prompt_text}" -s _input_value1
                     printf "\n"
                 else
-                    read -e input1
+                    read -r -p "${_prompt_text}" -e _input_value1
                 fi
-                printf "${color_off}"
-                printf "${color_question_b}"
-                printf "${icon_prompt} ${question}"
-                if [[ -n "${default_value}" ]]; then
-                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
-                fi
-                printf " (repeat): ${color_console}"
-                if [[ "$prompt_mode" == "password" ]]; then
-                    read -s input2
+                color_reset
+                if [[ "$_prompt_mode" == "password" ]]; then
+                    read -r -p "${_prompt_repeat}" -s _input_value2
                     printf "\n"
                 else
-                    read -e input2
+                    read -r -p "${_prompt_repeat}" -e _input_value2
                 fi
-                printf "${color_off}"
-                if [[ "$input1" == "$input2" ]]; then
-                    input=${input1}
+                color_reset
+                if [[ "$_input_value1" == "$_input_value2" ]]; then
+                    _input_value=${_input_value1}
                     break
                 else
                     display_error "Values do not match. Please retype it!"
                 fi
             done
-        elif [[ "$prompt_mode" == "not_null" ]]; then
+        elif [[ "$_prompt_mode" == "not_null" ]]; then
             while true; do
-                printf "${color_question_b}"
-                printf "${icon_prompt} ${question}"
-                if [[ -n "${default_value}" ]]; then
-                    printf " (default: ${color_question_h}${default_value}${color_question_b})"
-                fi
-                printf ": ${color_console}"
-                read -e input
-                printf "${color_off}"
-                if [[ "$input" == "" && "$default_value" == "" ]]; then
+                read -r -p "${_prompt_text}" -e _input_value
+                color_reset
+                if [[ "$_input_value" == "" && "$_default_value" == "" ]]; then
                     display_error "Please enter not null value!"
                 else
                     break
                 fi
             done
-        elif [[ "$prompt_mode" == "or_exit" ]]; then
-            printf "${color_question_b}"
-            printf "${icon_prompt} ${question}"
-            if [[ -n "${default_value}" ]]; then
-                printf " (default: ${color_question_h}${default_value}${color_question_b})"
-            fi
-            printf ": ${color_console}"
-            read -e input
-            printf "${color_off}"
+        elif [[ "$_prompt_mode" == "or_exit" ]]; then
+            read -r -p "${_prompt_text}" -e _input_value
+            color_reset
         else
-            printf "${color_question_b}"
-            printf "${icon_prompt} ${question}"
-            if [[ -n "${default_value}" ]]; then
-                printf " (default: ${color_question_h}${default_value}${color_question_b})"
-            fi
-            printf ": ${color_console}"
-            read -e input
-            printf "${color_off}"
+            read -r -p "${_prompt_text}" -e _input_value
+            color_reset
         fi
         # if user set nothing, then set default value
-        variable_value=${input}
+        _variable_value=${_input_value}
     fi
-    set_variable "$variable_name" "$default_value" "$variable_value"
+    set_variable "$_variable_name" "$_default_value" "$_variable_value"
 }
 
 # asks user for variable value
@@ -231,17 +251,17 @@ function prompt_variable_not_null() {
 
 # asks user for variable value
 function prompt_variable_not() {
-    local variable_name=$1
-    local question=$2
-    local default_value=$3
-    local prohibited_values=($4)
+    local _variable_name=$1
+    local _question_text=$2
+    local _default_value=$3
+    local _prohibited_values=($4)
     shift 4
     # ask user for value from allowed list
     while true; do
-        prompt_variable "$variable_name" "$question" "$default_value" "$@"
-        prompt_response=$(eval echo '$'"${variable_name}")
-        if test "$(echo " ${prohibited_values[*]} " | grep " ${prompt_response} ")"; then
-            display_error "${color_error_b}Wrong ${color_question_b}${question}${color_error_b}. Prohibited values are: ${color_error_h}$(join_by '/' ${prohibited_values[*]})${color_error_b}!"
+        prompt_variable "$_variable_name" "$_question_text" "$_default_value" "$@"
+        _prompt_response=$(eval echo '$'"${_variable_name}")
+        if test "$(echo " ${_prohibited_values[*]} " | grep " ${_prompt_response} ")"; then
+            display_error "${COLOR_ERROR_B}Wrong ${COLOR_QUESTION_B}${_question_text}${COLOR_ERROR_B}. Prohibited values are: ${COLOR_ERROR_H}$(join_by '/' ${_prohibited_values[*]})${COLOR_ERROR_B}!"
             set -- "${@:1:1}"
         else
             break
@@ -256,25 +276,27 @@ function prompt_password() {
 
 # asks user for variable value, but accept only allowed values
 function prompt_variable_fixed() {
-    local variable_name=$1
-    local question=$2
-    local default_value=$3
-    local allowed_values=($4)
-    local argNo=$5
+    local _variable_name=$1
+    local _question_text=$2
+    local _question_text2
+    local _default_value=$3
+    local _allowed_values=($4)
+    local _arg_no=$5
+    local _prompt_response
     shift 4
     # ask user for value from allowed list
     while true; do
-        question_string="$question"
-        local args=$#
-        if [[ ${args} -le ${argNo} ]]; then
-            question_string="$question [$(join_by '/' ${allowed_values[*]})]"
+        _question_text2="$_question_text"
+        local _args=$#
+        if [[ ${_args} -le ${_arg_no} ]]; then
+            _question_text2="$_question_text [$(join_by '/' ${_allowed_values[*]})]"
         fi
-        prompt_variable "$variable_name" "$question_string" "$default_value" "$@"
-        prompt_response=$(eval echo '$'"${variable_name}")
-        if test "$(echo " ${allowed_values[*]} " | grep " ${prompt_response} ")"; then
+        prompt_variable "$_variable_name" "$_question_text2" "$_default_value" "$@"
+        _prompt_response=$(eval echo '$'"${_variable_name}")
+        if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
         else
-            display_error "${color_error_b}Wrong ${color_error_h}${question}${color_error_b} value. Allowed is one of: ${color_error_h}$(join_by '/' ${allowed_values[*]})${color_error_b}!"
+            display_error "${COLOR_ERROR_B}Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR_B} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR_B}!"
             set -- "${@:0:0}"
         fi
     done
@@ -282,25 +304,27 @@ function prompt_variable_fixed() {
 
 # asks user for variable value, but accept only allowed values
 function prompt_variable_fixed_or_exit() {
-    local variable_name=$1
-    local question=$2
-    local default_value=$3
-    local allowed_values=($4)
-    local argNo=$5
+    local _variable_name=$1
+    local _question_text=$2
+    local _question_text2
+    local _default_value=$3
+    local _allowed_values=($4)
+    local _arg_no=$5
+    local _prompt_response
     shift 5
     # ask user for value from allowed list
     while true; do
-        question_string="$question"
-        local args=$#
-        if [[ ${args} -le ${argNo} ]]; then
-            question_string="$question [$(join_by '/' ${allowed_values[*]})]"
+        _question_text2="$_question_text"
+        local _args=$#
+        if [[ ${_args} -le ${_arg_no} ]]; then
+            _question_text2="$_question_text [$(join_by '/' ${_allowed_values[*]})]"
         fi
-        prompt_variable_or_exit "$variable_name" "$question_string" "$default_value" "$@"
-        prompt_response=$(eval echo '$'"${variable_name}")
-        if test "$(echo " ${allowed_values[*]} " | grep " ${prompt_response} ")"; then
+        prompt_variable_or_exit "$_variable_name" "$_question_text2" "$_default_value" "$@"
+        _prompt_response=$(eval echo '$'"${_variable_name}")
+        if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
         else
-            display_error "${color_error_b}Wrong ${color_error_h}${question}${color_error_b} value. Allowed is one of: ${color_error_h}$(join_by '/' ${allowed_values[*]})${color_error_b}!"
+            display_error "${COLOR_ERROR_B}Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR_B} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR_B}!"
             set -- "${@:0:0}"
         fi
     done
@@ -308,22 +332,23 @@ function prompt_variable_fixed_or_exit() {
 
 # set variable value
 function set_variable() {
-    local variable_name=$1
-    local default_value=$2
-    local variable_value=${3:-$default_value}
-    eval "${variable_name}"'=${variable_value}'
+    local _variable_name=$1
+    local _default_value=$2
+    local _variable_value=${3:-$_default_value}
+    eval "${_variable_name}"'=${_variable_value}'
 }
 
 # user must press y and enter, or program will end
 function confirm_or_exit() {
-    local question=$1
-    local fallback_message=$2
+    local _question_text=$1
+    local _fallback_message=$2
+    local _run
     printf "\n"
-    prompt_variable_fixed_or_exit run "${question}" "n" "y n" ""
+    prompt_variable_fixed_or_exit _run "${_question_text}" "n" "y n" ""
     printf "\n"
-    if [[ "$run" != "y" ]]; then
-        if [[ "$fallback_message" != "" ]]; then
-            display_info "$fallback_message"
+    if [[ "$_run" != "y" ]]; then
+        if [[ "$_fallback_message" != "" ]]; then
+            display_info "$_fallback_message"
         fi
         exit 1
     fi
@@ -332,11 +357,11 @@ function confirm_or_exit() {
 
 # read variable from given ini file
 function read_variable_from_config() {
-    local bash_variable_name=$1
-    local config_variable_name=$2
-    local config_file_path=$3
-    local default_value=$4
-    local variable_value
-    variable_value=$(awk -F "=" '/^'$config_variable_name'/ {print $2}' ${config_file_path} | sed 's/\"//g' | sed 's/\'"'"'//g' | sed 's/^[ ]*//;s/[ ]*$//' | sed -e 's/\'$'\t//g')
-    set_variable "$bash_variable_name" "$default_value" "$variable_value"
+    local _bash_variable_name=$1
+    local _config_variable_name=$2
+    local _config_file_path=$3
+    local _default_value=$4
+    local _variable_value
+    _variable_value=$(awk -F "=" '/^'$_config_variable_name'/ {print $2}' ${_config_file_path} | sed 's/\"//g' | sed 's/\'"'"'//g' | sed 's/^[ ]*//;s/[ ]*$//' | sed -e 's/\'$'\t//g')
+    set_variable "$_bash_variable_name" "$_default_value" "$_variable_value"
 }

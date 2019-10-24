@@ -35,24 +35,24 @@ function ssh_check() {
     local hostname=$2
     local keyfile=$3
     sshStatus=$(ssh -i ${keyfile} -l ${username} ${hostname} "pwd")
-    printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t${color_log_h}%s${color_info_b}\n${color_log}" "SSH" "${username}@${hostname}" "$sshStatus"
+    printf "${COLOR_INFO_B}%16s ${COLOR_INFO_H}%60s${COLOR_INFO_B}\t${COLOR_LOG_H}%s${COLOR_INFO_B}\n${COLOR_LOG}" "SSH" "${username}@${hostname}" "$sshStatus"
 }
 
 function domain_status_code_check() {
     local domain=$1
     local userpass=$2
     local statusCode=$(curl -H "Cache-Control: no-cache" -L -u "${userpass}" -s -o /dev/null -I -w "%{http_code}" ${domain})
-    printf "${color_info_b}%16s ${color_info_h}%60s${color_info_b}\t" "DOMENA" "$domain"
+    printf "${COLOR_INFO_B}%16s ${COLOR_INFO_H}%60s${COLOR_INFO_B}\t" "DOMENA" "$domain"
     if (("$statusCode" >= 200 && "$statusCode" < 400)); then
-        printf "${color_success_h}"
+        printf "${COLOR_SUCCESS_H}"
     else
         if (("$statusCode" >= 400 && "$statusCode" < 600)); then
-            printf "${color_error_h}"
+            printf "${COLOR_ERROR_H}"
         else
-            printf "${color_log_h}"
+            printf "${COLOR_LOG_H}"
         fi
     fi
-    printf "%s\n${color_log}" $statusCode
+    printf "%s\n${COLOR_LOG}" $statusCode
 }
 
 function domain_status_code_check_or_rollback() {
@@ -62,13 +62,13 @@ function domain_status_code_check_or_rollback() {
 
     if [ "$exists" == "" ]; then
 
-        printf "${color_error_b}Site url ${color_error_h}${url}${color_error_b} is not working."
+        printf "${COLOR_ERROR_B}Site url ${COLOR_ERROR_H}${url}${COLOR_ERROR_B} is not working."
         if [[ "$current_commit_id" != "" ]]; then
-            printf "${color_info}Check ${color_info_u}${color_info_b}a${color_info}gain or ${color_info_u}r${color_info}ollback or ${color_info_u}s${color_info}kip? \n"
+            printf "${COLOR_INFO}Check ${COLOR_INFO_U}${COLOR_INFO_B}a${COLOR_INFO}gain or ${COLOR_INFO_U}r${COLOR_INFO}ollback or ${COLOR_INFO_U}s${COLOR_INFO}kip? \n"
         else
-            printf "${color_info}Check ${color_info_u}${color_info_b}a${color_info}gain or ${color_info_u}s${color_info}kip? \n"
+            printf "${COLOR_INFO}Check ${COLOR_INFO_U}${COLOR_INFO_B}a${COLOR_INFO}gain or ${COLOR_INFO_U}s${COLOR_INFO}kip? \n"
         fi
-        printf "${color_notice_b} > ${color_notice}"
+        printf "${COLOR_NOTICE_B} > ${COLOR_NOTICE}"
         read -e input
 
         if [[ "$input" != "s" ]]; then
@@ -84,6 +84,6 @@ function domain_status_code_check_or_rollback() {
         fi
 
     else
-        printf "${color_success_b}Site url ${color_success_h}${url}${color_success_b} is working ${color_success} \n"
+        printf "${COLOR_SUCCESS_B}Site url ${COLOR_SUCCESS_H}${url}${COLOR_SUCCESS_B} is working ${COLOR_SUCCESS} \n"
     fi
 }

@@ -42,7 +42,7 @@ map=$(printf "$map_pattern" "$SAVE_DIR_NAME" "$GEO_LONG_W" "$GEO_LAT_S" "$GEO_LO
 
 
 ## PROGRAM
-confirm_or_exit "Start downloading as ${color_question_h}${map}${color_question} file?"
+confirm_or_exit "Start downloading as ${COLOR_QUESTION_H}${map}${COLOR_QUESTION} file?"
 
 source "$(dirname ${BASH_SOURCE})/inc/_osm.sh"
 xtile_min=$(long2xtile ${GEO_LONG_W/./,} ${ZOOM})
@@ -62,7 +62,7 @@ for ((xtile=$xtile_min; xtile<=$xtile_max; xtile++)); do
 		ytile_index=$((ytile - ytile_min))
 		tile_index=$((xtile_index * ytile_amount + ytile_index))
 		tile_percent=$((100 * tile_index / tile_amount))
-		printf "${color_success}Get ${color_success_b}%s/%s${color_success} partial of ${color_success_b}%s${color_success} map with ${color_success_b}%d${color_success} zoom at ${color_success_b}x=%d${color_success} and ${color_success_b}y=%d${color_success} (%.0f%%)${color_off}\n" "$tile_index" "$tile_amount" "$MAP_TYPE" "$ZOOM" "$xtile" "$ytile" "$tile_percent"
+		printf "${COLOR_SUCCESS}Get ${COLOR_SUCCESS_B}%s/%s${COLOR_SUCCESS} partial of ${COLOR_SUCCESS_B}%s${COLOR_SUCCESS} map with ${COLOR_SUCCESS_B}%d${COLOR_SUCCESS} zoom at ${COLOR_SUCCESS_B}x=%d${COLOR_SUCCESS} and ${COLOR_SUCCESS_B}y=%d${COLOR_SUCCESS} (%.0f%%)${COLOR_OFF}\n" "$tile_index" "$tile_amount" "$MAP_TYPE" "$ZOOM" "$xtile" "$ytile" "$tile_percent"
 		curl -s ${url} > ${map_tile_xy}
 	done
 done
@@ -76,7 +76,7 @@ for ((xtile=$xtile_min; xtile<=$xtile_max; xtile++)); do
 		ytile_index=$((ytile - ytile_min))
 		tile_index=$((xtile_index * ytile_amount + ytile_index))
 		tile_percent=$((100 * tile_index / tile_amount))
-		printf "${color_success}Concat partial ${color_success_b}%s/%s${color_success} with ${color_success_b}x=%d${color_success} and ${color_success_b}y=%d${color_success} (%.0f%%)${color_off}\n" "$tile_index" "$tile_amount" "$xtile" "$ytile" "$tile_percent"
+		printf "${COLOR_SUCCESS}Concat partial ${COLOR_SUCCESS_B}%s/%s${COLOR_SUCCESS} with ${COLOR_SUCCESS_B}x=%d${COLOR_SUCCESS} and ${COLOR_SUCCESS_B}y=%d${COLOR_SUCCESS} (%.0f%%)${COLOR_OFF}\n" "$tile_index" "$tile_amount" "$xtile" "$ytile" "$tile_percent"
 		if [[ -e "$map_tile_x" ]]; then
 			convert ${map_tile_x} ${map_tile_xy} -append ${map_tile_x}
 		else
@@ -95,7 +95,7 @@ for ((xtile=$xtile_min; xtile<=$xtile_max; xtile++)); do
 	map_tile_x=$(printf "$map_x_pattern" ${MAP_TYPE} ${ZOOM} ${xtile})
 	xtile_index=$((xtile - xtile_min))
 	xtile_percent=$((100 * xtile_index / xtile_amount))
-	printf "${color_success}Concat partial ${color_success_b}%s/%s${color_success} with ${color_success_b}x=%d${color_success} to main map (%.0f%%)${color_off}\n" "$xtile_index" "$xtile_amount" "$xtile" "$xtile_percent"
+	printf "${COLOR_SUCCESS}Concat partial ${COLOR_SUCCESS_B}%s/%s${COLOR_SUCCESS} with ${COLOR_SUCCESS_B}x=%d${COLOR_SUCCESS} to main map (%.0f%%)${COLOR_OFF}\n" "$xtile_index" "$xtile_amount" "$xtile" "$xtile_percent"
 	if [[ -e "$map" ]]; then
 		convert ${map} ${map_tile_x} +append ${map}
 	else
@@ -104,6 +104,6 @@ for ((xtile=$xtile_min; xtile<=$xtile_max; xtile++)); do
 	rm ${map_tile_x}
 done
 
-printf "${color_success_b}Saved as ${color_success_h}%s${color_success_b}${color_success}\n" "$map"
+printf "${COLOR_SUCCESS_B}Saved as ${COLOR_SUCCESS_H}%s${COLOR_SUCCESS_B}${COLOR_SUCCESS}\n" "$map"
 
 print_new_line

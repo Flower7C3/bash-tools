@@ -41,16 +41,16 @@ prompt_variable backup_time "Backup time (days)" "$_backup_time" 4 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Dump Mongo from ${color_question_h}${mongo_user}@${mongo_host}/${mongo_base}${color_question_b} base to ${color_question_h}${export_file_name}${color_question_b} file?"
+confirm_or_exit "Dump Mongo from ${COLOR_QUESTION_H}${mongo_user}@${mongo_host}/${mongo_base}${COLOR_QUESTION_B} base to ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION_B} file?"
 
-printf "${color_info_b}Dumping database ${color_info} \n"
+printf "${COLOR_INFO_B}Dumping database ${COLOR_INFO} \n"
 mkdir -p ${backup_dir_path}
 mongodump --host ${mongo_host} --port ${mongo_port} --username ${mongo_user} --password ${mongo_pass} --db ${mongo_base} --out ${backup_dir_path} --gzip
 (cd ${backup_dir_path} && mv ${mongo_base} ${export_dir_name})
 (cd ${backup_dir_path} && tar -zcvf ${backup_dir_path}${export_file_name} ${export_dir_name} && rm -rf ${export_dir_name})
 
 if [[ $backup_time > 0 ]]; then
-	printf "${color_notice_b}Clean old backups ${color_notice} \n"
+	printf "${COLOR_NOTICE_B}Clean old backups ${COLOR_NOTICE} \n"
 	find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
 fi
 

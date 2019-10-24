@@ -27,12 +27,12 @@ fi
 
 
 ## PROGRAM
-printf "${color_info_b}\n"
+printf "${COLOR_INFO_B}\n"
 printf "${method}: ${resource_url}\n"
 printf "data: ${data}\n"
-printf "${color_off}"
+color_reset
 
-printf "${color_success}\n"
+printf "${COLOR_SUCCESS}\n"
 
 # if [[ $contentType = "json" ]]
 # then
@@ -56,9 +56,9 @@ else
     # response=$(curl -v -s -X ${method} -d "${data}" "${resource_url}" ${_xdebug})
   fi
 fi
-printf "${color_off}"
+color_reset
 
-printf "${Green}\n"
+printf "${COLOR_GREEN}\n"
 echo ${response} | python -m json.tool
 
 print_new_line

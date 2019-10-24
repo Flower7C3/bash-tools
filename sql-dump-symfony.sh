@@ -39,14 +39,14 @@ prompt_variable backup_time "Backup time (days)" "$_backup_time" 3 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Dump SQL from ${color_question_h}${sql_user}@${sql_host}/${sql_base}${color_question_b} base to ${color_question_h}${export_file_name}${color_question_b} file?"
+confirm_or_exit "Dump SQL from ${COLOR_QUESTION_H}${sql_user}@${sql_host}/${sql_base}${COLOR_QUESTION_B} base to ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION_B} file?"
 
-printf "${color_info_b}Dumping database ${color_info} \n"
+printf "${COLOR_INFO_B}Dumping database ${COLOR_INFO} \n"
 mkdir -p ${backup_dir_path}
 mysqldump --host=${sql_host} --port=${sql_port} --user=${sql_user} --password=${sql_pass} --skip-lock-tables ${sql_base} > ${backup_dir_path}${export_file_name}
 
 if [[ $backup_time > 0 ]]; then
-	printf "${color_notice_b}Clean old backups ${color_notice} \n"
+	printf "${COLOR_NOTICE_B}Clean old backups ${COLOR_NOTICE} \n"
 	find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
 fi
 

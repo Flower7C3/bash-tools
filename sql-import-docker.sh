@@ -23,20 +23,20 @@ virtual_data_dir_path="/var/lib/mysql/"
 virtual_trigger_dir_path="/var/lib/mysql/"
 trigger_file_name=${database}".sql"
 
-prompt_variable export_file_name "Export file name (from ${color_question_h}${local_data_dir_path}${color_question_b} directory)" "$_export_file_name" 3 "$@"
+prompt_variable export_file_name "Export file name (from ${COLOR_QUESTION_H}${local_data_dir_path}${COLOR_QUESTION_B} directory)" "$_export_file_name" 3 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Import SQL to ${color_question_h}${database}${color_question} database at ${color_question_h}${docker_container_name}${color_question} docker container from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
+confirm_or_exit "Import SQL to ${COLOR_QUESTION_H}${database}${COLOR_QUESTION} database at ${COLOR_QUESTION_H}${docker_container_name}${COLOR_QUESTION} docker container from ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION} export file and ${COLOR_QUESTION_H}${trigger_file_name}${COLOR_QUESTION} trigger file?"
 
-printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${database}${color_info_b} database on ${color_info_h}${docker_container_name}${color_info_b} docker container ${color_info} \n"
+printf "${COLOR_INFO_B}Import ${COLOR_INFO_H}${export_file_name}${COLOR_INFO_B} export file to ${COLOR_INFO_H}${database}${COLOR_INFO_B} database on ${COLOR_INFO_H}${docker_container_name}${COLOR_INFO_B} docker container ${COLOR_INFO} \n"
 docker exec -i ${docker_container_name} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtual_data_dir_path}${export_file_name}
-printf "${color_off}"
+color_reset
 
 if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
-	printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file to ${color_info_h}${database}${color_info_b} database on ${color_info_h}${docker_container_name}${color_info_b} docker container ${color_info} \n"
+	printf "${COLOR_INFO_B}Execute ${COLOR_INFO_H}${trigger_file_name}${COLOR_INFO_B} trigger file to ${COLOR_INFO_H}${database}${COLOR_INFO_B} database on ${COLOR_INFO_H}${docker_container_name}${COLOR_INFO_B} docker container ${COLOR_INFO} \n"
 	docker exec -i ${docker_container_name} sh -c 'exec mysql -p${MYSQL_ROOT_PASSWORD} '${database}' < '${virtual_trigger_dir_path}${trigger_file_name}
-	printf "${color_off}"
+	color_reset
 fi
 
 remove_file_from_local "${local_data_dir_path}" "${export_file_name}"

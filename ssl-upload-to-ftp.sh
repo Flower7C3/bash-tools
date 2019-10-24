@@ -14,12 +14,12 @@ dry_run=y
 user=$(id -u)
 group=$(id -g)
 source "$(dirname ${BASH_SOURCE})/config/_certbot.${domain_name}.sh"
-printf "${color_info_b}Please enter Your root password.${color_info} \n"
+printf "${COLOR_INFO_B}Please enter Your root password.${COLOR_INFO} \n"
 sudo echo ""
 
 
 ## PROGRAM
-printf "${color_info_b}Żądanie SSL${color_info} \n"
+printf "${COLOR_INFO_B}Żądanie SSL${COLOR_INFO} \n"
 sudo cat ${CERTBOT_DATA_DIR_PATH}csr/0000_csr-certbot.pem
 if [[ "$dry_run" == "n" ]]; then
 	# ftp_remove "${FTP_HOST}" "${FTP_USER}" "${FTP_PASS}" "${FTP_SSL_PATH}" "${domain_name}.csr"
@@ -31,7 +31,7 @@ if [[ "$dry_run" == "n" ]]; then
 fi
 echo ""
 
-printf "${color_info_b}Certyfikat SSL${color_info} \n"
+printf "${COLOR_INFO_B}Certyfikat SSL${COLOR_INFO} \n"
 sudo cat ${CERTBOT_DATA_DIR_PATH}live/${domain_name}/cert.pem
 if [[ "$dry_run" == "n" ]]; then
 	# ftp_remove "${FTP_HOST}" "${FTP_USER}" "${FTP_PASS}" "${FTP_SSL_PATH}" "${domain_name}.crt"
@@ -43,7 +43,7 @@ if [[ "$dry_run" == "n" ]]; then
 fi
 echo ""
 
-printf "${color_info_b}Klucz SSL${color_info} \n"
+printf "${COLOR_INFO_B}Klucz SSL${COLOR_INFO} \n"
 sudo cat ${CERTBOT_DATA_DIR_PATH}live/${domain_name}/privkey.pem
 if [[ "$dry_run" == "n" ]]; then
 	# ftp_remove "${FTP_HOST}" "${FTP_USER}" "${FTP_PASS}" "${FTP_SSL_PATH}" "${domain_name}.key"
@@ -55,7 +55,7 @@ if [[ "$dry_run" == "n" ]]; then
 fi
 echo ""
 
-printf "${color_info_b}Paczka SSL${color_info} \n"
+printf "${COLOR_INFO_B}Paczka SSL${COLOR_INFO} \n"
 sudo cat ${CERTBOT_DATA_DIR_PATH}live/${domain_name}/chain.pem
 if [[ "$dry_run" == "n" ]]; then
 	# ftp_remove "${FTP_HOST}" "${FTP_USER}" "${FTP_PASS}" "${FTP_SSL_PATH}" "${domain_name}.bundle"

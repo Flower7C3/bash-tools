@@ -22,7 +22,7 @@ prompt_variable export_file_name "Export filename" "${_export_file_name}" 3 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Dump SQL on ${color_question_h}${remote_host}${color_question} host from ${color_question_h}${directory}${color_question} directory?"
+confirm_or_exit "Dump SQL on ${COLOR_QUESTION_H}${remote_host}${COLOR_QUESTION} host from ${COLOR_QUESTION_H}${directory}${COLOR_QUESTION} directory?"
 
 sourced_scripts_list+=('sql-dump-symfony.sh sql-dump-symfony.sh')
 copy_scripts_to_host "$remote_host"

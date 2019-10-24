@@ -20,9 +20,9 @@ _auto_close="n"
 program_title "Execute command on Docker container"
 if [[ ${local_project_path} == ${local_www_path}* ]];
 then
-	display_info "You are in ${color_info_h}`pwd`${color_info} directory."
+	display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_INFO} directory."
 else
-	display_error "You must be in ${color_error_h}${local_www_path}*${color_error_b} path to run this command!"
+	display_error "You must be in ${COLOR_ERROR_H}${local_www_path}*${COLOR_ERROR_B} path to run this command!"
 	program_error
 fi
 
@@ -35,12 +35,12 @@ prompt_variable_fixed auto_close "Auto close" "${_auto_close}" "y n" 4 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "Execute ${color_question_h}${commandName}${color_question} command in ${color_question_h}${docker_project_path}${color_question} path of ${color_question_h}${docker_container_name}${color_question} docker container?"
+confirm_or_exit "Execute ${COLOR_QUESTION_H}${commandName}${COLOR_QUESTION} command in ${COLOR_QUESTION_H}${docker_project_path}${COLOR_QUESTION} path of ${COLOR_QUESTION_H}${docker_container_name}${COLOR_QUESTION} docker container?"
 
 if [[ $(docker inspect -f {{.State.Running}} ${docker_container_name}) == "false" ]]; then
-	printf "${color_success}Starting container ${color_success_b}"
+	printf "${COLOR_SUCCESS}Starting container ${COLOR_SUCCESS_B}"
 	docker start ${docker_container_name}
-	printf "${color_off}"
+	color_reset
 fi
 
 if [[ "$interactive" = "y" ]]; then
@@ -50,9 +50,9 @@ else
 fi
 
 if [[ "$auto_close" == "y" ]]; then
-	printf "${color_error}Stoping container ${color_error_b}"
+	printf "${COLOR_ERROR}Stoping container ${COLOR_ERROR_B}"
 	docker stop ${docker_container_name}
-	printf "${color_off}"
+	color_reset
 fi
 
 print_new_line

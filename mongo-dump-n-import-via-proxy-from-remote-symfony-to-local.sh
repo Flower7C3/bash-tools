@@ -35,7 +35,7 @@ fi
 
 
 ## PROGRAM
-confirm_or_exit "Dump Mongo on ${color_question_h}${remote_host}${color_question} host via ${color_question_h}${proxy_host}${color_question} host from directory ${color_question_h}${directory}${color_question} and save on local/docker ${color_question_h}${mongo_host}${color_question} container to ${color_question_h}${database}${color_question} database?"
+confirm_or_exit "Dump Mongo on ${COLOR_QUESTION_H}${remote_host}${COLOR_QUESTION} host via ${COLOR_QUESTION_H}${proxy_host}${COLOR_QUESTION} host from directory ${COLOR_QUESTION_H}${directory}${COLOR_QUESTION} and save on local/docker ${COLOR_QUESTION_H}${mongo_host}${COLOR_QUESTION} container to ${COLOR_QUESTION_H}${database}${COLOR_QUESTION} database?"
 
 sourced_scripts_list+=('mongo-dump-symfony.sh mongo-dump-symfony.sh' 'mongo-dump-remote-symfony.sh mongo-dump-remote-symfony.sh')
 copy_scripts_to_host "$proxy_host"

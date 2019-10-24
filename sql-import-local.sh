@@ -26,16 +26,16 @@ trigger_file_name=${database}".sql"
 
 
 ## PROGRAM
-confirm_or_exit "Import SQL to ${color_question_h}${database}${color_question} database at ${color_question_h}${sql_host}${color_question} mysql host from ${color_question_h}${export_file_name}${color_question} export file and ${color_question_h}${trigger_file_name}${color_question} trigger file?"
+confirm_or_exit "Import SQL to ${COLOR_QUESTION_H}${database}${COLOR_QUESTION} database at ${COLOR_QUESTION_H}${sql_host}${COLOR_QUESTION} mysql host from ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION} export file and ${COLOR_QUESTION_H}${trigger_file_name}${COLOR_QUESTION} trigger file?"
 
-printf "${color_info_b}Import ${color_info_h}${export_file_name}${color_info_b} export file to ${color_info_h}${database}${color_info_b} database on local ${color_info} \n"
+printf "${COLOR_INFO_B}Import ${COLOR_INFO_H}${export_file_name}${COLOR_INFO_B} export file to ${COLOR_INFO_H}${database}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
 mysql ${database} < ${local_data_dir_path}${export_file_name}
-printf "${color_off}"
+color_reset
 
 if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
-  printf "${color_info_b}Execute ${color_info_h}${trigger_file_name}${color_info_b} trigger file  to ${color_info_h}${database}${color_info_b} database on local ${color_info} \n"
+  printf "${COLOR_INFO_B}Execute ${COLOR_INFO_H}${trigger_file_name}${COLOR_INFO_B} trigger file  to ${COLOR_INFO_H}${database}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
   mysql ${database} < ${local_trigger_dir_path}${trigger_file_name}
-  printf "${color_off}"
+  color_reset
 fi
 
 remove_file_from_local "${local_data_dir_path}" "${export_file_name}"

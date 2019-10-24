@@ -34,7 +34,7 @@ function copy_file {
     local destination_file_path=.docksal/${dst_file_name}
     mkdir -p $(dirname ${destination_file_path})
     cp ${source_file_path} ${destination_file_path}
-    printf "${color_default_i}Copied file from ${color_default_h}%s${color_default_i} to ${color_default_h}%s${color_default_i} ${color_default_i}\n" "$src_file_name" "$dst_file_name"
+    printf "${COLOR_DEFAULT_I}Copied file from ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} to ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} ${COLOR_DEFAULT_I}\n" "$src_file_name" "$dst_file_name"
 }
 
 
@@ -43,11 +43,11 @@ program_title "Docksal configuration warmup"
 
 
 ## VARIABLES
-display_info "Configure ${color_info_h}project${color_info_b} properties"
+display_info "Configure ${COLOR_INFO_H}project${COLOR_INFO_B} properties"
 prompt_variable_not_null project_name "Project name (lowercase alphanumeric, underscore, and hyphen)" "$_project_name" 1 "$@"
 _domain_name=${project_name}
 if [[ "$project_name" == "." ]]; then
-    confirm_or_exit "Really want to install docksal in ${color_question_b}$(pwd)${color_question} directory?"
+    confirm_or_exit "Really want to install docksal in ${COLOR_QUESTION_B}$(pwd)${COLOR_QUESTION} directory?"
     _domain_name=$(basename `pwd`)
 fi
 prompt_variable_not domain_name "Domain name (without .docksal tld)" "$_domain_name" "." 2 "$@"
@@ -62,12 +62,12 @@ fi
 if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" || "$application_stack" == "node" ]]; then
     while true; do
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
-            display_info "Configure ${color_info_h}web${color_info_b} container (read more on ${color_info_h}https://hub.docker.com/r/docksal/web/${color_info_b})"
+            display_info "Configure ${COLOR_INFO_H}web${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/web/${COLOR_INFO_B})"
             prompt_variable_fixed apache_version "Apache version on web container" "$_apache_version" "$_apache_versions"
         else
             apache_version="no"
         fi
-        display_info "Configure ${color_info_h}cli${color_info_b} container (read more on${color_info_h}https://hub.docker.com/r/docksal/cli/${color_info_b})"
+        display_info "Configure ${COLOR_INFO_H}cli${COLOR_INFO_B} container (read more on${COLOR_INFO_H}https://hub.docker.com/r/docksal/cli/${COLOR_INFO_B})"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
             prompt_variable_fixed php_version "PHP version on cli container" "$_php_version" "$_php_versions"
         else
@@ -85,7 +85,7 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
         fi
         prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "node" ]]; then
-            display_info "Configure ${color_info_h}db${color_info_b} container (read more on${color_info_h}https://hub.docker.com/r/docksal/db/${color_info_b})"
+            display_info "Configure ${COLOR_INFO_H}db${COLOR_INFO_B} container (read more on${COLOR_INFO_H}https://hub.docker.com/r/docksal/db/${COLOR_INFO_B})"
             prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
             if [[ "$mysql_version" != "no" ]]; then
                 prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
@@ -110,9 +110,9 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
             _mysql_version="$mysql_version"
             set -- "${@:1:2}"
             display_error "Docksal stack not set. Please fix versions!"
-            display_info "Possible configurations: ${color_info_h}Apache+PHP+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node+MySQL${color_info_b} or ${color_info_h}Apache+PHP+Node${color_info_b} or ${color_info_h}Node${color_info_b}."
+            display_info "Possible configurations: ${COLOR_INFO_H}Apache+PHP+MySQL${COLOR_INFO_B} or ${COLOR_INFO_H}Apache+PHP+Node+MySQL${COLOR_INFO_B} or ${COLOR_INFO_H}Apache+PHP+Node${COLOR_INFO_B} or ${COLOR_INFO_H}Node${COLOR_INFO_B}."
         else
-            display_info "Docksal stack set to ${color_info_h}$docksal_stack${color_info_b}."
+            display_info "Docksal stack set to ${COLOR_INFO_H}$docksal_stack${COLOR_INFO_B}."
             break
         fi
     done
@@ -135,10 +135,10 @@ fi
 confirm_or_exit "Build Docksal configuration?"
 
 if [[ "$project_name" != "." ]]; then
-    display_info "Create ${color_info_h}$project_name${color_info_b} project directory"
+    display_info "Create ${COLOR_INFO_H}$project_name${COLOR_INFO_B} project directory"
     mkdir -p ${project_name}
     cd ${project_name}
-    printf "${color_off}"
+    color_reset
 fi
 project_path=$(realpath .)
 
@@ -158,7 +158,7 @@ if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]
         fin config set DB_IMAGE="docksal/db:${docksal_db_version}-mysql-${mysql_version}"
     fi
     if [[ "$node_version" != "no" ]]; then
-        display_info "More info about ${color_info_h}.nvmrc${color_info_b} file on ${color_info_h}https://github.com/creationix/nvm#nvmrc"
+        display_info "More info about ${COLOR_INFO_H}.nvmrc${COLOR_INFO_B} file on ${COLOR_INFO_H}https://github.com/creationix/nvm#nvmrc"
         echo ${node_version} > .nvmrc
     fi
     if [[ "$mysql_import" == "yes" || "$java_version" != "no" ]]; then
@@ -173,7 +173,7 @@ else
     fi
 fi
 fin config set VIRTUAL_HOST="${domain_name}"
-printf "${color_off}"
+color_reset
 
 display_info "Add custom commands"
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
@@ -189,36 +189,36 @@ if [[ "$symfony_config" != "no" ]]; then
     copy_file "commands/console2"
     copy_file "commands/console"
 fi
-printf "${color_off}"
+color_reset
 
 if [[ "$mysql_import" == "yes" ]]; then
-    display_info "Import custom db into ${color_info_h}db${color_info_b} container"
+    display_info "Import custom db into ${COLOR_INFO_H}db${COLOR_INFO_B} container"
     mkdir -p .docksal/dist/db/
     copy_file "dist/db/dump.sql"
     cat ${docksal_example_dir}docksal.yml/db-custom-data.yml >> .docksal/docksal.yml
-    printf "${color_off}"
+    color_reset
 fi
 
 if [[ "$node_version" != "no" ]]; then
-    display_info "Prepare node in ${color_info_h}cli${color_info_b} container"
+    display_info "Prepare node in ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     sed -i.bak "s/#uncomment#nvm_install/nvm_install/g" .docksal/commands/init-site
     sed -i.bak "s/#uncomment#npm_install/npm_install/g" .docksal/commands/init-site
     sed -i.bak "s/#uncomment#gulp_build/gulp_build/g" .docksal/commands/init-site
     rm .docksal/commands/init-site.bak
-    printf "${color_off}"
+    color_reset
 fi
 
 if [[ "$java_version" != "no" ]]; then
-    display_info "Add ${color_info_h}JAVA${color_info_b} to ${color_info_h}cli${color_info_b} container"
+    display_info "Add ${COLOR_INFO_H}JAVA${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     mkdir -p .docksal/services/cli/
     copy_file "services/cli/Dockerfile-with-java" "services/cli/Dockerfile"
     sed -i '' -e "s/FROM \(.*\)/FROM "$(echo "$docksal_cli_image" | sed 's/\//\\\//g' )"/g" .docksal/services/cli/Dockerfile
     cat ${docksal_example_dir}docksal.yml/cli-with-java.yml >> .docksal/docksal.yml
-    printf "${color_off}"
+    color_reset
 fi
 
 if [[ "$symfony_config" != "no" ]]; then
-    display_info "Add ${color_info_h}Symfony parameters${color_info_b} to ${color_info_h}cli${color_info_b} container"
+    display_info "Add ${COLOR_INFO_H}Symfony parameters${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     mkdir -p .docksal/dist/cli/
     copy_file "dist/cli/parameters.yml" "dist/cli/parameters.yml"
     symfony_secret=$(date +%s%N | shasum | base64 | head -c 32)
@@ -234,14 +234,14 @@ if [[ "$symfony_config" != "no" ]]; then
     rm .docksal/commands/init-site.bak
     copy_file "dist/cli/htaccess" "../${www_docroot}/.htaccess.docksal"
     copy_file "dist/cli/app_docksal.php" "../${www_docroot}/app_docksal.php"
-    printf "${color_off}"
+    color_reset
 fi
 
 display_success "Docksal configuration is ready."
 
-confirm_or_exit "Initialize docker project?" "You can init project manually with ${color_info_h}fin init${color_info_b} command in ${color_info_h}${project_path}${color_info_b} directory."
-display_info "Initialize docker project (executing ${color_info_h}fin init${color_info_b} command in ${color_info_h}${project_path}${color_info_b} directory.)"
+confirm_or_exit "Initialize docker project?" "You can init project manually with ${COLOR_INFO_H}fin init${COLOR_INFO_B} command in ${COLOR_INFO_H}${project_path}${COLOR_INFO_B} directory."
+display_info "Initialize docker project (executing ${COLOR_INFO_H}fin init${COLOR_INFO_B} command in ${COLOR_INFO_H}${project_path}${COLOR_INFO_B} directory.)"
 fin init
-printf "${color_off}"
+color_reset
 
 print_new_line

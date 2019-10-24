@@ -17,22 +17,22 @@ backup_file='vendors-'$date'.tar'
 home_local="${HOME}/"
 
 
-printf "${color_notice_b}Prepare directory ${color_notice_h}${home_src}${backup_path}${color_notice_b} at ${color_notice_h}${host_src}${color_notice_b} host ${color_notice} \n"
+printf "${COLOR_NOTICE_B}Prepare directory ${COLOR_NOTICE_H}${home_src}${backup_path}${COLOR_NOTICE_B} at ${COLOR_NOTICE_H}${host_src}${COLOR_NOTICE_B} host ${COLOR_NOTICE} \n"
 ssh ${host_src} "cd "${home_src}";tar -cf "${home_src}${backup_file}" "${backup_path}
 ssh ${host_dst} "rm -rf "${home_dst}${backup_path}"*"
-printf "${color_off}"
+color_reset
 
-printf "${color_success_b}Copy from source ${color_success_h}${host_src}${color_success_b} host to destination ${color_success_h}${host_dst}${color_success_b} host ${color_success} \n"
+printf "${COLOR_SUCCESS_B}Copy from source ${COLOR_SUCCESS_H}${host_src}${COLOR_SUCCESS_B} host to destination ${COLOR_SUCCESS_H}${host_dst}${COLOR_SUCCESS_B} host ${COLOR_SUCCESS} \n"
 scp ${host_src}:${home_src}${backup_file} ${home_local}${backup_file}
 scp ${home_local}${backup_file} ${host_dst}:${home_dst}${backup_file}
-printf "${color_off}"
+color_reset
 
-printf "${color_success_b}Extract ${color_success_h}${backup_file}${color_success_b} file to ${color_success_h}${home_dst}${backup_path}${color_success_b} path at ${color_success_h}${host_dst}${color_success_b} host ${color_success} \n"
+printf "${COLOR_SUCCESS_B}Extract ${COLOR_SUCCESS_H}${backup_file}${COLOR_SUCCESS_B} file to ${COLOR_SUCCESS_H}${home_dst}${backup_path}${COLOR_SUCCESS_B} path at ${COLOR_SUCCESS_H}${host_dst}${COLOR_SUCCESS_B} host ${COLOR_SUCCESS} \n"
 ssh ${host_dst} "cd "${home_dst}"; tar -xf "${home_dst}${backup_file}
-printf "${color_off}"
+color_reset
 
-printf "${color_error_b}Cleanup${Red} \n"
+printf "${COLOR_ERROR_B}Cleanup${COLOR_RED} \n"
 ssh ${host_src} "rm "${home_src}${backup_file}
 ssh ${host_dst} "rm "${home_dst}${backup_file}
 rm ${home_local}${backup_file}
-printf "${color_off}"
+color_reset

@@ -9,7 +9,7 @@ _branches="master,dev"
 
 ## WELCOME
 program_title "Synch GIT branches"
-printf "You are in ${color_info_h}`pwd`${color_off} directory.\n"
+printf "You are in ${COLOR_INFO_H}`pwd`${COLOR_OFF} directory.\n"
 
 
 ## VARIABLES
@@ -21,15 +21,15 @@ prompt_variable prefix "Prefix" "" 2 "$@"
 
 
 ## PROGRAM
-confirm_or_exit "$(printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${color_question_h}${prefix}${branch}${color_question}"; done; printf "?")"
+confirm_or_exit "$(printf "Pull branches"; for branch in "${branches[@]}"; do printf " ${COLOR_QUESTION_H}${prefix}${branch}${COLOR_QUESTION}"; done; printf "?")"
 
 for branch in "${branches[@]}"
 do
 
-  printf "${color_info_b}Checkout ${color_info_h}${prefix}${branch}${color_info_b} ${color_info} \n"
+  printf "${COLOR_INFO_B}Checkout ${COLOR_INFO_H}${prefix}${branch}${COLOR_INFO_B} ${COLOR_INFO} \n"
   git checkout ${prefix}${branch}
 
-  printf "${color_info_b}Pull ${color_info_h}${prefix}${branch}${color_info_b} from upstream ${color_info} \n"
+  printf "${COLOR_INFO_B}Pull ${COLOR_INFO_H}${prefix}${branch}${COLOR_INFO_B} from upstream ${COLOR_INFO} \n"
   git pull
 
 done

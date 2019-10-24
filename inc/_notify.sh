@@ -7,7 +7,7 @@ function slack_notify() {
     local url="https://hooks.slack.com/services/${service_identifier}"
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
-    printf "${color_info_b}Send notification to Slack${color_off} \n"
+    printf "${COLOR_INFO_B}Send notification to Slack${COLOR_OFF} \n"
     curl -k -X POST --data "payload=${payload}" "$url"
     echo ""
 }
@@ -50,7 +50,7 @@ function msteams_notify() {
     local url="https://outlook.office.com/webhook/${service_identifier}"
     local payload=$(echo "$2" | sed ':a;N;$!ba;s/\n//g')
 
-    printf "${color_info_b}Send notification to MS Teams${color_off} \n"
+    printf "${COLOR_INFO_B}Send notification to MS Teams${COLOR_OFF} \n"
     curl -k -X POST --data "$payload" "$url"
     echo ""
 }

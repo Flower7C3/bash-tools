@@ -30,9 +30,9 @@ for index in "${!pages[@]}"; do
 	content_one=$(curl -s -L $url_one)
 	content_two=$(curl -s -L $url_two)
 	if [[ "$content_one" == "$content_two" ]]; then
-		printf "${color_success}SAME${color_off}\n"
+		printf "${COLOR_SUCCESS}SAME${COLOR_OFF}\n"
 	else
-		printf "${color_error}DIFFERENT${color_off}\n"
+		printf "${COLOR_ERROR}DIFFERENT${COLOR_OFF}\n"
 		printf "${#content_one}\n"
 		printf "${#content_two}\n"
 	fi

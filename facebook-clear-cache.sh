@@ -21,12 +21,12 @@ prompt_variable sitemap_path "Sitemap path" "$_sitemap_path" 3 "$@"
 ## PROGRAM
 if [[ "$sitemap_path" != "" ]]; then
 
-	confirm_or_exit "Really rescrap all pages from ${color_question_h}${base_url}${sitemap_path}${color_question} sitemap?"
+	confirm_or_exit "Really rescrap all pages from ${COLOR_QUESTION_H}${base_url}${sitemap_path}${COLOR_QUESTION} sitemap?"
 	facebook_cache_clean_by_sitemap ${access_token} ${base_url} ${sitemap_path}
 
 else
 
-	confirm_or_exit "Really rescrap all pages from ${color_question_h}${base_url}${color_question} page?"
+	confirm_or_exit "Really rescrap all pages from ${COLOR_QUESTION_H}${base_url}${COLOR_QUESTION} page?"
 	facebook_cache_clean ${access_token} ${base_url}
 
 fi

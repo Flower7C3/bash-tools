@@ -35,7 +35,7 @@ fi
 
 
 ## PROGRAM
-confirm_or_exit "Dump Mongo on ${color_question_h}${remote_host}${color_question} host from directory ${color_question_h}${directory}${color_question} and save on ${color_question_h}${mongo_host}${color_question} ${_mongo_host_type} to ${color_question_h}${database}${color_question} database?"
+confirm_or_exit "Dump Mongo on ${COLOR_QUESTION_H}${remote_host}${COLOR_QUESTION} host from directory ${COLOR_QUESTION_H}${directory}${COLOR_QUESTION} and save on ${COLOR_QUESTION_H}${mongo_host}${COLOR_QUESTION} ${_mongo_host_type} to ${COLOR_QUESTION_H}${database}${COLOR_QUESTION} database?"
 
 sourced_scripts_list+=('mongo-dump-symfony.sh mongo-dump-symfony.sh')
 copy_scripts_to_host "$remote_host"
