@@ -345,8 +345,8 @@ function confirm_or_exit() {
     local _run
     printf "\n"
     prompt_variable_fixed_or_exit _run "${_question_text}" "n" "y n" ""
-    printf "\n"
     if [[ "$_run" != "y" ]]; then
+        printf "\n"
         if [[ "$_fallback_message" != "" ]]; then
             display_info "$_fallback_message"
         fi
