@@ -128,12 +128,12 @@ function display_prompt() {
 function config_load() {
     display_info 'Start netcat chat at "%s" pid' "$BASHPID"
     if [[ ! -f "$config_file_path" ]]; then
-        display_info 'Create config file'
+        display_info 'Create config file "%s"' "$config_file_path"
         mkdir -p "$(dirname "$config_file_path")"
         touch "$config_file_path"
         chmod 400 "$config_file_path"
     else
-        display_info 'Read config file'
+        display_info 'Read config file "%s"' "$config_file_path"
         source $config_file_path
     fi
     history -r "$history_file_path"
@@ -236,18 +236,18 @@ function netcat_kill() {
 }
 
 ### TRAP ###
-_exit='n'
+ctrlc_trap_active='n'
 function ctrlc_trap_init() {
-    _exit='n'
-    trap '_exit="y";return;' SIGINT
+    ctrlc_trap_active='n'
+    trap 'ctrlc_trap_active="y";return;' SIGINT
 }
 function ctrlc_trap_remove() {
+    ctrlc_trap_active='n'
     trap - SIGINT
 }
 function ctrlc_trap_exec() {
-    if [[ "$_exit" == "y" ]]; then
+    if [[ "$ctrlc_trap_active" == "y" ]]; then
         echo
-        trap - SIGINT
         return 0
     fi
     return 1
@@ -316,7 +316,6 @@ function validate_port() {
 }
 ### SENDER ###
 function app_setup_port() {
-    ctrlc_trap_init
     local _new_sender_port="$1"
     local _new_sender_port_error
     while true; do
@@ -334,10 +333,8 @@ function app_setup_port() {
     done
     config_create 'sender_port' "$_new_sender_port"
     display_success "Sender port set to %s" "$_new_sender_port"
-    ctrlc_trap_remove
 }
 function app_setup_nickname() {
-    ctrlc_trap_init
     local _new_sender_nickname="$1"
     local _new_sender_nickname_error
     while true; do
@@ -359,7 +356,6 @@ function app_setup_nickname() {
     if [[ -n "$_old_sender_nickname" ]]; then
         message_from_system "$_old_sender_nickname is now known as $_new_sender_nickname"
     fi
-    ctrlc_trap_remove
 }
 
 ### RECIPIENTS ###
@@ -421,7 +417,6 @@ function hosts_scan_and_recipient_create() {
     done
 }
 function recipient_create() {
-    ctrlc_trap_init
     local _new_recipient_nickname="$1"
     local _new_recipient_nickname_error
     while true; do
@@ -476,16 +471,13 @@ function recipient_create() {
         _recipient_nickname=$(name_to_nickname "$_recipient_name")
         if [[ "${chat_users[$_recipient_name]}" == "${_new_recipient_address[*]}" ]]; then
             display_error "Recipient's data already defined and known as %s" "$_recipient_nickname"
-            ctrlc_trap_remove
             return 1
         fi
     done
     config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
     display_success "Recipient %s created as \"%s\"" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
-    ctrlc_trap_remove
 }
 function recipient_rename() {
-    ctrlc_trap_init
     local old_recipient_nickname="$1"
     local old_recipient_nickname_error
     while true; do
@@ -524,10 +516,8 @@ function recipient_rename() {
     _new_recipient_name=$(nickname_to_name "$_new_recipient_nickname")
     config_delete "chat_users[${old_recipient_name}]" && config_create "chat_users[${_new_recipient_name}]" "${recipient_address[*]}"
     display_success "Recipient %s renamed to %s" "$old_recipient_nickname" "$_new_recipient_nickname"
-    ctrlc_trap_remove
 }
 function recipient_update() {
-    ctrlc_trap_init
     local _new_recipient_nickname="$1"
     local _new_recipient_nickname_error
     while true; do
@@ -584,16 +574,13 @@ function recipient_update() {
         if [[ "${chat_users[$_recipient_name]}" == "${_new_recipient_address[*]}" ]] && [[ "$_recipient_name" != "$_new_recipient_name" ]]; then
             local _recipient_nickname=$(name_to_nickname "$_recipient_name")
             display_error "Recipient's data \"%s\" already defined and known as %s" "${_new_recipient_address[*]}" "$_recipient_nickname"
-            ctrlc_trap_remove
             return 1
         fi
     done
     config_create "chat_users[${_new_recipient_name}]" "${_new_recipient_address[*]}"
     display_success "Recipient %s updated as \"%s\"" "$_new_recipient_nickname" "${_new_recipient_address[*]}"
-    ctrlc_trap_remove
 }
 function recipient_delete() {
-    ctrlc_trap_init
     local _recipient_nickname="$1"
     local _recipient_nickname_error
     while true; do
@@ -617,7 +604,6 @@ function recipient_delete() {
         config_delete "chat_users[${_recipient_name}]"
         display_success 'Recipient %s deleted' "$_recipient_nickname"
     fi
-    ctrlc_trap_remove
 }
 
 ### MESSAGE ###
@@ -750,8 +736,10 @@ function help_screen() {
 ### MAIN ###
 app_init "$@"
 while true; do
+    ctrlc_trap_remove
     case $option in
     /p | /port | /p\ * | /port\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_sender_port=${option_array[1]}
@@ -762,6 +750,7 @@ while true; do
         option_reset
         ;;
     /n | /nick | /n\ * | /nick\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_sender_nickname=${option_array[1]}
@@ -795,6 +784,7 @@ while true; do
         option_reset
         ;;
     /c | /create | /c\ * | /create\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_recipient_nickname=${option_array[1]}
@@ -805,6 +795,7 @@ while true; do
         option_reset
         ;;
     /u | /update | /u\ * | /update\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_recipient_nickname=${option_array[1]}
@@ -815,6 +806,7 @@ while true; do
         option_reset
         ;;
     /r | /rename | /r\ * | /rename\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_old_recipient_nickname=${option_array[1]}
@@ -824,6 +816,7 @@ while true; do
         option_reset
         ;;
     /d | /delete | /d\ * | /delete\ *)
+        ctrlc_trap_init
         history_save
         option_array=($option)
         option_recipient_nickname=${option_array[1]}
@@ -842,8 +835,12 @@ while true; do
         fi
         option_reset
         ;;
-    *)
+    /i)
         option_get
+        ;;
+    *)
+        display_error 'Command not found'
+        option_reset
         ;;
     esac
 done
