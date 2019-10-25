@@ -12,7 +12,7 @@ function app_hello() {
 }
 
 function app_bye() {
-    printf "${COLOR_LOG}Bye bye. See You Later, Alligator ${COLOR_LOG_B};)${COLOR_LOG} \n"
+    display_log "Bye bye. See You Later, Alligator ;)"
     print_new_line
 }
 
@@ -69,19 +69,19 @@ function display_line() {
             _icon=""
             ;;
         $DISPLAY_LINE_SILENT_BELL)
-            _line_prepend="\eg\a\r"
+            _line_prepend="${_line_prepend}\eg\a\r"
             ;;
         $DISPLAY_LINE_PREPEND_NL)
-            _line_prepend="\n"
+            _line_prepend="${_line_prepend}\n"
             ;;
         $DISPLAY_LINE_PREPEND_CR)
-            _line_prepend="\r"
+            _line_prepend="${_line_prepend}\r"
             ;;
         $DISPLAY_LINE_PREPEND_TAB)
-            _line_prepend="\t"
+            _line_prepend="${_line_prepend}\t"
             ;;
         $DISPLAY_LINE_APPEND_NL)
-            _line_append="\n"
+            _line_append="${_line_append}\n"
             ;;
         $DISPLAY_LINE_APPEND_NULL)
             _line_append=""
@@ -124,9 +124,9 @@ function display_infolog() {
     local _label=$1
     local _value=$2
     if [[ -z "$_value" ]]; then
-        printf "${COLOR_INFO}%s: ${COLOR_LOG_B}<undefined>${COLOR_INFO}\n" "$_label"
+        printf "${COLOR_INFO}%s: ${COLOR_LOG_H}<undefined>${COLOR_INFO}\n" "$_label"
     else
-        printf "${COLOR_INFO}%s: ${COLOR_SUCCESS_B}%s${COLOR_INFO}\n" "$_label" "$_value"
+        printf "${COLOR_INFO}%s: ${COLOR_SUCCESS_H}%s${COLOR_INFO}\n" "$_label" "$_value"
     fi
 }
 
@@ -146,12 +146,16 @@ function program_error() {
 # asks user for value
 function display_prompt() {
     local _prompt_mode=$1
-    local _variable_name=$2
-    local _question_text=$3
-    local _question_text2=$3
-    local _default_value=$4
-    local _arg_no
-    _arg_no=$(expr ${5:-1} + 5)
+    shift
+    local _variable_name=$1
+    shift
+    local _question_text=$1
+    local _question_text2=$1
+    shift
+    local _default_value=$1
+    shift
+    local _arg_no=${1:-1}
+    shift
     local _args=$#
     local _prompt_text
     local _prompt_repeat
@@ -171,20 +175,20 @@ function display_prompt() {
     else
         _question_text2="${_question_text}: "
         if [[ -n "${_default_value}" ]]; then
-            _question_text2="${_question_text} (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION_B}): "
+            _question_text2="${_question_text} (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION}): "
         fi
         _prompt_text=$(display_line "$COLOR_QUESTION" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_text2" "$@")
-        _prompt_text=$(echo -e -n "${_prompt_text}${COLOR_CONSOLE}")
+        _prompt_text=$(echo -e -n "${_prompt_text}${COLOR_CONSOLE}" | fold -s -w128)
         local _input_value
         if [[ "$_prompt_mode" == "password" ]] || [[ "$_prompt_mode" == "repeated" ]]; then
             local _input_value1
             local _input_value2
             local _question_repeat2="${_question_text} repeat: "
             if [[ -n "${_default_value}" ]]; then
-                _question_repeat2="${_question_text} repeat (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION_B}): "
+                _question_repeat2="${_question_text} repeat (default: ${COLOR_QUESTION_H}${_default_value}${COLOR_QUESTION}): "
             fi
             _prompt_repeat=$(display_line "$COLOR_QUESTION" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "$_question_repeat2" "$@")
-            _prompt_repeat=$(echo -e -n "${_prompt_repeat}${COLOR_CONSOLE}")
+            _prompt_repeat=$(echo -e -n "${_prompt_repeat}${COLOR_CONSOLE}" | fold -s -w128)
             while true; do
                 if [[ "$_prompt_mode" == "password" ]]; then
                     read -r -p "${_prompt_text}" -s _input_value1
@@ -261,7 +265,7 @@ function prompt_variable_not() {
         prompt_variable "$_variable_name" "$_question_text" "$_default_value" "$@"
         _prompt_response=$(eval echo '$'"${_variable_name}")
         if test "$(echo " ${_prohibited_values[*]} " | grep " ${_prompt_response} ")"; then
-            display_error "${COLOR_ERROR_B}Wrong ${COLOR_QUESTION_B}${_question_text}${COLOR_ERROR_B}. Prohibited values are: ${COLOR_ERROR_H}$(join_by '/' ${_prohibited_values[*]})${COLOR_ERROR_B}!"
+            display_error "Wrong ${COLOR_QUESTION_H}${_question_text}${COLOR_ERROR}. Prohibited values are: ${COLOR_ERROR_H}$(join_by '/' ${_prohibited_values[*]})${COLOR_ERROR}!"
             set -- "${@:1:1}"
         else
             break
@@ -296,7 +300,7 @@ function prompt_variable_fixed() {
         if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
         else
-            display_error "${COLOR_ERROR_B}Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR_B} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR_B}!"
+            display_error "Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR}!"
             set -- "${@:0:0}"
         fi
     done
@@ -324,7 +328,7 @@ function prompt_variable_fixed_or_exit() {
         if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
         else
-            display_error "${COLOR_ERROR_B}Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR_B} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR_B}!"
+            display_error "Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR}!"
             set -- "${@:0:0}"
         fi
     done
