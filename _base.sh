@@ -1,7 +1,7 @@
-if [[ "$BASH_VERSION" != 4* ]]; then
-    echo "Bash version is to low. Consider upgrading to bash 4.x".
+if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSION" == 2* ]] || [[ "$BASH_VERSION" == 3* ]]; then
+    echo "Bash version is to low. Consider upgrading to bash newer than $BASH_VERSION".
     if uname | grep -iq Darwin; then
-        echo "Read more on https://clubmate.fi/upgrade-to-bash-4-in-mac-os-x/"
+        echo "Read more on https://itnext.io/upgrading-bash-on-macos-7138bd1066ba"
     fi
     exit 9
 fi
