@@ -59,10 +59,10 @@ Chat with collegues via netcat with `bash netcatchat.sh`. It contains a lot of s
 Run `bash beeper.sh` and use keys to generate sound:
 - use keyboard keys **zxcvbnm,** to play white piano keys (notes from **c** to **b**)
 - use keyboard keys **sdghj** to play on black piano keys
-- play them with **Shift** keyboard key to ativate sustain
+- play them with **Shift** keyboard key to activate sustain
 - use **Up** and **Down** keyboard arrows to change octave
-- use **Left** and **Right** keyboard arrows to change note length
-- use keyboard keys **12345** to set note length (sixtennth, eighth, quarter, half, whole)
+- use **Left** and **Right** keyboard arrows to change speed
+- use keyboard keys **12345** to set note type (whole, half, quarter, eighth, sixtennth)
 
 Use `php piano-notes-to-beeper.php <piano_notes_file_name>` to convert piano notes to beeper format and then call `bash beeper.sh <beeper_file_name>`.
 Beeper file format is `TO,LS ` value separated by space, where:

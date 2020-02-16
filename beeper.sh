@@ -1,5 +1,26 @@
 #!/usr/bin/env bash
 
+### COLORS ###
+declare -r COLOR_OFF='\033[0m'       # Text Reset
+declare -r COLOR_RED='\033[0;31m'    # Red
+declare -r COLOR_GREEN='\033[0;32m'  # Green
+declare -r COLOR_YELLOW='\033[0;33m' # Yellow
+declare -r COLOR_CYAN='\033[0;36m'   # Cyan
+declare -r COLOR_WHITE='\033[0;37m'  # White
+declare -r ICON_INFO='☞'
+declare -r ICON_SUCCESS='✓'
+declare -r ICON_ERROR='✗'
+declare -r ICON_MESSAGE='✉'
+declare -r ICON_PROMPT='↳'
+declare -r DISPLAY_LINE_NO_ICON='display_line.no_icon'
+declare -r DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
+declare -r DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
+declare -r DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
+declare -r DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
+declare -r DISPLAY_LINE_APPEND_NULL='display_line.line_append_null'
+declare -r DISPLAY_LINE_APPEND_NL='display_line.line_append_nl'
+
+### NOTES ###
 # notes, see http://people.virginia.edu/~pdr4h/pitch-freq.html
 NOTE_a_0=27.500
 NOTE_A_0=29.135
@@ -119,37 +140,80 @@ MUSIC_SIGN_FLAT='♭'    # \xe2\x99\xad
 MUSIC_SIGN_NATURAL='♮' # \xe2\x99\xae
 MUSIC_SIGN_SHARP='♯'   # \xe2\x99\xaf
 
-if hash 'beep' 2>/dev/null; then
-    command_pattern_normal='beep -d %s -f %s'
-    command_pattern_sustain='beep -d %s -f %s &'
-    command_name='beep'
-elif hash 'play' 2>/dev/null; then
-    command_pattern_normal='play -q -n -c1 synth %s sine %s'
-    command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
-    command_name='play'
-else
-    printf "Mucical command not found! Please install beep (apt install beep) or play (brew install sox).\n"
-    exit 1
-fi
-
-function finish() {
-    killall $command_name
-    printf "Bye!\n\n"
+### DISPLAY ###
+function display_line() {
+    local _color=$1
+    shift
+    local _icon="$1 "
+    shift
+    local _line_prepend=""
+    local _line_append="\n"
+    while true; do
+        case $1 in
+        $DISPLAY_LINE_NO_ICON)
+            _icon=""
+            ;;
+        $DISPLAY_LINE_SILENT_BELL)
+            _line_prepend="\eg\a\r"
+            ;;
+        $DISPLAY_LINE_PREPEND_NL)
+            _line_prepend="\n"
+            ;;
+        $DISPLAY_LINE_PREPEND_CR)
+            _line_prepend="\r"
+            ;;
+        $DISPLAY_LINE_PREPEND_TAB)
+            _line_prepend="\t"
+            ;;
+        $DISPLAY_LINE_APPEND_NL)
+            _line_append="\n"
+            ;;
+        $DISPLAY_LINE_APPEND_NULL)
+            _line_append=""
+            ;;
+        *)
+            break
+            ;;
+        esac
+        shift
+    done
+    local _text_pattern="$1"
+    shift
+    local _text
+    _text=$(printf "$_text_pattern" "$@")
+    echo -e -n "${_line_prepend}${_color}${_icon}${_text}${COLOR_OFF}${_line_append}"
 }
-trap finish EXIT
+function display_info() {
+    display_line "$COLOR_CYAN" "$ICON_INFO" "$@"
+}
+function display_message() {
+    display_line "$COLOR_WHITE" "$ICON_MESSAGE" "$@"
+}
+function display_success() {
+    display_line "$COLOR_GREEN" "$ICON_SUCCESS" "$@"
+}
+function display_error() {
+    display_line "$COLOR_RED" "$ICON_ERROR" "$@"
+}
 
+### CONFIG ###
+command_pattern_normal=''
+command_pattern_sustain=''
+command_name=''
+notes_file_name=''
 note_sustain='n'
 note_tone_key=''
 note_tone_name=''
 note_tone_freq=''
 note_octave=''
+note_type_id=''
+note_type_icon=''
+note_speed=''
 note_length_ms=''
 note_length_sec=''
-note_length_name=''
-note_length_icon=''
 verbose='1'
-escape_char=$(printf "\u1b")
 
+### BEEPER ###
 function reset_note() {
     note_sustain='n'
     note_tone_key=''
@@ -157,27 +221,40 @@ function reset_note() {
 function set_note_sustain() {
     note_sustain='y'
 }
-function set_note_length() {
-    local _note_length_ms="$1"
-    if [[ "$_note_length_ms" -lt '100' ]]; then
-        _note_length_ms='100'
+function set_note_type() {
+    local _note_type_id="$1"
+    if [[ "$_note_type_id" -lt '1' ]]; then
+        _note_type_id='1'
     fi
-    if [[ "$_note_length_ms" -gt '1600' ]]; then
-        _note_length_ms='1600'
+    if [[ "$_note_type_id" -gt '16' ]]; then
+        _note_type_id='16'
     fi
-    note_length_ms="$_note_length_ms"
-    note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
-    case "$note_length_ms" in
-    1600) note_length_name='WHOLE' ;;
-    800 | $((note_length_ms > 800))*) note_length_name='HALF' ;;
-    400 | $((note_length_ms > 400))*) note_length_name='QUARTER' ;;
-    200 | $((note_length_ms > 200))*) note_length_name='EIGHTH' ;;
-    100 | $((note_length_ms > 100))*) note_length_name='SIXTENNTH' ;;
+    note_type_id="$_note_type_id"
+    local _note_length_name
+    case "$note_type_id" in
+    16) _note_length_name='WHOLE' ;;
+    8 | $((note_type_id > 8))*) _note_length_name='HALF' ;;
+    4 | $((note_type_id > 4))*) _note_length_name='QUARTER' ;;
+    2 | $((note_type_id > 2))*) _note_length_name='EIGHTH' ;;
+    1 | $((note_type_id > 1))*) _note_length_name='SIXTENNTH' ;;
     esac
-    local _icon_key="MUSIC_NOTE_${note_length_name}"
-    note_length_icon=${!_icon_key}
+    local _icon_key="MUSIC_NOTE_${_note_length_name}"
+    note_type_icon=${!_icon_key}
     if [[ "$verbose" -gt '0' ]]; then
-        printf "Set note as %s $note_length_icon (%s ms)\n" "$note_length_name" "$note_length_ms"
+        display_info "Set note type as %s $note_type_icon\n" "$_note_length_name"
+    fi
+}
+function set_note_speed() {
+    local _speed="$1"
+    if [[ "$_speed" -lt '30' ]]; then
+        _speed='30'
+    fi
+    if [[ "$_speed" -gt '200' ]]; then
+        _speed='200'
+    fi
+    note_speed="$_speed"
+    if [[ "$verbose" -gt '0' ]]; then
+        display_info "Set speed as %s\n" "$note_speed"
     fi
 }
 function set_note_octave() {
@@ -190,7 +267,7 @@ function set_note_octave() {
     fi
     note_octave="$_note_octave"
     if [[ "$verbose" -gt '0' ]]; then
-        printf "Set octave as %s\n" "$note_octave"
+        display_info "Set octave as %s\n" "$note_octave"
     fi
 }
 function set_note_tone() {
@@ -202,6 +279,8 @@ function set_note_tone() {
     esac
 }
 function play_value() {
+    note_length_ms=$(echo "$note_type_id * 15000/$note_speed" | bc)
+    note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
     if [[ "$note_tone_key" == 'p' ]]; then
         play_pause
     else
@@ -211,16 +290,16 @@ function play_value() {
     fi
 }
 function play_pause() {
-    printf "$note_length_icon p (%s ms)" "$note_length_ms"
-    sleep $note_length_sec
+    printf "$note_type_icon p (%s ms)" "$note_length_ms"
+    sleep "$note_length_sec"
     printf "\n"
 }
 function play_note() {
     if [[ "$note_sustain" == 'y' ]]; then
-        printf "$note_length_icon %s%s Led. (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
+        printf "$note_type_icon %s%s Led. (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
         eval "$(printf "$command_pattern_sustain" "$note_length_sec" "$note_tone_freq")"
     else
-        printf "$note_length_icon %s%s (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
+        printf "$note_type_icon %s%s (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
         eval "$(printf "$command_pattern_normal" "$note_length_sec" "$note_tone_freq")"
     fi
     printf "\n"
@@ -229,10 +308,12 @@ function main_loop() {
     # RESET
     reset_note
     local _octave_extra='n'
+    local _escape_char
+    _escape_char=$(printf "\u1b")
     # READ
     read -r -n 1 -p "$MUSIC_CLEF_G " key
     printf "\r$MUSIC_CLEF_G "
-    if [[ $key == $escape_char ]]; then
+    if [[ $key == "$_escape_char" ]]; then
         read -rsn2 key # read 2 more chars
     fi
     # octave extra
@@ -245,18 +326,19 @@ function main_loop() {
     fi
 
     case "$key" in
-    # NOTE LENGTH
+    # NOTE SPEED
     '[C')
-        set_note_length $((note_length_ms + 100))
+        set_note_speed $((note_speed + 5))
         ;;
     '[D')
-        set_note_length $((note_length_ms - 100))
+        set_note_speed $((note_speed - 5))
         ;;
-    5) set_note_length 1600 ;;
-    4) set_note_length 800 ;;
-    3) set_note_length 400 ;;
-    2) set_note_length 200 ;;
-    1) set_note_length 100 ;;
+    # NOTE TYPE
+    1) set_note_type 16 ;;
+    2) set_note_type 8 ;;
+    3) set_note_type 4 ;;
+    4) set_note_type 2 ;;
+    5) set_note_type 1 ;;
     '[A')
         set_note_octave $((note_octave + 1))
         ;;
@@ -295,42 +377,99 @@ function main_loop() {
     fi
 }
 function file_read() {
-    local notes_data=($(cat "$1" | grep -v '#'))
+    local _notes_data=($(cat "$notes_file_name" | grep -v '#'))
     verbose='0'
-    local total=$((${#notes_data[@]} - 1))
-    local i=0
+    local _total=$((${#_notes_data[@]} - 1))
+    local _i=0
     while true; do
-        if [[ "$i" -gt "$total" ]]; then
+        if [[ "$_" -gt "$_total" ]]; then
             break
         fi
         reset_note
-        note_data="${notes_data[$i]}"
-        note_arr=($(echo "${note_data}" | sed 's/,/ /g'))
-        note_tone_arr=($(echo "${note_arr[0]}" | sed 's/./& /g'))
+        local _note_data
+        _note_data="${_notes_data[$i]}"
+        local _note_arr
+        _note_arr=($(echo "${_note_data}" | sed 's/,/ /g'))
+        local _note_tone_arr
+        _note_tone_arr=($(echo "${_note_arr[0]}" | sed 's/./& /g'))
         if [[ $(
-            echo "$note_data" | grep -qE '^p'
+            echo "$_note_data" | grep -qE '^p'
             echo $?
         ) -eq "0" ]]; then
-            set_note_length $(echo "${note_arr[1]} * 100" | bc)
+            set_note_type "${_note_arr[1]}"
             play_pause "$note_length_ms"
         else
-            set_note_length $(echo "${note_arr[1]} * 100" | bc)
-            set_note_tone "${note_tone_arr[0]}"
-            set_note_octave "${note_tone_arr[1]}"
-            if [[ -n "${note_arr[2]}" ]]; then
+            set_note_type "${_note_arr[1]}"
+            set_note_tone "${_note_tone_arr[0]}"
+            set_note_octave "${_note_tone_arr[1]}"
+            if [[ -n "${_note_arr[2]}" ]]; then
                 set_note_sustain
             fi
             play_value
         fi
-        i=$((i + 1))
+        _i=$((_i + 1))
     done
 }
+function config_load() {
+    if hash 'beep' 2>/dev/null; then
+        command_pattern_normal='beep -d %s -f %s'
+        command_pattern_sustain='beep -d %s -f %s &'
+        command_name='beep'
+    elif hash 'play' 2>/dev/null; then
+        command_pattern_normal='play -q -n -c1 synth %s sine %s'
+        command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
+        command_name='play'
+    else
+        display_error "Mucical command not found! Please install beep (apt install beep) or play (brew install sox)."
+        exit 1
+    fi
+    local _note_type="4"
+    local _note_speed="120"
+    local _note_octave="4"
+    while [[ "$1" != "" ]]; do
+        case ${1} in
+        -h | --help)
+            display_info "$0 [-t <int>] [-s <int>] [-o <int>] [-f <path>]"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-t|--type - note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-s|--speed - note speed; integer; from 30 to 200"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-o|--octave - note octave; integer; from 1 to 8"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-f|--file - filepath of tabs"
+            exit 0
+            ;;
+        -t | --type)
+            shift
+            _note_type="$1"
+            ;;
+        -s | --speed)
+            shift
+            _note_speed="$1"
+            ;;
+        -o | --octave)
+            shift
+            _note_octave="$1"
+            ;;
+        -f | --file)
+            shift
+            notes_file_name="$1"
+            ;;
+        esac
+        shift
+    done
+    set_note_type "$_note_type"
+    set_note_speed "$_note_speed"
+    set_note_octave "$_note_octave"
+}
+### TRAP ###
+function finish() {
+    killall $command_name
+}
+trap finish EXIT
 
-echo "Press [CTRL+C] to stop.."
-set_note_length "200"
-set_note_octave "4"
-if [[ "$1" != "" ]] && [[ -f $1 ]]; then
-    file_read "$1"
+### MAIN ###
+display_message "Press [CTRL+C] to stop.."
+config_load "$@"
+if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
+    file_read
 else
     while true; do
         main_loop
