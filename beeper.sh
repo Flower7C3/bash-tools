@@ -154,6 +154,9 @@ function reset_note() {
     note_sustain='n'
     note_tone_key=''
 }
+function set_note_sustain() {
+    note_sustain='y'
+}
 function set_note_length() {
     local _note_length_ms="$1"
     if [[ "$_note_length_ms" -lt '100' ]]; then
@@ -199,7 +202,7 @@ function set_note_tone() {
     esac
 }
 function play_value() {
-    if [[ "$note_tone_key" == '-' ]]; then
+    if [[ "$note_tone_key" == 'p' ]]; then
         play_pause
     else
         local _frequency_key="NOTE_${note_tone_key}_${note_octave}"
@@ -208,7 +211,7 @@ function play_value() {
     fi
 }
 function play_pause() {
-    printf "$note_length_icon -- (%s ms)" "$note_length_ms"
+    printf "$note_length_icon p (%s ms)" "$note_length_ms"
     sleep $note_length_sec
     printf "\n"
 }
@@ -225,16 +228,20 @@ function play_note() {
 function main_loop() {
     # RESET
     reset_note
-    local octave_extra='n'
+    local _octave_extra='n'
     # READ
-    read -n 1 -p "$MUSIC_CLEF_G " key
+    read -r -n 1 -p "$MUSIC_CLEF_G " key
     printf "\r$MUSIC_CLEF_G "
     if [[ $key == $escape_char ]]; then
         read -rsn2 key # read 2 more chars
     fi
     # octave extra
     if [[ "$key" == ',' ]] || [[ "$key" == '<' ]]; then
-        octave_extra='y'
+        _octave_extra='y'
+    fi
+
+    if [[ "$_octave_extra" == 'y' ]]; then
+        note_octave=$((note_octave + 1))
     fi
 
     case "$key" in
@@ -256,16 +263,8 @@ function main_loop() {
     '[B')
         set_note_octave $((note_octave - 1))
         ;;
-    # SUSTAIN
-    Z | S | X | D | C | V | G | B | H | N | J | M | \<) note_sustain='y' ;;
-    esac
-
     # NOTE TONE
-    if [[ "$octave_extra" == 'y' ]]; then
-        note_octave=$((note_octave + 1))
-    fi
-    case "$key" in
-    \`) set_note_tone '-' ;;
+    \`) set_note_tone 'p' ;;
     z | Z) set_note_tone 'c' ;;
     s | S) set_note_tone 'C' ;;
     x | X) set_note_tone 'd' ;;
@@ -281,48 +280,57 @@ function main_loop() {
     , | \<) set_note_tone 'c' ;;
     *) printf " \r" ;;
     esac
+    # SUSTAIN
+    case "$key" in
+    Z | S | X | D | C | V | G | B | H | N | J | M | \<)
+        set_note_sustain
+        ;;
+    esac
+    # PLAY
     if [[ "$note_tone_key" != '' ]]; then
         play_value
     fi
-    if [[ "$octave_extra" == 'y' ]]; then
+    if [[ "$_octave_extra" == 'y' ]]; then
         note_octave=$((note_octave - 1))
     fi
 }
-
-echo "Press [CTRL+C] to stop.."
-set_note_length "200"
-set_note_octave "4"
-if [[ "$1" != "" ]] && [[ -f $1 ]]; then
-    notes_data=($(cat "$1" | grep -v '#'))
+function file_read() {
+    local notes_data=($(cat "$1" | grep -v '#'))
     verbose='0'
-    total=$((${#notes_data[@]} - 1))
-    i=0
+    local total=$((${#notes_data[@]} - 1))
+    local i=0
     while true; do
         if [[ "$i" -gt "$total" ]]; then
             break
         fi
         reset_note
         note_data="${notes_data[$i]}"
-        note_arr=($(echo "${note_data}" | sed 's/./& /g'))
+        note_arr=($(echo "${note_data}" | sed 's/,/ /g'))
+        note_tone_arr=($(echo "${note_arr[0]}" | sed 's/./& /g'))
         if [[ $(
-            echo "$note_data" | grep -qE '^[0-9]+--$'
+            echo "$note_data" | grep -qE '^p'
             echo $?
         ) -eq "0" ]]; then
-            # set_note_length $(echo "2^(${note_arr[0]}-1) * 100" | bc)
-            set_note_length $(echo "${note_arr[0]} * 100" | bc)
+            set_note_length $(echo "${note_arr[1]} * 100" | bc)
             play_pause "$note_length_ms"
         else
-            # set_note_length $(echo "2^(${note_arr[0]}-1) * 100" | bc)
-            set_note_length $(echo "${note_arr[0]} * 100" | bc)
-            set_note_octave "${note_arr[1]}"
-            set_note_tone "${note_arr[2]}"
-            if [[ -n "${note_arr[3]}" ]]; then
-                note_sustain='y'
+            set_note_length $(echo "${note_arr[1]} * 100" | bc)
+            set_note_tone "${note_tone_arr[0]}"
+            set_note_octave "${note_tone_arr[1]}"
+            if [[ -n "${note_arr[2]}" ]]; then
+                set_note_sustain
             fi
             play_value
         fi
         i=$((i + 1))
     done
+}
+
+echo "Press [CTRL+C] to stop.."
+set_note_length "200"
+set_note_octave "4"
+if [[ "$1" != "" ]] && [[ -f $1 ]]; then
+    file_read "$1"
 else
     while true; do
         main_loop

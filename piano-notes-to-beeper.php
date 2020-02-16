@@ -49,28 +49,20 @@ foreach ($octaves as $octave => $octaveData) {
     foreach (str_split($octaveData) as $pos => $note) {
         $value = ['l' => 1, 'o' => $octave, 'n' => $note];
         if ($note === '-') {
-            $value = ['l' => 1, 'o' => '-', 'n' => '-'];
+            $value = ['l' => 1, 'o' => '0', 'n' => 'p'];
         }
         $newOctaveData[$pos] = $value;
-        if (empty($track[$pos]) || $track[$pos]['n'] === '-') {
+        if (empty($track[$pos]) || $track[$pos]['n'] === 'p') {
             $track[$pos] = $value;
         }
     }
     $octaves[$octave] = $newOctaveData;
 }
 
-echo 'Removing extra pauses...' . PHP_EOL;
-foreach ($track as $pos => $value) {
-    if ($pos % 2 === 1) {
-        unset($track[$pos]);
-        continue;
-    }
-}
-
 echo 'Increase notes...' . PHP_EOL;
 $track = array_values($track);
 foreach ($track as $pos => $value) {
-    if ($value['n'] === '-') {
+    if ($value['n'] === 'p') {
         $prevValue = $track[$pos - 1];
         $prevValueLength = $prevValue['l'];
         $prevValueLength++;
@@ -80,9 +72,14 @@ foreach ($track as $pos => $value) {
     }
 }
 
+//echo 'Removing extra pauses...' . PHP_EOL;
+//foreach ($track as $pos => $value) {
+//    $track[$pos]['l'] = $value['l']/2;
+//}
+//
 echo 'Normalize...' . PHP_EOL;
 foreach ($track as $pos => $value) {
-    $track[$pos] = implode('', $value);
+    $track[$pos] = $value['n'] . $value['o'] . ',' . $value['l'];
 }
 
 echo 'Save to "' . $destinationFileName . '" file...' . PHP_EOL;
