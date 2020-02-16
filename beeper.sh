@@ -434,7 +434,13 @@ function config_load() {
             display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-s|--speed - note speed; integer; from 30 to 200"
             display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-o|--octave - note octave; integer; from 1 to 8"
             display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-f|--file - filepath of tabs"
+            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-u|--update - update app"
             exit 0
+            ;;
+        -u | --update)
+            display_info "Downloading new app version"
+            curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper.sh" >$0
+            exit
             ;;
         -t | --type)
             shift
