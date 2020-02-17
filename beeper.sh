@@ -213,6 +213,7 @@ note_speed=''
 note_length_ms=''
 note_length_sec=''
 verbose='1'
+force_stop='n'
 
 ### BEEPER ###
 function reset_note() {
@@ -389,7 +390,7 @@ function file_read() {
     local _total=$((${#_notes_data[@]} - 1))
     local _i=0
     while true; do
-        if [[ "$_i" -gt "$_total" ]]; then
+        if [[ "$_i" -gt "$_total" ]] || [[ "$force_stop" == "y" ]]; then
             break
         fi
         reset_note
@@ -476,6 +477,7 @@ function config_load() {
 }
 ### TRAP ###
 function finish() {
+    force_stop='y'
     killall $command_name
 }
 trap finish EXIT
@@ -487,6 +489,9 @@ if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
     file_read
 else
     while true; do
+        if [[ "$force_stop" == "y" ]]; then
+            break
+        fi
         main_loop
     done
 fi
