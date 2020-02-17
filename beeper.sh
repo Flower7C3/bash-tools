@@ -292,8 +292,13 @@ function play_value() {
     fi
 }
 function play_pause() {
-    printf "$note_type_icon p (%s ms)" "$note_length_ms"
-    sleep "$note_length_sec"
+    if [[ "$note_sustain" == 'y' ]]; then
+        printf "$note_type_icon p Led. (%s ms)" "$note_length_ms"
+        sleep "$note_length_sec" &
+    else
+        printf "$note_type_icon p (%s ms)" "$note_length_ms"
+        sleep "$note_length_sec"
+    fi
     printf "\n"
 }
 function play_note() {
@@ -400,21 +405,13 @@ function file_read() {
         _note_arr=($(echo "${_note_data}" | sed 's/,/ /g'))
         local _note_tone_arr
         _note_tone_arr=($(echo "${_note_arr[0]}" | sed 's/./& /g'))
-        if [[ $(
-            echo "$_note_data" | grep -qE '^p'
-            echo $?
-        ) -eq "0" ]]; then
-            set_note_type "${_note_arr[1]}"
-            play_pause "$note_length_ms"
-        else
-            set_note_type "${_note_arr[1]}"
-            set_note_tone "${_note_tone_arr[0]}"
-            set_note_octave "${_note_tone_arr[1]}"
-            if [[ -n "${_note_arr[2]}" ]]; then
-                set_note_sustain
-            fi
-            play_value
+        set_note_type "${_note_arr[1]}"
+        set_note_tone "${_note_tone_arr[0]}"
+        set_note_octave "${_note_tone_arr[1]}"
+        if [[ -n "${_note_arr[2]}" ]]; then
+            set_note_sustain
         fi
+        play_value
         _i=$((_i + 1))
     done
 }

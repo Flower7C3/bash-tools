@@ -1,18 +1,14 @@
 <?php
 
+echo 'Configure...' . PHP_EOL;
 $sourceFileName = $argv[1];
 $destinationFileName = $sourceFileName . '.btxt';
 $line = [];
-$octaves = [
-    1 => '',
-    2 => '',
-    3 => '',
-    4 => '',
-    5 => '',
-    6 => '',
-    7 => '',
-    8 => '',
-];
+$numberOfOctaves = 8;
+$octaves = [];
+for ($octaveNo = $numberOfOctaves; $octaveNo >= 1; $octaveNo--) {
+    $octaves[$octaveNo] = '';
+}
 
 echo 'Reading "' . $sourceFileName . '" file...' . PHP_EOL;
 $fileHandle = fopen($sourceFileName, 'rb');
@@ -42,16 +38,18 @@ while (!feof($fileHandle)) {
 }
 fclose($fileHandle);
 
+echo 'Cleanup empty octaves and octave lines...' . PHP_EOL;
+foreach ($octaves as $octaveNo => $octaveValue) {
+    if (preg_match("'^([-]+)$'", $octaveValue)) {
+        unset($octaves[$octaveNo]);
+    }
+}
+
 echo 'Parsing octaves to track...' . PHP_EOL;
 $track = [];
-foreach ($octaves as $octaveNo => $octaveData) {
-    $newOctaveData = [];
-    foreach (str_split($octaveData) as $pos => $note) {
-        $value = ['l' => 1, 'o' => $octaveNo, 'n' => $note];
-        if ($note === '-') {
-            $value = ['l' => 1, 'o' => '0', 'n' => '-'];
-        }
-        $newOctaveData[$pos] = $value;
+foreach ($octaves as $octaveNo => $octaveValue) {
+    foreach (str_split($octaveValue) as $pos => $note) {
+        $value = ['l' => 1, 'o' => $octaveNo, 'n' => $note,];
         if (empty($track[$pos]) || $track[$pos]['n'] === '-') {
             $track[$pos] = $value;
         }
@@ -59,7 +57,6 @@ foreach ($octaves as $octaveNo => $octaveData) {
 }
 
 echo 'Increase notes...' . PHP_EOL;
-$track = array_values($track);
 foreach ($track as $pos => $value) {
     if ($value['n'] === '-') {
         $prevValue = $track[$pos - 1];
@@ -72,9 +69,10 @@ foreach ($track as $pos => $value) {
 }
 
 echo 'Normalize...' . PHP_EOL;
+$trackFinal = [];
 foreach ($track as $pos => $value) {
-    $track[$pos] = $value['n'] . $value['o'] . ',' . $value['l'];
+    $trackFinal[$pos] = $value['n'] . $value['o'] . ',' . $value['l'];
 }
 
 echo 'Save to "' . $destinationFileName . '" file...' . PHP_EOL;
-file_put_contents($destinationFileName, implode(' ', $track));
+file_put_contents($destinationFileName, implode(' ', $trackFinal));
