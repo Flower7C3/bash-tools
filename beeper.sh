@@ -389,7 +389,7 @@ function file_read() {
     local _total=$((${#_notes_data[@]} - 1))
     local _i=0
     while true; do
-        if [[ "$_" -gt "$_total" ]]; then
+        if [[ "$_i" -gt "$_total" ]]; then
             break
         fi
         reset_note
