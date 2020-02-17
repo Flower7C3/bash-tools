@@ -199,6 +199,7 @@ function display_error() {
 ### CONFIG ###
 command_pattern_normal=''
 command_pattern_sustain=''
+time_mode=''
 command_name=''
 notes_file_name=''
 note_sustain='n'
@@ -295,12 +296,18 @@ function play_pause() {
     printf "\n"
 }
 function play_note() {
+    local _time="0"
+    if [[ "$time_mode" == "ms" ]]; then
+        _time="$note_length_ms"
+    elif [[ "$time_mode" == "sec" ]]; then
+        _time="$note_length_sec"
+    fi
     if [[ "$note_sustain" == 'y' ]]; then
         printf "$note_type_icon %s%s Led. (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
-        eval "$(printf "$command_pattern_sustain" "$note_length_sec" "$note_tone_freq")"
+        eval "$(printf "$command_pattern_sustain" "$_time" "$note_tone_freq")"
     else
         printf "$note_type_icon %s%s (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
-        eval "$(printf "$command_pattern_normal" "$note_length_sec" "$note_tone_freq")"
+        eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
     fi
     printf "\n"
 }
@@ -414,10 +421,12 @@ function config_load() {
     if hash 'beep' 2>/dev/null; then
         command_pattern_normal='beep -l %s -f %s'
         command_pattern_sustain='beep -l %s -f %s &'
+        time_mode='ms'
         command_name='beep'
     elif hash 'play' 2>/dev/null; then
         command_pattern_normal='play -q -n -c1 synth %s sine %s'
         command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
+        time_mode='sec'
         command_name='play'
     else
         display_error "Mucical command not found! Please install beep (apt install beep) or play (brew install sox)."
