@@ -2,7 +2,7 @@
 
 $sourceFileName = $argv[1];
 $destinationFileName = $sourceFileName . '.btxt';
-$group = [];
+$line = [];
 $octaves = [
     1 => '',
     2 => '',
@@ -15,54 +15,53 @@ $octaves = [
 ];
 
 echo 'Reading "' . $sourceFileName . '" file...' . PHP_EOL;
-$file = fopen($sourceFileName, "r");
-$groupNotesAmount = 0;
-while (!feof($file)) {
-    $lineData = trim(fgets($file));
-    if (preg_match("'#'", $lineData)) {
+$fileHandle = fopen($sourceFileName, 'rb');
+$lineNotesAmount = 0;
+while (!feof($fileHandle)) {
+    $row = trim(fgets($fileHandle));
+    if (preg_match("'#'", $row)) {
         continue;
     }
-    if (empty($lineData)) {
-        foreach ($octaves as $octave => $octaveData) {
-            if (isset($group[$octave])) {
-                $octaves[$octave] .= $group[$octave];
+    if (empty($row)) {
+        foreach ($octaves as $octaveNo => $octaveData) {
+            if (isset($line[$octaveNo])) {
+                $octaves[$octaveNo] .= $line[$octaveNo];
             } else {
-                $octaves[$octave] .= str_repeat('-', $groupNotesAmount);
+                $octaves[$octaveNo] .= str_repeat('-', $lineNotesAmount);
             }
         }
-        $group = [];
-        $groupNotesAmount = 0;
+        $line = [];
+        $lineNotesAmount = 0;
     } else {
-        $lineNo = $lineData[0];
-        $lineData = substr($lineData, 1);
-        $lineData = trim($lineData, '|');
-        $group[$lineNo] = $lineData;
-        $groupNotesAmount = strlen($lineData);
+        $octaveNo = $row[0];
+        $row = substr($row, 1);
+        $row = trim($row, '|');
+        $line[$octaveNo] = $row;
+        $lineNotesAmount = strlen($row);
     }
 }
-fclose($file);
+fclose($fileHandle);
 
 echo 'Parsing octaves to track...' . PHP_EOL;
 $track = [];
-foreach ($octaves as $octave => $octaveData) {
+foreach ($octaves as $octaveNo => $octaveData) {
     $newOctaveData = [];
     foreach (str_split($octaveData) as $pos => $note) {
-        $value = ['l' => 1, 'o' => $octave, 'n' => $note];
+        $value = ['l' => 1, 'o' => $octaveNo, 'n' => $note];
         if ($note === '-') {
-            $value = ['l' => 1, 'o' => '0', 'n' => 'p'];
+            $value = ['l' => 1, 'o' => '0', 'n' => '-'];
         }
         $newOctaveData[$pos] = $value;
-        if (empty($track[$pos]) || $track[$pos]['n'] === 'p') {
+        if (empty($track[$pos]) || $track[$pos]['n'] === '-') {
             $track[$pos] = $value;
         }
     }
-    $octaves[$octave] = $newOctaveData;
 }
 
 echo 'Increase notes...' . PHP_EOL;
 $track = array_values($track);
 foreach ($track as $pos => $value) {
-    if ($value['n'] === 'p') {
+    if ($value['n'] === '-') {
         $prevValue = $track[$pos - 1];
         $prevValueLength = $prevValue['l'];
         $prevValueLength++;
@@ -72,11 +71,6 @@ foreach ($track as $pos => $value) {
     }
 }
 
-//echo 'Removing extra pauses...' . PHP_EOL;
-//foreach ($track as $pos => $value) {
-//    $track[$pos]['l'] = $value['l']/2;
-//}
-//
 echo 'Normalize...' . PHP_EOL;
 foreach ($track as $pos => $value) {
     $track[$pos] = $value['n'] . $value['o'] . ',' . $value['l'];
