@@ -394,7 +394,7 @@ function file_read() {
         fi
         reset_note
         local _note_data
-        _note_data="${_notes_data[$i]}"
+        _note_data="${_notes_data[$_i]}"
         local _note_arr
         _note_arr=($(echo "${_note_data}" | sed 's/,/ /g'))
         local _note_tone_arr
