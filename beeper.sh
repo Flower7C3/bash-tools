@@ -412,8 +412,8 @@ function file_read() {
 }
 function config_load() {
     if hash 'beep' 2>/dev/null; then
-        command_pattern_normal='beep -d %s -f %s'
-        command_pattern_sustain='beep -d %s -f %s &'
+        command_pattern_normal='beep -l %s -f %s'
+        command_pattern_sustain='beep -l %s -f %s &'
         command_name='beep'
     elif hash 'play' 2>/dev/null; then
         command_pattern_normal='play -q -n -c1 synth %s sine %s'
