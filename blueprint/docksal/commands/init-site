@@ -33,7 +33,7 @@ function copy_settings_file()
 #-------------------------- Functions --------------------------------
 function cache_clean(){
     cd ${PROJECT_ROOT}
-    rm -rf app/cache/*
+    rm -rf var/cache/*
 }
 function composer_install(){
     cd ${PROJECT_ROOT}
@@ -53,8 +53,8 @@ function gulp_build(){
 }
 function symfony_assets_build(){
     cd ${PROJECT_ROOT}
-    php app/console assetic:dump --env=dev
-    php app/console assets:install
+    php bin/console assetic:dump --env=dev
+    php bin/console assets:install
 }
 function symlinks_create() {
     cd ${PROJECT_ROOT}
@@ -63,7 +63,7 @@ function symlinks_create() {
 #-------------------------- END: Functions --------------------------------
 
 #-------------------------- Execution --------------------------------
-#uncomment#copy_settings_file ${PROJECT_ROOT}/.docksal/dist/cli/parameters.yml ${PROJECT_ROOT}/app/config/parameters.yml
+#uncomment#copy_settings_file ${PROJECT_ROOT}/.docksal/services/cli/parameters.yaml ${PROJECT_ROOT}/app/config/parameters.yaml
 #uncomment#symlinks_create
 #uncomment#cache_clean
 #uncomment#nvm_install
