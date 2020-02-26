@@ -142,7 +142,11 @@ if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]
     fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
     docksal_web_image="docksal/apache:${apache_version}"
     fin config set WEB_IMAGE="$docksal_web_image"
-    docksal_cli_image="docksal/cli:php${php_version}"
+    if [[ "$php_version" == "5.6" || "$php_version" == "7.0" ]]; then
+        docksal_cli_image="docksal/cli:php${php_version}"
+    else
+        docksal_cli_image="docksal/cli:edge-php${php_version}"
+    fi
     fin config set CLI_IMAGE="$docksal_cli_image"
     if [[ "$mysql_version" != "no" ]]; then
         fin config set DB_IMAGE="docksal/db:${docksal_db_version}-mysql-${mysql_version}"
