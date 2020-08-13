@@ -137,6 +137,8 @@ if [[ -d .docksal ]]; then
     confirm_or_exit "Override Docksal configuration?"
 fi
 
+copy_file "gitignore" ".gitignore"
+
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
     display_info "Create basic configuration"
     fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
@@ -183,13 +185,17 @@ if [[ "$symfony_config" != "no" ]]; then
     copy_file "commands/console2"
     copy_file "commands/console"
 fi
+if [[ "$mysql_version" != "no" ]]; then
+    copy_file "commands/restore-db"
+fi
 color_reset
 
 if [[ "$mysql_import" == "yes" ]]; then
     display_info "Import custom db into ${COLOR_INFO_H}db${COLOR_INFO_B} container"
     mkdir -p .docksal/services/db/dump/
-    copy_file "services/db/dump/dump.sql"
+    copy_file "services/db/dump/dump-example.sql"
     cat ${docksal_example_dir}docksal.yml/db-custom-data.yml >>.docksal/docksal.yml
+    echo "services/db/dump/dump*.sql" >>.docksal/.gitignore
     color_reset
 fi
 
