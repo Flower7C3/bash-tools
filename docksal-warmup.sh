@@ -3,7 +3,6 @@
 source $(dirname ${BASH_SOURCE})/_base.sh
 
 ## CONFIG
-docksal_db_version="1.1"
 docksal_example_dir="$(dirname ${BASH_SOURCE})/blueprint/docksal/"
 _project_name="example_$(date "+%Y%m%d_%H%M%S")"
 _application_stack="custom"
@@ -14,9 +13,13 @@ _php_version="7.4"
 _php_versions="no 5.6 7.0 7.1 7.2 7.3 7.4"
 _node_version="12"
 _node_versions="no 6 8 10 11 12 13"
+_db_versions="no mysql mariadb"
+_db_version="mariadb"
 _mysql_version="5.7"
-_mysql_versions="no 5.5 5.6 5.7 8.0"
-_mysql_import="no"
+_mysql_versions="5.5 5.6 5.7 8.0"
+_mariadb_version="10.3"
+_mariadb_versions="5.5 10.0 10.1 10.2 10.3"
+_db_import="no"
 _java_version="no"
 _java_versions="no 8"
 _www_docroot="docroot"
@@ -49,9 +52,10 @@ prompt_variable_not domain_name "Domain name (without .docksal tld)" "$_domain_n
 domain_name="${domain_name}.docksal"
 domain_url="http://${domain_name}"
 
+display_info "Configure application containers (read more on ${COLOR_INFO_H}https://docs.docksal.io/stack/images-versions/${COLOR_INFO_B})"
 prompt_variable_fixed application_stack "Application stack" "$_application_stack" "$_application_stacks" 3 "$@"
 if [[ "$application_stack" == "node" ]]; then
-    _mysql_version="no"
+    _db_version="no"
 fi
 
 if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" || "$application_stack" == "node" ]]; then
@@ -61,7 +65,7 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
             display_info "Configure ${COLOR_INFO_H}web${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/web/${COLOR_INFO_B})"
             prompt_variable_fixed apache_version "Apache version on web container" "$_apache_version" "$_apache_versions"
         fi
-        display_info "Configure ${COLOR_INFO_H}cli${COLOR_INFO_B} container (read more on${COLOR_INFO_H}https://hub.docker.com/r/docksal/cli/${COLOR_INFO_B})"
+        display_info "Configure ${COLOR_INFO_H}cli${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/cli/${COLOR_INFO_B})"
         php_version="no"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
             prompt_variable_fixed php_version "PHP version on cli container" "$_php_version" "$_php_versions"
@@ -75,21 +79,29 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
             prompt_variable_fixed java_version "JAVA version on cli container" "$_java_version" "$_java_versions"
         fi
         prompt_variable www_docroot "WWW docroot (place where will be index file)" "$_www_docroot"
-        mysql_version="no"
-        mysql_import="no"
+        db_version="no"
+        db_import="no"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "node" ]]; then
-            display_info "Configure ${COLOR_INFO_H}db${COLOR_INFO_B} container (read more on${COLOR_INFO_H}https://hub.docker.com/r/docksal/db/${COLOR_INFO_B})"
-            prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
-            if [[ "$mysql_version" != "no" ]]; then
-                prompt_variable_fixed mysql_import "Init example MySQL db" "$_mysql_import" "yes no"
+            display_info "Configure ${COLOR_INFO_H}db${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/db/${COLOR_INFO_B})"
+            prompt_variable_fixed db_version "DB version on db container" "$_db_version" "$_db_versions"
+            if [[ "$db_version" == "mysql" ]]; then
+                display_info "Configure ${COLOR_INFO_H}db${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/mysql/${COLOR_INFO_B})"
+                prompt_variable_fixed mysql_version "MySQL version on db container" "$_mysql_version" "$_mysql_versions"
+            fi
+            if [[ "$db_version" == "mariadb" ]]; then
+                display_info "Configure ${COLOR_INFO_H}db${COLOR_INFO_B} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/mariadb/${COLOR_INFO_B})"
+                prompt_variable_fixed mariadb_version "MySQL version on db container" "$_mariadb_version" "$_mariadb_versions"
+            fi
+            if [[ "$db_version" != "no" ]]; then
+                prompt_variable_fixed db_import "Init example database" "$_db_import" "yes no"
             fi
         fi
         docksal_stack=""
-        if [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" != "no" ]]; then
+        if [[ "$apache_version" != "no" && "$php_version" != "no" && "$db_version" != "no" ]]; then
             docksal_stack="default"
-        elif [[ "$apache_version" != "no" && "$php_version" != "no" && "$mysql_version" == "no" ]]; then
+        elif [[ "$apache_version" != "no" && "$php_version" != "no" && "$db_version" == "no" ]]; then
             docksal_stack="default-nodb"
-        elif [[ "$apache_version" == "no" && "$php_version" == "no" && "$mysql_version" == "no" && "$node_version" != "no" ]]; then
+        elif [[ "$apache_version" == "no" && "$php_version" == "no" && "$db_version" == "no" && "$node_version" != "no" ]]; then
             docksal_stack="node"
         fi
         if [[ "$docksal_stack" == "" ]]; then
@@ -97,7 +109,7 @@ if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$app
             _php_version="$php_version"
             _node_version="$node_version"
             _java_version="$java_version"
-            _mysql_version="$mysql_version"
+            _db_version="$db_version"
             set -- "${@:1:2}"
             display_error "Docksal stack not set. Please fix versions!"
             display_info "Possible configurations: ${COLOR_INFO_H}Apache+PHP+MySQL${COLOR_INFO_B} or ${COLOR_INFO_H}Apache+PHP+Node+MySQL${COLOR_INFO_B} or ${COLOR_INFO_H}Apache+PHP+Node${COLOR_INFO_B} or ${COLOR_INFO_H}Node${COLOR_INFO_B}."
@@ -111,7 +123,7 @@ else
     php_version="no"
     node_version="no"
     java_version="no"
-    mysql_version="no"
+    db_version="no"
     docksal_stack="no"
 fi
 
@@ -145,19 +157,24 @@ if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]
     docksal_web_image="docksal/apache:${apache_version}"
     fin config set WEB_IMAGE="$docksal_web_image"
     if [[ "$php_version" == "5.6" || "$php_version" == "7.0" ]]; then
-        docksal_cli_image="docksal/cli:php${php_version}"
+        docksal_cli_image="docksal/cli:2.5-php${php_version}"
     else
-        docksal_cli_image="docksal/cli:edge-php${php_version}"
+        docksal_cli_image="docksal/cli:2-php${php_version}"
     fi
     fin config set CLI_IMAGE="$docksal_cli_image"
-    if [[ "$mysql_version" != "no" ]]; then
-        fin config set DB_IMAGE="docksal/db:${docksal_db_version}-mysql-${mysql_version}"
+    if [[ "$db_version" != "no" ]]; then
+        if [[ "$db_version" == "mariadb" ]]; then
+            docksal_db_image="docksal/mariadb:${mysql_version}"
+        elif [[ "$db_version" == "mysql" ]]; then
+            docksal_db_image="docksal/mysql:${mysql_version}"
+        fi
+        fin config set DB_IMAGE="${docksal_db_image}"
     fi
     if [[ "$node_version" != "no" ]]; then
         display_info "More info about ${COLOR_INFO_H}.nvmrc${COLOR_INFO_B} file on ${COLOR_INFO_H}https://github.com/creationix/nvm#nvmrc"
         echo ${node_version} >.nvmrc
     fi
-    if [[ "$mysql_import" == "yes" || "$java_version" != "no" ]]; then
+    if [[ "$db_import" == "yes" || "$java_version" != "no" ]]; then
         echo "services:" >>.docksal/docksal.yml
     fi
 else
@@ -185,12 +202,12 @@ if [[ "$symfony_config" != "no" ]]; then
     copy_file "commands/console2"
     copy_file "commands/console"
 fi
-if [[ "$mysql_version" != "no" ]]; then
+if [[ "$db_version" != "no" ]]; then
     copy_file "commands/restore-db"
 fi
 color_reset
 
-if [[ "$mysql_import" == "yes" ]]; then
+if [[ "$db_import" == "yes" ]]; then
     display_info "Import custom db into ${COLOR_INFO_H}db${COLOR_INFO_B} container"
     mkdir -p .docksal/services/db/dump/
     copy_file "services/db/dump/dump-example.sql"

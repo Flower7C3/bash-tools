@@ -10,12 +10,7 @@ cd "${db_dump_dir_path}" || exit 1
 db_dump_file_name=$1
 if [[ -z "$db_dump_file_name" ]]; then
     db_dump_file_name=$(
-        cd "$db_dump_dir_path" || exit
         ls -t dump-*.sql | head -1
     )
 fi
-if [[ -n "$db_dump_file_name" ]]; then
-    fin db import "${db_dump_dir_path}${db_dump_file_name}"
-else
-    printf "There is no dump file in '%s' directory!\n" "$db_dump_dir_path"
-fi
+fin db import "${db_dump_dir_path}${db_dump_file_name}" || exit 2
