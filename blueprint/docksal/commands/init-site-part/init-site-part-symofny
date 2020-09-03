@@ -1,0 +1,7 @@
+#-------------------------- Execution --------------------------------
+ln -sf .htaccess.docksal web/.htaccess
+rm -rf var/cache/*
+composer install
+php bin/console assetic:dump --env=dev
+php bin/console assets:install
+#-------------------------- END: Execution --------------------------------

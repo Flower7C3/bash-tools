@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+## Backup Drupal site
+##
+## Usage: fin backup-dru-site
+
+# Abort if anything fails
+set -e
+
+cd ${PROJECT_ROOT}/
+fin db dump .docksal/services/db/dump/dump.sql
+fin drush config:export -y

@@ -19,11 +19,12 @@ _mysql_version="5.7"
 _mysql_versions="5.5 5.6 5.7 8.0"
 _mariadb_version="10.3"
 _mariadb_versions="5.5 10.0 10.1 10.2 10.3"
-_db_import="no"
+_db_import="yes"
 _java_version="no"
 _java_versions="no 8"
 _www_docroot="docroot"
 _symfony_config="no"
+_drupal_config="no"
 symfony4_git_path="https://github.com/docksal/example-symfony-skeleton.git"
 drupal8_git_path="https://github.com/docksal/drupal8.git"
 
@@ -35,6 +36,15 @@ function copy_file() {
     mkdir -p $(dirname ${destination_file_path})
     cp ${source_file_path} ${destination_file_path}
     printf "${COLOR_DEFAULT_I}Copied file from ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} to ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} ${COLOR_DEFAULT_I}\n" "$src_file_name" "$dst_file_name"
+}
+
+function append_file() {
+    local src_file_name=$1
+    local dst_file_name=$2
+    local source_file_path=${docksal_example_dir}${src_file_name}
+    local destination_file_path=.docksal/${dst_file_name}
+    cat ${source_file_path} >> ${destination_file_path}
+    printf "${COLOR_DEFAULT_I}Added file from ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} to ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} ${COLOR_DEFAULT_I}\n" "$src_file_name" "$dst_file_name"
 }
 
 ## WELCOME
@@ -128,9 +138,15 @@ else
 fi
 
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" && "$php_version" != "no" ]]; then
-    prompt_variable_fixed symfony_config "Init example Symfony Framework config" "$_symfony_config" "yes no"
+    prompt_variable_fixed symfony_config "Init example Symfony Framework config and commands?" "$_symfony_config" "yes no"
 else
     symfony_config="no"
+fi
+
+if [[ "$php_version" != "no" ]]; then
+    prompt_variable_fixed drupal_config "Init example Docksal Drupal config and commands?" "$_drupal_config" "yes no"
+else
+    drupal_config="no"
 fi
 
 # PROGRAM
@@ -192,18 +208,23 @@ display_info "Add custom commands"
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
     copy_file "commands/init"
     copy_file "commands/init-site"
-    sed -i '' -e "s/symfony_base_url=\"\(.*\)\"/symfony_base_url=\""$(echo "$domain_url" | sed 's/\//\\\//g')"\"/g" .docksal/commands/init-site
 fi
 if [[ "$node_version" != "no" ]]; then
-    copy_file "commands/gulp"
-    copy_file "commands/npm"
+    copy_file "commands/node/gulp" "commands/gulp"
+    copy_file "commands/node/npm" "commands/npm"
 fi
 if [[ "$symfony_config" != "no" ]]; then
-    copy_file "commands/console2"
-    copy_file "commands/console"
+    copy_file "commands/symfony/console2" "commands/console2"
+    copy_file "commands/symfony/console" "commands/console"
 fi
 if [[ "$db_version" != "no" ]]; then
     copy_file "commands/restore-db"
+fi
+if [[ "$drupal_config" == "yes" ]]; then
+    copy_file "commands/drupal/backup-dru-site" "commands/backup-dru-site"
+    copy_file "commands/drupal/dru-admin" "commands/dru-admin"
+    copy_file "commands/drupal/restore-dru-site" "commands/restore-dru-site"
+    copy_file "services/cli/settings.local.php"
 fi
 color_reset
 
@@ -218,10 +239,7 @@ fi
 
 if [[ "$node_version" != "no" ]]; then
     display_info "Prepare node in ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
-    sed -i.bak "s/#uncomment#nvm_install/nvm_install/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#npm_install/npm_install/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#gulp_build/gulp_build/g" .docksal/commands/init-site
-    rm .docksal/commands/init-site.bak
+    append_file "commands/init-site-part/init-site-part-gulp" "commands/init-site"
     color_reset
 fi
 
@@ -237,22 +255,22 @@ fi
 if [[ "$symfony_config" != "no" ]]; then
     display_info "Add ${COLOR_INFO_H}Symfony parameters${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     mkdir -p .docksal/services/cli/
-    copy_file "services/cli/parameters.yaml" "services/cli/parameters.yaml"
+    copy_file "services/cli/symfony/parameters.yaml" "services/cli/parameters.yaml"
     symfony_secret=$(date +%s%N | shasum | base64 | head -c 32)
     symfony_base_url=$(printf ${domain_url} | sed 's:/:\\/:g')
     sed -i.bak "s/secret: \(.*\)/secret: "${symfony_secret}"/g" .docksal/services/cli/parameters.yaml
     sed -i.bak "s/base_url: \(.*\)/base_url: "${symfony_base_url}"/g" .docksal/services/cli/parameters.yaml
     rm .docksal/services/cli/parameters.yaml.bak
-    sed -i.bak "s/#uncomment#copy_settings_file/copy_settings_file/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#symlinks_create/symlinks_create/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#cache_clean/cache_clean/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#composer_install/composer_install/g" .docksal/commands/init-site
-    sed -i.bak "s/#uncomment#symfony_assets_build/symfony_assets_build/g" .docksal/commands/init-site
-    rm .docksal/commands/init-site.bak
-    copy_file "services/cli/htaccess" "../${www_docroot}/.htaccess.docksal"
-    copy_file "services/cli/app_docksal.php" "../${www_docroot}/app_docksal.php"
+    append_file "commands/init-site-part/init-site-part-symfony" "commands/init-site"
+    copy_file "services/cli/symfony/htaccess" "../${www_docroot}/.htaccess.docksal"
+    copy_file "services/cli/symfony/app_docksal.php" "../${www_docroot}/app_docksal.php"
     color_reset
 fi
+if [[ "$drupal_config" == "yes" ]]; then
+    display_info "Add ${COLOR_INFO_H}Drupal parameters${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
+    append_file "commands/init-site-part/init-site-part-drupal" "commands/init-site"
+fi
+
 
 display_success "Docksal configuration is ready."
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+## Get drupal admin URL
+##
+## Usage: fin dru-admin
+
+# Abort if anything fails
+set -e
+
+cd ${PROJECT_ROOT}
+fin drush @self.docksal uli
