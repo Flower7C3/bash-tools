@@ -46,6 +46,16 @@ function append_file() {
     cat ${source_file_path} >> ${destination_file_path}
     printf "${COLOR_DEFAULT_I}Added file from ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} to ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} ${COLOR_DEFAULT_I}\n" "$src_file_name" "$dst_file_name"
 }
+function replace_in_file(){
+    local file_path="$1"
+    local text_from="$2"
+    local text_to="$3"
+    if [[ ! -f $file_path ]]; then
+        touch $file_path
+    fi
+    sed -i '' -e "s/"$text_from"/"$text_to"/g" $file_path
+    printf "${COLOR_DEFAULT_I}Replaced in file ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} from ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} to ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} ${COLOR_DEFAULT_I}\n" "$file_path" "$text_from" "$text_to"
+}
 
 ## WELCOME
 program_title "Docksal configuration warmup"
@@ -159,24 +169,25 @@ if [[ "$project_name" != "." ]]; then
     color_reset
 fi
 project_path=$(realpath .)
+trap "rm -rf ${project_path}/.docksal/;exit 2" SIGINT
 
 if [[ -d .docksal ]]; then
     display_error "Docksal config already exists!"
     confirm_or_exit "Override Docksal configuration?"
 fi
 
-copy_file "gitignore" ".gitignore"
-
 if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]; then
     display_info "Create basic configuration"
     fin config generate --docroot=${www_docroot} --stack=${docksal_stack}
     docksal_web_image="docksal/apache:${apache_version}"
+    printf "${COLOR_DEFAULT_I}Setup web image ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I}${COLOR_DEFAULT_I}\n" "$docksal_web_image"
     fin config set WEB_IMAGE="$docksal_web_image"
     if [[ "$php_version" == "5.6" || "$php_version" == "7.0" ]]; then
         docksal_cli_image="docksal/cli:2.5-php${php_version}"
     else
         docksal_cli_image="docksal/cli:2-php${php_version}"
     fi
+    printf "${COLOR_DEFAULT_I}Setup cli image ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I}${COLOR_DEFAULT_I}\n" "$docksal_cli_image"
     fin config set CLI_IMAGE="$docksal_cli_image"
     if [[ "$db_version" != "no" ]]; then
         if [[ "$db_version" == "mariadb" ]]; then
@@ -184,6 +195,7 @@ if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]
         elif [[ "$db_version" == "mysql" ]]; then
             docksal_db_image="docksal/mysql:${mysql_version}"
         fi
+        printf "${COLOR_DEFAULT_I}Setup db image ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I}${COLOR_DEFAULT_I}\n" "$docksal_db_image"
         fin config set DB_IMAGE="${docksal_db_image}"
     fi
     if [[ "$node_version" != "no" ]]; then
@@ -202,6 +214,7 @@ else
     fi
 fi
 fin config set VIRTUAL_HOST="${domain_name}"
+copy_file "gitignore" ".gitignore"
 color_reset
 
 display_info "Add custom commands"
@@ -218,7 +231,14 @@ if [[ "$symfony_config" != "no" ]]; then
     copy_file "commands/symfony/console" "commands/console"
 fi
 if [[ "$db_version" != "no" ]]; then
-    copy_file "commands/restore-db"
+    copy_file "commands/db/init-db" "commands/init-db"
+    copy_file "commands/db/download-db" "commands/download-db"
+    copy_file "commands/db/restore-db" "commands/restore-db"
+    (
+        printf "${COLOR_DEFAULT_I}Create ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} directory${COLOR_DEFAULT_I}\n" ".docksal/services/db/dump/"
+        mkdir -p .docksal/services/db/dump/
+        echo "services/db/dump/dump*.sql" >>.docksal/.gitignore
+    )
 fi
 if [[ "$drupal_config" == "yes" ]]; then
     copy_file "commands/drupal/backup-dru-site" "commands/backup-dru-site"
@@ -230,16 +250,19 @@ color_reset
 
 if [[ "$db_import" == "yes" ]]; then
     display_info "Import custom db into ${COLOR_INFO_H}db${COLOR_INFO_B} container"
-    mkdir -p .docksal/services/db/dump/
-    copy_file "services/db/dump/dump-example.sql"
+    copy_file "services/db/init/init-example.sql"
     cat ${docksal_example_dir}docksal.yml/db-custom-data.yml >>.docksal/docksal.yml
-    echo "services/db/dump/dump*.sql" >>.docksal/.gitignore
+    (
+        printf "${COLOR_DEFAULT_I}Create ${COLOR_DEFAULT_H}%s${COLOR_DEFAULT_I} directory${COLOR_DEFAULT_I}\n" ".docksal/services/db/init/"
+        mkdir -p .docksal/services/db/init/
+        echo "services/db/init/init*.sql" >>.docksal/.gitignore
+    )
     color_reset
 fi
 
 if [[ "$node_version" != "no" ]]; then
-    display_info "Prepare node in ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
-    append_file "commands/init-site-part/init-site-part-gulp" "commands/init-site"
+    display_info "Prepare Node in ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
+    append_file "commands/init-site-part/init-site-part-node" "commands/init-site"
     color_reset
 fi
 
@@ -247,7 +270,7 @@ if [[ "$java_version" != "no" ]]; then
     display_info "Add ${COLOR_INFO_H}JAVA${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     mkdir -p .docksal/services/cli/
     copy_file "services/cli/Dockerfile-with-java" "services/cli/Dockerfile"
-    sed -i '' -e "s/FROM \(.*\)/FROM "$(echo "$docksal_cli_image" | sed 's/\//\\\//g')"/g" .docksal/services/cli/Dockerfile
+    replace_in_file .docksal/services/cli/Dockerfile "FROM \(.*\)" "FROM $(echo "$docksal_cli_image" | sed 's/\//\\\//g')"
     cat ${docksal_example_dir}docksal.yml/cli-with-java.yml >>.docksal/docksal.yml
     color_reset
 fi
@@ -256,11 +279,14 @@ if [[ "$symfony_config" != "no" ]]; then
     display_info "Add ${COLOR_INFO_H}Symfony parameters${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     mkdir -p .docksal/services/cli/
     copy_file "services/cli/symfony/parameters.yaml" "services/cli/parameters.yaml"
-    symfony_secret=$(date +%s%N | shasum | base64 | head -c 32)
-    symfony_base_url=$(printf ${domain_url} | sed 's:/:\\/:g')
-    sed -i.bak "s/secret: \(.*\)/secret: "${symfony_secret}"/g" .docksal/services/cli/parameters.yaml
-    sed -i.bak "s/base_url: \(.*\)/base_url: "${symfony_base_url}"/g" .docksal/services/cli/parameters.yaml
-    rm .docksal/services/cli/parameters.yaml.bak
+    (
+        symfony_secret=$(date +%s%N | shasum | base64 | head -c 32)
+        replace_in_file .docksal/services/cli/parameters.yaml "secret: \(.*\)" "secret: ${symfony_secret}"
+    )
+    (
+        symfony_base_url=$(printf ${domain_url} | sed 's:/:\\/:g')
+        replace_in_file .docksal/services/cli/parameters.yaml "base_url: \(.*\)" "base_url: ${symfony_base_url}"
+    )
     append_file "commands/init-site-part/init-site-part-symfony" "commands/init-site"
     copy_file "services/cli/symfony/htaccess" "../${www_docroot}/.htaccess.docksal"
     copy_file "services/cli/symfony/app_docksal.php" "../${www_docroot}/app_docksal.php"
@@ -270,9 +296,24 @@ if [[ "$drupal_config" == "yes" ]]; then
     display_info "Add ${COLOR_INFO_H}Drupal parameters${COLOR_INFO_B} to ${COLOR_INFO_H}cli${COLOR_INFO_B} container"
     append_file "commands/init-site-part/init-site-part-drupal" "commands/init-site"
 fi
-
+display_info "Prepare readme file"
+append_file "readme/docksal.md" "../README.md"
+replace_in_file '../README.md' '{VIRTUAL_HOST}' "$(printf ${domain_url} | sed 's:/:\\/:g')"
+if [[ "$db_version" != "no" ]]; then
+    append_file "readme/db.md" "../README.md"
+fi
+if [[ "$node_version" != "no" ]]; then
+    append_file "readme/node.md" "../README.md"
+fi
+if [[ "$symfony_config" != "no" ]]; then
+    append_file "readme/symfony.md" "../README.md"
+fi
+if [[ "$drupal_config" == "yes" ]]; then
+    append_file "readme/drupal.md" "../README.md"
+fi
 
 display_success "Docksal configuration is ready."
+trap - SIGINT
 
 confirm_or_exit "Initialize docker project?" "You can init project manually with ${COLOR_INFO_H}fin init${COLOR_INFO_B} command in ${COLOR_INFO_H}${project_path}${COLOR_INFO_B} directory."
 display_info "Initialize docker project (executing ${COLOR_INFO_H}fin init${COLOR_INFO_B} command in ${COLOR_INFO_H}${project_path}${COLOR_INFO_B} directory.)"
