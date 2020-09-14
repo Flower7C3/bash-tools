@@ -2,8 +2,9 @@
 
 1. Install [Docksal](https://docksal.io).
 2. Clone repository.
-3. Run `fin init` command in project root directory.
-4. Open [{VIRTUAL_HOST}](https://{VIRTUAL_HOST}) page.
+3. Place SQL init file in `.docksal/services/db/init/` directory.
+4. Run `fin init` command in project root directory.
+5. Open [novavax.docksal](https://novavax.docksal) page.
 
 Enjoy :)
 
