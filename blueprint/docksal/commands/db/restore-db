@@ -14,6 +14,9 @@ if [[ -z "$db_dump_file_name" ]]; then
     )
 fi
 if [[ -f "${db_dump_dir_path}${db_dump_file_name}" ]]; then
+    if [[ "$db_dump_file_name" == *.gz ]]; then
+        gunzip ${db_dump_dir_path}${db_dump_file_name}
+    fi
     fin db import "${db_dump_dir_path}${db_dump_file_name}" --progress || exit 2
 else
     printf "There is no dump file under %s directory!\n" "$db_dump_dir_path"
