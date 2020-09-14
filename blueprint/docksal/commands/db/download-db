@@ -35,5 +35,5 @@ function err_report() {
 
 echo "Downloading data from ${REMOTE_RDS_USERNAME}@${REMOTE_RDS_HOSTNAME}:${REMOTE_RDS_PORT} database..."
 mkdir -p "$dump_directory_path"
-fin exec -T --in=db mysqldump --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} ${REMOTE_RDS_DB_NAME} > ${dump_directory_path}${dump_file_name} || err_report
+fin exec -T --in=db mysqldump --verbose --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} ${REMOTE_RDS_DB_NAME} > ${dump_directory_path}${dump_file_name} || err_report
 echo "Saved to ${dump_file_name} file!"
