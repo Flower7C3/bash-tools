@@ -191,7 +191,7 @@ if [[ "$application_stack" != "symfony4" && "$application_stack" != "drupal8" ]]
     fin config set CLI_IMAGE="$docksal_cli_image"
     if [[ "$db_version" != "no" ]]; then
         if [[ "$db_version" == "mariadb" ]]; then
-            docksal_db_image="docksal/mariadb:${mysql_version}"
+            docksal_db_image="docksal/mariadb:${mariadb_version}"
         elif [[ "$db_version" == "mysql" ]]; then
             docksal_db_image="docksal/mysql:${mysql_version}"
         fi
