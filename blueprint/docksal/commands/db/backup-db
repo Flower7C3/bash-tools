@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 
-## Download database from remote
+## Backup database from remote host
 ##
-## Usage: fin download-db
+## Usage: fin backup-db
 
 if [[ "" == "$REMOTE_RDS_HOSTNAME" ]]; then
-    echo "Please define \$REMOTE_RDS_HOSTNAME in .docksal/docksal-local.env file"
+    echo "Please define \$REMOTE_RDS_HOSTNAME in '.docksal/docksal-local.env' file"
     exit 2
 fi
 if [[ "" == "$REMOTE_RDS_PORT" ]]; then
-    echo "Please define \$REMOTE_RDS_PORT in .docksal/docksal-local.env file"
+    echo "Please define \$REMOTE_RDS_PORT in '.docksal/docksal-local.env' file"
     exit 3
 fi
 if [[ "" == "$REMOTE_RDS_DB_NAME" ]]; then
-    echo "Please define \$REMOTE_RDS_DB_NAME in .docksal/docksal-local.env file"
+    echo "Please define \$REMOTE_RDS_DB_NAME in '.docksal/docksal-local.env' file"
     exit 4
 fi
 if [[ "" == "$REMOTE_RDS_USERNAME" ]]; then
-    echo "Please define \$REMOTE_RDS_USERNAME in .docksal/docksal-local.env file"
+    echo "Please define \$REMOTE_RDS_USERNAME in '.docksal/docksal-local.env' file"
     exit 5
 fi
 if [[ "" == "$REMOTE_RDS_PASSWORD" ]]; then
-    echo "Please define \$REMOTE_RDS_PASSWORD in .docksal/docksal-local.env file"
+    echo "Please define \$REMOTE_RDS_PASSWORD in '.docksal/docksal-local.env' file"
     exit 6
 fi
 
@@ -36,4 +36,4 @@ function err_report() {
 echo "Downloading data from ${REMOTE_RDS_USERNAME}@${REMOTE_RDS_HOSTNAME}:${REMOTE_RDS_PORT} database..."
 mkdir -p "$dump_directory_path"
 fin exec -T --in=db mysqldump --verbose --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} ${REMOTE_RDS_DB_NAME} > ${dump_directory_path}${dump_file_name} || err_report
-echo "Saved to ${dump_file_name} file!"
+echo "Saved to '${dump_file_name}' file!"

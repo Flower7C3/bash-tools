@@ -2,12 +2,12 @@
 
 ## Download and restore database
 ##
-## Usage: fin init-db
+## Usage: fin reload-db
 
 # Abort if anything fails
 set -e
 
 #-------------------------- Execution --------------------------------
-fin download-db
+fin backup-db
 fin restore-db
 #-------------------------- END: Execution --------------------------------

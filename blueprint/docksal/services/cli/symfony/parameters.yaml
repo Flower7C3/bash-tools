@@ -1,15 +1,12 @@
 parameters:
-    database_driver: pdo_mysql
-    database_host: db
-    database_port: 3306
-    database_name: default
-    database_user: user
-    database_password: user
-    mailer_transport: smtp
-    mailer_host: ''
-    mailer_port: ''
-    mailer_user: nobody@example.com
-    mailer_password: ''
-    locale: pl
-    base_url: example.com
-    secret: random_secret_string
+  locale: pl
+  base_url: example_domain_name
+  secret: random_secret_string
+
+  database_driver: pdo_mysql
+  # DO NOT CHANGE, DEFAULT DOCKSAL DATABASE CONFIGURATION
+  database_host: db
+  database_port: 3306
+  database_name: default
+  database_user: user
+  database_password: user
