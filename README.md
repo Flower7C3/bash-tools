@@ -1,6 +1,6 @@
 # Bash tools
 
-Most of scripts uses custom read method, which allows user to clearly write desired values. See scripts in [_inc/](inc/) directory.
+Most of scripts uses custom read method, which allows user to clearly write desired values. See scripts in [_inc/](_inc/) directory.
 
 
 ---
