@@ -17,9 +17,9 @@ map_server="a"
 declare -A map_url_pattern
 map_url_pattern[standard]="http://%s.tile.openstreetmap.org/%s/%s/%s.png"
 map_url_pattern[cycle]="http://%s.tile.opencyclemap.org/cycle/%s/%s/%s.png"
-declare -A map_zomes
-map_zomes[standard]="0 1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18 19"
-map_zomes[cycle]="0 1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18"
+declare -A map_zooms
+map_zooms[standard]="0 1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18 19"
+map_zooms[cycle]="0 1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18"
 temp_dir_path="/tmp/"
 map_pattern="%smap--%s-%s-%s-%s--z%s--%s.png"
 map_x_pattern="${temp_dir_path}partial_map--x%s--z%s--%s.png"
@@ -31,7 +31,7 @@ map_xy_pattern="${temp_dir_path}partial_map--x%s--y%s--z%s--%s.png"
 program_title "Download OSM map to PNG file"
 
 prompt_variable_fixed MAP_TYPE "Map type" "$_MAP_TYPE" "standard cycle" 1 "$@"
-prompt_variable_fixed ZOOM "Map zoom" "$_ZOOM" "${map_zomes[$MAP_TYPE]}" 2 "$@"
+prompt_variable_fixed ZOOM "Map zoom" "$_ZOOM" "${map_zooms[$MAP_TYPE]}" 2 "$@"
 prompt_variable GEO_LONG_W "Map max point on West" "$_GEO_LONG_W" 3 "$@"
 prompt_variable GEO_LAT_S "Map max point on South" "$_GEO_LAT_S" 4 "$@"
 prompt_variable GEO_LONG_E "Map max point on East" "$_GEO_LONG_E" 5 "$@"
