@@ -2,7 +2,7 @@
 
 ## Download and restore database
 ##
-## Usage: fin reload-db
+## Usage: fin migrate-db
 
 # Abort if anything fails
 set -e

@@ -233,7 +233,7 @@ confirm_or_exit "Build Docksal configuration?"
                 copy_file "commands/symfony/console" "commands/console"
             fi
             if [[ "$db_version" != "no" ]]; then
-                copy_file "commands/db/reload-db" "commands/reload-db"
+                copy_file "commands/db/migrate-db" "commands/migrate-db"
                 copy_file "commands/db/backup-db" "commands/backup-db"
                 copy_file "commands/db/restore-db" "commands/restore-db"
                 (
