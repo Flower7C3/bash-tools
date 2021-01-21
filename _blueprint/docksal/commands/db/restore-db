@@ -21,4 +21,5 @@ if [[ -f "${db_dump_dir_path}${db_dump_file_name}" ]]; then
 else
     printf "There is no dump file under '%s' directory!\n" "$db_dump_dir_path"
     printf "Please run 'fin backup-db' command to dump database from remote repository.\n"
+    exit 3
 fi
