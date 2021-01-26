@@ -246,7 +246,7 @@ confirm_or_exit "Build Docksal configuration?"
                 copy_file "commands/drupal/backup-dru-site" "commands/backup-dru-site"
                 copy_file "commands/drupal/dru-admin" "commands/dru-admin"
                 copy_file "commands/drupal/restore-dru-site" "commands/restore-dru-site"
-                copy_file "services/cli/settings.local.php"
+                copy_file "services/cli/drupal/settings.local.php" "services/cli/settings.local.php"
             fi
             if [[ "$node_version" != "no" ]]; then
                 append_file "commands/prepare-site-part/prepare-site-part-node" "commands/prepare-site"
