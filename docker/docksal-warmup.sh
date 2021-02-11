@@ -64,13 +64,12 @@ display_info "Configure ${COLOR_INFO_H}project${COLOR_INFO} properties"
 prompt_variable_not_null project_name "Project name (lowercase alphanumeric, underscore, and hyphen)" "$_project_name" 1 "$@"
 _domain_name=${project_name}
 if [[ "$project_name" == "." ]]; then
-    confirm_or_exit "Really want to install docksal in ${COLOR_QUESTION_B}$(pwd)${COLOR_QUESTION} directory?"
+    confirm_or_exit "Really want to configure Docksal in ${COLOR_QUESTION_B}$(pwd)${COLOR_QUESTION} directory?"
     _domain_name="$(basename $(pwd))"
 fi
 _domain_name=$(echo "$_domain_name" | sed 's/_/-/g')
 prompt_variable_not domain_name "Domain name (without .docksal tld, avoid underscore)" "$_domain_name" "." 2 "$@"
 domain_name=$(echo "$domain_name" | sed 's/_/-/g')
-domain_name="${domain_name}.docksal"
 domain_name="${domain_name}.docksal"
 domain_url="http://${domain_name}"
 
@@ -144,20 +143,20 @@ else
         fi
     done
     if [[ "$php_version" != "no" ]]; then
-        prompt_variable_fixed symfony_config "Init example Symfony Framework config and commands?" "$_symfony_config" "yes no"
+        prompt_variable_fixed symfony_config "Init example Symfony Framework configuration and commands?" "$_symfony_config" "yes no"
     else
         symfony_config="no"
     fi
 
     if [[ "$php_version" != "no" ]]; then
-        prompt_variable_fixed drupal_config "Init example Docksal Drupal config and commands?" "$_drupal_config" "yes no"
+        prompt_variable_fixed drupal_config "Init example Docksal Drupal configuration and commands?" "$_drupal_config" "yes no"
     else
         drupal_config="no"
     fi
 fi
 
 ### PROGRAM
-confirm_or_exit "Build Docksal configuration?"
+confirm_or_exit "Save above options as Docksal configuration?"
 
 if [[ "$project_name" != "." ]]; then
     display_info "Create ${COLOR_INFO_H}$project_name${COLOR_INFO} project directory"
@@ -171,7 +170,7 @@ project_path=$(realpath .)
     trap "rm -rf \"$project_path\"/.docksal/;exit 2" SIGINT
     (
         if [[ -d .docksal ]]; then
-            display_error "Docksal config already exists!"
+            display_error "Docksal configuration already exists!"
             confirm_or_exit "Override Docksal configuration?"
         fi
     )
