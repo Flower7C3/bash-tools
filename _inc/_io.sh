@@ -221,9 +221,6 @@ function display_prompt() {
                     break
                 fi
             done
-        elif [[ "$_prompt_mode" == "or_exit" ]]; then
-            read -r -p "${_prompt_text}" -e _input_value
-            color_reset
         else
             read -r -p "${_prompt_text}" -e _input_value
             color_reset
@@ -241,11 +238,6 @@ function prompt_variable() {
 
 function prompt_variable_twice() {
     display_prompt "repeated" "$@"
-}
-
-# asks user for variable value
-function prompt_variable_or_exit() {
-    display_prompt "or_exit" "$@"
 }
 
 # asks user for variable value
@@ -295,35 +287,10 @@ function prompt_variable_fixed() {
         if [[ ${_args} -le ${_arg_no} ]]; then
             _question_text2="$_question_text [$(join_by '/' ${_allowed_values[*]})]"
         fi
+        for _av in "${_allowed_values[@]}"; do
+            _allowed_values+=(${_av::1})
+        done
         prompt_variable "$_variable_name" "$_question_text2" "$_default_value" "$@"
-        _prompt_response=$(eval echo '$'"${_variable_name}")
-        if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
-            break
-        else
-            display_error "Wrong ${COLOR_ERROR_H}${_question_text}${COLOR_ERROR} value. Allowed is one of: ${COLOR_ERROR_H}$(join_by '/' ${_allowed_values[*]})${COLOR_ERROR}!"
-            set -- "${@:0:0}"
-        fi
-    done
-}
-
-# asks user for variable value, but accept only allowed values
-function prompt_variable_fixed_or_exit() {
-    local _variable_name=$1
-    local _question_text=$2
-    local _question_text2
-    local _default_value=$3
-    local _allowed_values=($4)
-    local _arg_no=$5
-    local _prompt_response
-    shift 5
-    # ask user for value from allowed list
-    while true; do
-        _question_text2="$_question_text"
-        local _args=$#
-        if [[ ${_args} -le ${_arg_no} ]]; then
-            _question_text2="$_question_text [$(join_by '/' ${_allowed_values[*]})]"
-        fi
-        prompt_variable_or_exit "$_variable_name" "$_question_text2" "$_default_value" "$@"
         _prompt_response=$(eval echo '$'"${_variable_name}")
         if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
@@ -348,8 +315,8 @@ function confirm_or_exit() {
     local _fallback_message=$2
     local _run
     printf "\n"
-    prompt_variable_fixed_or_exit _run "${_question_text}" "n" "y n" ""
-    if [[ "$_run" != "y" ]]; then
+    prompt_variable_fixed _run "${_question_text}" "no" "yes no" ""
+    if [[ "$_run" != "y" ]] && [[ "$_run" != "yes" ]]; then
         printf "\n"
         if [[ "$_fallback_message" != "" ]]; then
             display_info "$_fallback_message"
