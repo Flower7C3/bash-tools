@@ -21,7 +21,7 @@ See them in [docker/](docker/) directory.
 - Connect to Docker container terminal by name with `bash docker-bash.sh <name>` script. Will start container if stopped.
 - Read logs from Docker container by name with `bash docker-logs.sh <name>` script. Will start container if stopped.
 - Exec command on Docker container with `bash docker-exec.sh <command>` script. Preserve paths.
-- Simplify Docksal configuration creation with `bash docksal-warmup.sh` script.
+- Simplify Docksal configuration creation with [https://github.com/Flower7C3/docksal-warmup](docksal-warmup) script.
 
 
 ## Database tools
