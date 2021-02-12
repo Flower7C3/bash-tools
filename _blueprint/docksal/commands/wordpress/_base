@@ -1,6 +1,0 @@
-#-------------------------- Wordpress config --------------------------------
-wp_uploads_dir_path="$PROJECT_ROOT/$DOCROOT/wp-content/uploads"
-wp_uploads_dump_dir_path="$PROJECT_ROOT/.docksal/services/cli/uploads"
-wp_uploads_dump_file_pattern="uploads-*.zip"
-wp_uploads_dump_file_name="uploads-${timestamp}.zip"
-wp_uploads_dump_secret_name="$secret_dir_name/wordpress-uploads.zip"
