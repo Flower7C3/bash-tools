@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+## Share database in DOCROOT
+##
+## Usage: fin share-db
+
+# Abort if anything fails
+set -e
+
+#-------------------------- Configure --------------------------------
+source $(dirname ${BASH_SOURCE})/_base.sh
+cd "$PROJECT_ROOT"
+
+#-------------------------- Execution --------------------------------
+cd "$db_dump_dir_path" || exit 11
+db_dump_file_name=$1
+if [[ -z "$db_dump_file_name" ]]; then
+    db_dump_file_name=$(
+        ls -t ${db_dump_file_pattern} | head -1
+    )
+fi
+if [[ -f "$db_dump_file_name" ]]; then
+    if [[ "$db_dump_file_name" == *.sql ]]; then
+        web_db_dump_file_path="$web_dir_path/$db_dump_sql_secret_name"
+    fi
+    if [[ "$db_dump_file_name" == *.gz ]]; then
+        web_db_dump_file_path="$web_dir_path/$db_dump_gzip_secret_name"
+    fi
+    copy_file "$db_dump_file_name" "$web_db_dump_file_path"
+else
+    printf "There is no dump file under '%s' directory!\n" "$db_dump_dir_path"
+    printf "Please run 'fin backup-db' command to dump database.\n"
+    exit 33
+fi

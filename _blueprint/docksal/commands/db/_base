@@ -1,0 +1,8 @@
+#-------------------------- Database config --------------------------------
+db_dump_dir_path="$PROJECT_ROOT/.docksal/services/db/dump"
+db_dump_file_pattern="dump*.sql*"
+db_dump_file_name="dump-${REMOTE_RDS_DB_NAME}-${timestamp}"
+db_dump_sql_file_name="${db_dump_file_name}.sql"
+db_dump_sql_secret_name="$secret_dir_name/database.sql"
+db_dump_gzip_file_name="${db_dump_file_name}.sql.gz"
+db_dump_gzip_secret_name="$secret_dir_name/database.sql.gz"

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+## Share Drupal content
+##
+## Usage: fin share-dru-files
+
+# Abort if anything fails
+set -e
+
+#-------------------------- Configure --------------------------------
+source $(dirname ${BASH_SOURCE})/_base.sh
+cd "$PROJECT_ROOT"
+
+#-------------------------- Execution --------------------------------
+cd "$dru_files_dump_dir_path" || exit 11
+dru_files_dump_file_name=$1
+if [[ -z "$dru_files_dump_file_name" ]]; then
+    dru_files_dump_file_name=$(
+        ls -t ${dru_files_dump_file_pattern} | head -1
+    )
+fi
+if [[ -f "$dru_files_dump_file_name" ]]; then
+    copy_file "$dru_files_dump_dir_path/$dru_files_dump_file_name" "$web_dir_path/$dru_files_dump_secret_name"
+else
+    printf "There is no dump file under '%s' directory!\n" "$dru_files_dump_dir_path"
+    printf "Please run 'fin backup-wp-uploads' command to pack files to archive file.\n"
+    exit 33
+fi

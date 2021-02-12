@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-## Get drupal admin URL
+## Download application data
 ##
-## Usage: fin dru-admin
+## Usage: fin download-data
 
-# Abort if anything fails
 # Abort if anything fails
 set -e
 
@@ -13,4 +12,3 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 cd "$PROJECT_ROOT"
 
 #-------------------------- Execution --------------------------------
-fin drush @self.docksal uli

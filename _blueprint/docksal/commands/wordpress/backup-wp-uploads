@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+## Backup uploaded files
+##
+## Usage: fin backup-wp-uploads
+
+# Abort if anything fails
+set -e
+
+#-------------------------- Configure --------------------------------
+source $(dirname ${BASH_SOURCE})/_base.sh
+cd "$PROJECT_ROOT"
+
+#-------------------------- Execution --------------------------------
+cd "$wp_uploads_dir_path" || exit 11
+printf "${COLOR_YELLOW}Backup from ${COLOR_YELLOW_H}%s${COLOR_OFF}${COLOR_YELLOW} to ${COLOR_YELLOW_H}%s${COLOR_OFF}${COLOR_YELLOW} file${COLOR_OFF}\n" "$wp_uploads_dir_path" "$wp_uploads_dump_dir_path/$wp_uploads_dump_file_name"
+mkdir -p "$wp_uploads_dump_dir_path"
+zip "$wp_uploads_dump_dir_path/$wp_uploads_dump_file_name" *

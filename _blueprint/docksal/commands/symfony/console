@@ -13,6 +13,6 @@ set -e
 source ~/.profile
 
 #-------------------------- Execution --------------------------------
-cd ${PROJECT_ROOT}
+cd "$PROJECT_ROOT"
 php bin/console ${@}
 #-------------------------- END: Execution --------------------------------

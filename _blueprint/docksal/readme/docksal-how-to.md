@@ -1,7 +1,8 @@
 ## How to?
 
-* start previously initialized Docker project » `fin start`
-* stop Docker containers » `fin stop`
-* completely remove Docker stuff related to this project » `fin project remove`
-* enable Xdebug » [read the docs](https://docs.docksal.io/tools/xdebug/)
-* read server logs » `fin logs --follow`
+* `fin start` – start previously initialized Docker project
+* `fin stop` – stop Docker containers
+* `fin project remove` – completely remove Docker stuff related to this project
+* `fin logs --follow` – read server logs 
+
+> You can enable Xdebug » [read the docs](https://docs.docksal.io/tools/xdebug/)

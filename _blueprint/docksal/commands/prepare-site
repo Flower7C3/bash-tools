@@ -9,8 +9,9 @@
 # Abort if anything fails
 set -e
 
-# fix profile
-source ~/.profile
+#-------------------------- Configure --------------------------------
+source $(dirname ${BASH_SOURCE})/_base.sh
+cd "$PROJECT_ROOT"
 
 #-------------------------- Settings --------------------------------
 #-------------------------- END: Settings --------------------------------

@@ -1,39 +1,64 @@
 #!/usr/bin/env bash
 
-## Backup database from remote host
+## Backup database to file
 ##
 ## Usage: fin backup-db
 
+# Abort if anything fails
+set -e
+
+#-------------------------- Configure --------------------------------
+source $(dirname ${BASH_SOURCE})/_base.sh
+cd "$PROJECT_ROOT"
+
 if [[ "" == "$REMOTE_RDS_HOSTNAME" ]]; then
-    echo "Please define \$REMOTE_RDS_HOSTNAME in '.docksal/docksal-local.env' file"
-    exit 2
+    printf "${COLOR_RED}Please define ${COLOR_RED_BG}\$REMOTE_RDS_HOSTNAME${COLOR_RED} in ${COLOR_RED_BG}.docksal/docksal-local.env${COLOR_RED} file${COLOR_OFF}\n"
+    exit 1
 fi
 if [[ "" == "$REMOTE_RDS_PORT" ]]; then
-    echo "Please define \$REMOTE_RDS_PORT in '.docksal/docksal-local.env' file"
-    exit 3
+    printf "${COLOR_RED}Please define ${COLOR_RED_BG}\$REMOTE_RDS_PORT${COLOR_RED} in ${COLOR_RED_BG}.docksal/docksal-local.env${COLOR_RED} file${COLOR_OFF}\n"
+    exit 2
 fi
 if [[ "" == "$REMOTE_RDS_DB_NAME" ]]; then
-    echo "Please define \$REMOTE_RDS_DB_NAME in '.docksal/docksal-local.env' file"
-    exit 4
+    printf "${COLOR_RED}Please define ${COLOR_RED_BG}\$REMOTE_RDS_DB_NAME${COLOR_RED} in ${COLOR_RED_BG}.docksal/docksal-local.env${COLOR_RED} file${COLOR_OFF}\n"
+    exit 3
 fi
 if [[ "" == "$REMOTE_RDS_USERNAME" ]]; then
-    echo "Please define \$REMOTE_RDS_USERNAME in '.docksal/docksal-local.env' file"
-    exit 5
+    printf "${COLOR_RED}Please define ${COLOR_RED_BG}\$REMOTE_RDS_USERNAME${COLOR_RED} in ${COLOR_RED_BG}.docksal/docksal-local.env${COLOR_RED} file${COLOR_OFF}\n"
+    exit 4
 fi
 if [[ "" == "$REMOTE_RDS_PASSWORD" ]]; then
-    echo "Please define \$REMOTE_RDS_PASSWORD in '.docksal/docksal-local.env' file"
-    exit 6
+    printf "${COLOR_RED}Please define ${COLOR_RED_BG}\$REMOTE_RDS_PASSWORD${COLOR_RED} in ${COLOR_RED_BG}.docksal/docksal-local.env${COLOR_RED} file${COLOR_OFF}\n"
+    exit 5
 fi
 
-dump_file_name="dump-${REMOTE_RDS_DB_NAME}-$(date +%Y%m%d-%H%I%S).sql"
-dump_directory_path="${PROJECT_ROOT}/.docksal/services/db/dump/"
-
-function err_report() {
-    rm "$dump_directory_path$dump_file_name"
-    exit 1
+#-------------------------- Execution --------------------------------
+function trap_sigint() {
+    printf "${COLOR_RED}Emergency stop${COLOR_OFF}\n"
+    rm "$dump_directory_path$dump_file_name"*
+    exit 99
 }
+function err_report() {
+    rm "$dump_directory_path$dump_file_name"*
+    exit 88
+}
+trap 'trap_sigint' SIGINT SIGQUIT
 
-echo "Downloading data from ${REMOTE_RDS_USERNAME}@${REMOTE_RDS_HOSTNAME}:${REMOTE_RDS_PORT} database..."
-mkdir -p "$dump_directory_path"
-fin exec -T --in=db mysqldump --verbose --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} ${REMOTE_RDS_DB_NAME} > ${dump_directory_path}${dump_file_name} || err_report
-echo "Saved to '${dump_file_name}' file!"
+printf "${COLOR_YELLOW}Backup from ${COLOR_YELLOW_H}%s${COLOR_OFF}${COLOR_YELLOW} to ${COLOR_YELLOW_H}%s${COLOR_OFF}${COLOR_YELLOW} file${COLOR_OFF}\n" "${REMOTE_RDS_USERNAME}@${REMOTE_RDS_HOSTNAME}:${REMOTE_RDS_PORT}" "$db_dump_sql_file_name"
+mkdir -p ${db_dump_dir_path}
+
+if is_docksal; then
+
+    ignores=$(fin exec -T --in=db --disable-column-names --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} -e "SELECT GROUP_CONCAT(concat("--ignore-table=", TABLE_SCHEMA, ".", table_name) SEPARATOR " ") FROM information_schema.tables WHERE TABLE_SCHEMA = "${REMOTE_RDS_DB_NAME}" AND TABLE_NAME LIKE "view_%";")
+    ignores=$(echo $ignores | sed 's/NULL//g; s/|NULL|/||/g; s/|NULL\(|\|$\)/|\1/g')
+
+    fin exec -T --in=db mysqldump --verbose --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD}  "$ignores" ${REMOTE_RDS_DB_NAME} >"$dump_directory_path/$dump_file_name" || err_report
+
+else
+
+    ignores=$(mysql --disable-column-names --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} -e "SELECT GROUP_CONCAT(concat("--ignore-table=", TABLE_SCHEMA, ".", table_name) SEPARATOR " ") FROM information_schema.tables WHERE TABLE_SCHEMA = "${REMOTE_RDS_DB_NAME}" AND TABLE_NAME LIKE "view_%";")
+    ignores=$(echo $ignores | sed 's/NULL//g; s/|NULL|/||/g; s/|NULL\(|\|$\)/|\1/g')
+
+    mysqldump --verbose --host ${REMOTE_RDS_HOSTNAME} --port ${REMOTE_RDS_PORT} --user ${REMOTE_RDS_USERNAME} --password=${REMOTE_RDS_PASSWORD} "$ignores" ${REMOTE_RDS_DB_NAME} | gzip >"$db_dump_dir_path/$db_dump_gzip_file_name" || err_report
+
+fi

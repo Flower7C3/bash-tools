@@ -1,5 +1,5 @@
 ### Node
 
-* install Node dependencies » `fin npm install`
-* run any Node command » `fin npm [command]`
-* run any Gulp command » `fin gulp [command]`
+* `fin npm install` – install Node dependencies
+* `fin npm [command]` – run any Node command
+* `fin gulp [command]` – run any Gulp command

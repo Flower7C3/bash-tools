@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-## Get drupal admin URL
+## Backup Drupal site
 ##
-## Usage: fin dru-admin
+## Usage: fin backup-dru-site
 
 # Abort if anything fails
 # Abort if anything fails
@@ -13,4 +13,4 @@ source $(dirname ${BASH_SOURCE})/_base.sh
 cd "$PROJECT_ROOT"
 
 #-------------------------- Execution --------------------------------
-fin drush @self.docksal uli
+fin drush config:export -y

@@ -25,6 +25,7 @@ _java_versions="no 8"
 _www_docroot="web"
 _symfony_config="no"
 _drupal_config="no"
+_wordpress_config="no"
 
 function copy_file() {
     local src_file_name=$1
@@ -60,7 +61,7 @@ function replace_in_file() {
 program_title "Docksal configuration warmup"
 
 ### VARIABLES
-display_info "Configure ${COLOR_INFO_H}project${COLOR_INFO} properties"
+display_header "Configure ${COLOR_LOG_H}project${COLOR_LOG} properties"
 prompt_variable_not_null project_name "Project name (lowercase alphanumeric, underscore, and hyphen)" "$_project_name" 1 "$@"
 _domain_name=${project_name}
 if [[ "$project_name" == "." ]]; then
@@ -80,10 +81,13 @@ if [[ "$application_stack" == "node" ]]; then
 fi
 
 if [[ "$application_stack" == "boilerplate" ]]; then
+    display_header "fin project create"
     fin project create
     exit
 else
     while true; do
+        display_line ""
+        display_header "Define ${COLOR_LOG_H}containers${COLOR_LOG} configuration"
         apache_version="no"
         if [[ "$application_stack" == "custom" || "$application_stack" == "php" || "$application_stack" == "php-nodb" ]]; then
             display_info "Configure ${COLOR_INFO_H}web${COLOR_INFO} container (read more on ${COLOR_INFO_H}https://hub.docker.com/r/docksal/web/${COLOR_INFO})"
@@ -118,6 +122,9 @@ else
             fi
             if [[ "$db_version" != "no" ]]; then
                 prompt_variable_fixed db_import "Create default database file" "$_db_import" "yes no"
+                if [[ "$db_import" == "y" ]]; then
+                    db_import="yes"
+                fi
             fi
         fi
         docksal_stack=""
@@ -142,16 +149,17 @@ else
             break
         fi
     done
-    if [[ "$php_version" != "no" ]]; then
-        prompt_variable_fixed symfony_config "Init example Symfony Framework configuration and commands?" "$_symfony_config" "yes no"
-    else
-        symfony_config="no"
-    fi
 
     if [[ "$php_version" != "no" ]]; then
+    display_line ""
+    display_header "Enable ${COLOR_LOG_H}addons${COLOR_LOG}"
+        prompt_variable_fixed symfony_config "Init example Symfony Framework configuration and commands?" "$_symfony_config" "yes no"
         prompt_variable_fixed drupal_config "Init example Docksal Drupal configuration and commands?" "$_drupal_config" "yes no"
+        prompt_variable_fixed wordpress_config "Init example Wordpress commands?" "$_wordpress_config" "yes no"
     else
+        symfony_config="no"
         drupal_config="no"
+        wordpress_config="no"
     fi
 fi
 
@@ -178,7 +186,8 @@ project_path=$(realpath .)
         display_header "Create basic configuration"
         fin config generate --docroot="$www_docroot" --stack=${docksal_stack}
         (
-            copy_file "gitignore" ".gitignore"
+            copy_file "docksal.gitignore" ".gitignore"
+            copy_file "docroot.gitignore" "../$www_docroot/.gitignore"
         )
         (
             display_info "Set ${COLOR_INFO_H}${domain_name}${COLOR_INFO} as hostname"
@@ -225,7 +234,14 @@ project_path=$(realpath .)
     (
         display_header "Add custom commands"
         copy_file "commands/init"
+        copy_file "commands/_base.sh"
         copy_file "commands/prepare-site"
+        if [[ "$db_version" != "no" ]] || [[ "$drupal_config" == "yes" ]] || [[ "$wordpress_config" == "yes" ]]; then
+            copy_file "commands/data/backup-data" "commands/backup-data"
+            copy_file "commands/data/download-data" "commands/download-data"
+            copy_file "commands/data/restore-data" "commands/restore-data"
+            copy_file "commands/data/share-data" "commands/share-data"
+        fi
         if [[ "$node_version" != "no" ]]; then
             copy_file "commands/node/gulp" "commands/gulp"
             copy_file "commands/node/npm" "commands/npm"
@@ -235,9 +251,15 @@ project_path=$(realpath .)
             copy_file "commands/symfony/console" "commands/console"
         fi
         if [[ "$db_version" != "no" ]]; then
-            copy_file "commands/db/migrate-db" "commands/migrate-db"
             copy_file "commands/db/backup-db" "commands/backup-db"
+            copy_file "commands/db/share-db" "commands/share-db"
+            copy_file "commands/db/download-db" "commands/download-db"
             copy_file "commands/db/restore-db" "commands/restore-db"
+            append_file "commands/db/backup-data" "commands/backup-data"
+            append_file "commands/db/share-data" "commands/share-data"
+            append_file "commands/db/download-data" "commands/download-data"
+            append_file "commands/db/restore-data" "commands/restore-data"
+            append_file "commands/db/_base" "commands/_base.sh"
             (
                 display_info "Create ${COLOR_INFO_H}.docksal/services/db/dump/${COLOR_INFO} directory"
                 mkdir -p .docksal/services/db/dump/
@@ -245,19 +267,53 @@ project_path=$(realpath .)
             )
         fi
         if [[ "$drupal_config" == "yes" ]]; then
-            copy_file "commands/drupal/backup-dru-site" "commands/backup-dru-site"
+            copy_file "commands/drupal/backup-dru-config" "commands/backup-dru-config"
+            copy_file "commands/drupal/restore-dru-config" "commands/restore-dru-config"
             copy_file "commands/drupal/dru-admin" "commands/dru-admin"
-            copy_file "commands/drupal/restore-dru-site" "commands/restore-dru-site"
             copy_file "services/cli/drupal/settings.local.php" "services/cli/settings.local.php"
+            copy_file "commands/drupal/backup-dru-files" "commands/backup-dru-files"
+            copy_file "commands/drupal/share-dru-files" "commands/share-dru-files"
+            copy_file "commands/drupal/download-dru-files" "commands/download-dru-files"
+            copy_file "commands/drupal/restore-dru-files" "commands/restore-dru-files"
+            append_file "commands/drupal/backup-data" "commands/backup-data"
+            append_file "commands/drupal/share-data" "commands/share-data"
+            append_file "commands/drupal/download-data" "commands/download-data"
+            append_file "commands/drupal/restore-data" "commands/restore-data"
+            append_file "commands/drupal/_base" "commands/_base.sh"
+            (
+                display_info "Create ${COLOR_INFO_H}.docksal/services/cli/files/${COLOR_INFO} directory"
+                mkdir -p .docksal/services/cli/files/
+                echo "services/cli/files/files*.zip" >>.docksal/.gitignore
+            )
+        fi
+        if [[ "$wordpress_config" == "yes" ]]; then
+            copy_file "services/cli/wordpress/wp-config.php" "services/cli/wp-config.php"
+            copy_file "commands/wordpress/backup-wp-uploads" "commands/backup-wp-uploads"
+            copy_file "commands/wordpress/share-wp-uploads" "commands/share-wp-uploads"
+            copy_file "commands/wordpress/download-wp-uploads" "commands/download-wp-uploads"
+            copy_file "commands/wordpress/restore-wp-uploads" "commands/restore-wp-uploads"
+            append_file "commands/wordpress/backup-data" "commands/backup-data"
+            append_file "commands/wordpress/share-data" "commands/share-data"
+            append_file "commands/wordpress/download-data" "commands/download-data"
+            append_file "commands/wordpress/restore-data" "commands/restore-data"
+            append_file "commands/wordpress/_base" "commands/_base.sh"
+            (
+                display_info "Create ${COLOR_INFO_H}.docksal/services/cli/uploads/${COLOR_INFO} directory"
+                mkdir -p .docksal/services/cli/uploads/
+                echo "services/cli/uploads/uploads*.zip" >>.docksal/.gitignore
+            )
         fi
         if [[ "$node_version" != "no" ]]; then
-            append_file "commands/prepare-site-part/prepare-site-part-node" "commands/prepare-site"
+            append_file "commands/node/prepare-site" "commands/prepare-site"
         fi
         if [[ "$symfony_config" != "no" ]]; then
-            append_file "commands/prepare-site-part/prepare-site-part-symfony" "commands/prepare-site"
+            append_file "commands/symfony/prepare-site" "commands/prepare-site"
         fi
         if [[ "$drupal_config" == "yes" ]]; then
-            append_file "commands/prepare-site-part/prepare-site-part-drupal" "commands/prepare-site"
+            append_file "commands/drupal/prepare-site" "commands/prepare-site"
+        fi
+        if [[ "$wordpress_config" == "yes" ]]; then
+            append_file "commands/wordpress/prepare-site" "commands/prepare-site"
         fi
     )
     (
@@ -316,6 +372,9 @@ project_path=$(realpath .)
         fi
         if [[ "$drupal_config" == "yes" ]]; then
             append_file "readme/docksal-how-to-drupal.md" "../README.md"
+        fi
+        if [[ "$wordpress_config" == "yes" ]]; then
+            append_file "readme/docksal-how-to-wordpress.md" "../README.md"
         fi
         replace_in_file '../README.md' 'PROJECT_NAME' "$(printf ${project_name} | sed 's:/:\\/:g')"
         replace_in_file '../README.md' 'VIRTUAL_HOST' "$(printf ${domain_url} | sed 's:/:\\/:g')"
