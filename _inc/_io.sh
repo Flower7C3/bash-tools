@@ -287,11 +287,26 @@ function prompt_variable_fixed() {
         if [[ ${_args} -le ${_arg_no} ]]; then
             _question_text2="$_question_text [$(join_by '/' ${_allowed_values[*]})]"
         fi
+        _allowed_vals=() # short value with first letter
         for _av in "${_allowed_values[@]}"; do
-            _allowed_values+=(${_av::1})
+            _allowed_vals+=(${_av::1})
         done
+        _allowed_vals_unique=($(echo "${_allowed_vals[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+#        echo "${#_allowed_vals[@]}"
+#        echo "${#_allowed_vals_unique[@]}"
         prompt_variable "$_variable_name" "$_question_text2" "$_default_value" "$@"
         _prompt_response=$(eval echo '$'"${_variable_name}")
+        if [[ "${#_allowed_vals[@]}" == "${#_allowed_vals_unique[@]}" ]]; then
+            if test "$(echo " ${_allowed_vals[*]} " | grep " ${_prompt_response} ")"; then
+                for i in "${!_allowed_vals[@]}"; do
+                    if [[ "${_prompt_response}" == "${_allowed_vals[$i]}" ]]; then
+                        set_variable "$_variable_name" "${_allowed_values[$i]}"
+                        break
+                    fi
+                done
+            fi
+            _prompt_response=$(eval echo '$'"${_variable_name}")
+        fi
         if test "$(echo " ${_allowed_values[*]} " | grep " ${_prompt_response} ")"; then
             break
         else
@@ -316,7 +331,7 @@ function confirm_or_exit() {
     local _run
     printf "\n"
     prompt_variable_fixed _run "${_question_text}" "no" "yes no" ""
-    if [[ "$_run" != "y" ]] && [[ "$_run" != "yes" ]]; then
+    if [[ "$_run" != "yes" ]]; then
         printf "\n"
         if [[ "$_fallback_message" != "" ]]; then
             display_info "$_fallback_message"
