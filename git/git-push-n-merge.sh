@@ -41,9 +41,6 @@ git checkout ${prefix}${branch_dst}
 display_info "${COLOR_ERROR_B}Pull ${COLOR_ERROR_H}${prefix}${branch_dst}${COLOR_ERROR_B} from upstream ${COLOR_RED}"
 git pull origin ${prefix}${branch_dst}
 
-display_info "${COLOR_NOTICE_B}Checkout previous branch ${COLOR_NOTICE}"
-git checkout -
-
 if [[ "$noff" == "y" ]]; then
     display_info "${COLOR_NOTICE_B}Merge with commit ${COLOR_NOTICE_H}${prefix}${branch_src}${COLOR_NOTICE_B} branch into ${COLOR_NOTICE_H}${prefix}${branch_dst}${COLOR_NOTICE_B} branch${COLOR_NOTICE}"
     git merge ${prefix}${branch_src} --no-ff --no-edit
@@ -54,6 +51,9 @@ fi
 
 display_success "${COLOR_SUCCESS_B}Push ${COLOR_SUCCESS_H}${prefix}${branch_dst}${COLOR_SUCCESS_B} to upstream ${COLOR_SUCCESS}"
 git push origin ${prefix}${branch_dst}
+
+display_info "${COLOR_NOTICE_B}Checkout previous branch ${COLOR_NOTICE}"
+git checkout -
 
 #display_info "${COLOR_NOTICE_B}Restore changes ${COLOR_NOTICE} \n"
 #git stash pop
