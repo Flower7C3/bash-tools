@@ -2,7 +2,7 @@
 
 env > /tmp/cleanup_env_vars
 
-source $(dirname ${BASH_SOURCE})/../_base.sh
+source $(dirname ${BASH_SOURCE})/../_inc/_base.sh
 source "$(dirname ${BASH_SOURCE})/config/_certbot.${CERTBOT_DOMAIN}.sh"
 
 

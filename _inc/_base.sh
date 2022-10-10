@@ -9,18 +9,18 @@ fi
 base_dir_path=$(dirname ${BASH_SOURCE})/
 
 sourced_scripts_list=(
-    '_inc/_base_for_remote.sh    _base.sh'
-    '_inc/_colors.sh             _inc_colors.sh'
-    '_inc/_io.sh                 _inc_io.sh'
-    '_inc/_tool_files.sh         _inc_tool_files.sh'
-    '_inc/_tool_check.sh         _inc_tool_check.sh'
-    '_inc/_tool_vendor.sh        _inc_tool_vendor.sh'
-    '_inc/_tool_sql.sh           _inc_tool_sql.sh'
-    '_inc/_notify.sh             _inc_notify.sh'
-    '_inc/_git.sh                _inc_git.sh'
-    '_inc/_www.sh                _inc_www.sh'
-    '_inc/_ftp.sh                _inc_ftp.sh'
-    '_inc/_s3.sh                 _inc_s3.sh'
+    '_base_for_remote.sh    _base.sh'
+    '_colors.sh             _inc_colors.sh'
+    '_io.sh                 _inc_io.sh'
+    '_tool_files.sh         _inc_tool_files.sh'
+    '_tool_check.sh         _inc_tool_check.sh'
+    '_tool_vendor.sh        _inc_tool_vendor.sh'
+    '_tool_sql.sh           _inc_tool_sql.sh'
+    '_notify.sh             _inc_notify.sh'
+    '_git.sh                _inc_git.sh'
+    '_www.sh                _inc_www.sh'
+    '_ftp.sh                _inc_ftp.sh'
+    '_s3.sh                 _inc_s3.sh'
 )
 
 for i in "${!sourced_scripts_list[@]}"; do

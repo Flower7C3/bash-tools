@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../_base.sh
+source $(dirname ${BASH_SOURCE})/../_inc/_base.sh
 
 
 ## VARIABLES

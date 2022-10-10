@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../_base.sh
+source $(dirname ${BASH_SOURCE})/../_inc/_base.sh
 
 ## CONFIG
 _branch_src="dev"
@@ -14,7 +14,7 @@ display_info "You are in ${COLOR_INFO_H}$(pwd)${COLOR_INFO_B} directory."
 prompt_variable branch_src "Source" "$_branch_src" 1 "$@"
 prompt_variable branch_dst "Destination" "$_branch_dst" 2 "$@"
 prompt_variable prefix "Prefix" "" 3 "$@"
-prompt_variable_fixed noff "With merge commit (no fast forwad)" "y" "y n" 4 "$@"
+prompt_variable_fixed noff "With merge commit (no fast forward)" "y" "y n" 4 "$@"
 
 ## PROGRAM
 if [[ "$noff" == "y" ]]; then
