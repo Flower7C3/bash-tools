@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../_inc/_base.sh
+source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
 
 function generate_passphrase() {
     LC_ALL=C tr -dc 'QWERTYUPADFHJKXCVNMqwertyupadfhjkxcvnm3479' </dev/urandom | head -c 32

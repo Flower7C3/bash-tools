@@ -1,0 +1,6 @@
+[submodule "vendor/bash-helpers"]
+	path = vendor/bash-helpers
+	url = git@github.com:flower7c3/bash-helpers.git
+[submodule "vendor/Flower7C3/bash-helpers"]
+	path = vendor/Flower7C3/bash-helpers
+	url = https://github.com/Flower7C3/bash-helpers/

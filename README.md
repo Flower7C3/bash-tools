@@ -1,5 +1,7 @@
 # Bash tools
 
+Clone this repository with `git clone --recursive https://github.com/Flower7C3/bash-tools` command.
+
 Most of scripts uses custom read method, which allows user to clearly write desired values. See scripts in [_inc/](_inc/) directory.
 
 

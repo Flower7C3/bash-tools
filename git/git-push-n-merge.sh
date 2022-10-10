@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../_inc/_base.sh
+source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
 
 ## CONFIG
 _branch_src="dev"
