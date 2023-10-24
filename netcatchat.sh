@@ -148,15 +148,19 @@ function config_load() {
         app_setup_nickname
     fi
     if [[ "${#chat_users[*]}" -eq "0" ]]; then
-        display_info "$( printf "You have no recipients on contact list, type ${COLOR_CYAN_I}/create${COLOR_CYAN} to add new person")"
+        # shellcheck disable=SC2059
+        display_info "$(printf "You have no recipients on contact list, type ${COLOR_CYAN_I}/create${COLOR_CYAN} to add new person")"
     fi
     while [[ "$1" != "" ]]; do
         case ${1} in
         -h | --help)
             display_info "$0 [-p <port>] [-n <@nickname>]"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "${COLOR_CYAN_I}%s${COLOR_CYAN}|${COLOR_CYAN_I}%s${COLOR_CYAN}\t%s" "-p" "--port <port>" "sender port, default ${sender_port}"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "${COLOR_CYAN_I}%s${COLOR_CYAN}|${COLOR_CYAN_I}%s${COLOR_CYAN}\t%s" "-n" "--nickname <@nickname> " "sender @nickname, default ${sender_nickname}"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "${COLOR_CYAN_I}%s${COLOR_CYAN}|${COLOR_CYAN_I}%s${COLOR_CYAN}\t%s" "-u" "--update" "update app"
+            display_help_item "$(printf "sender port, default ${COLOR_CYAN_I}%s${COLOR_CYAN}" "$sender_port")" \
+                '-p <port>' '--port <port>'
+            display_help_item "$(printf "sender @nickname, default ${COLOR_CYAN_I}%s${COLOR_CYAN}" "$sender_nickname")" \
+                '-n <@nickname>' '--nickname <@nickname>'
+            display_help_item "update app" \
+                '-u' '--update'
             exit 0
             ;;
         -u | --update)
@@ -726,32 +730,46 @@ function system_check() {
 }
 
 ### HELP ###
+function display_help_item() {
+    local description="$1"
+    shift
+    local parameters=""
+    parameters="$(printf "${COLOR_CYAN_I}%s${COLOR_CYAN}" "$1")"
+    shift
+    for param in "$@"; do
+        parameters+=$(printf " | ${COLOR_CYAN_I}%s${COLOR_CYAN}" "$param")
+    done
+    display_info "$DISPLAY_LINE_NO_ICON" "$DISPLAY_LINE_PREPEND_TAB" "%s - %s" "$parameters" "$description"
+}
+
 function help_screen() {
     display_info "App commands"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'write message to user' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '@nickname message')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'setup app port' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/p' '/port')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'setup Your @nickname' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/n' '/nick')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'list saved recipients' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/l [c|check]' '/list [c|check]')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'create new recipient' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/c <@nickname> <ip/addr> <port>' '/create <@nickname> <ip/addr> <port>')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'update saved recipient data' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/u <@nickname> <ip/addr> <port>' '/update <@nickname> <ip/addr> <port>')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'change (rename) recipient @nickname' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/r <@nickname_old> <@nickname_new>' '/rename <@nickname_old> <@nickname_new>')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'delete recipient' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/d <@nickname>' '/delete <@nickname>')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'scan local network for hosts with open '"$NETCAT_CHAT_APP_PORT"' port' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/s' '/scan')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'clear history' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/x' '/clear')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'help screen' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/h' '/help')"
-    display_info "$DISPLAY_LINE_NO_ICON" " - %s:%s" 'exit app' \
-        "$(printf "\n\t${COLOR_CYAN_I}%s${COLOR_CYAN}" '/q' '/exit' '/quit' '/bye')"
+    display_help_item "$(printf "write message to user, use ${COLOR_CYAN_I}%s${COLOR_CYAN} to broadcast" "@all")" \
+        '@nickname message'
+    display_help_item 'setup app port' \
+        '/p' '/port'
+    display_help_item 'setup Your @nickname' \
+        '/n' '/nick'
+    display_help_item 'list saved recipients' \
+        '/l [c|check]' '/list [c|check]'
+    display_help_item 'create new recipient' \
+        '/c <@nickname> <ip/addr> <port>' '/create <@nickname> <ip/addr> <port>'
+    display_help_item 'update saved recipient data' \
+        '/u <@nickname> <ip/addr> <port>' '/update <@nickname> <ip/addr> <port>'
+    display_help_item 'change (rename) recipient @nickname' \
+        '/r <@nickname_old> <@nickname_new>' '/rename <@nickname_old> <@nickname_new>'
+    display_help_item 'delete recipient' \
+        '/d <@nickname>' '/delete <@nickname>'
+    display_help_item 'scan local network for hosts with open '"$NETCAT_CHAT_APP_PORT"' port' \
+        '/s' '/scan'
+    display_help_item 'send welcome message to all users from Your recipients list' \
+        '/w' '/welcome'
+    display_help_item 'clear history' \
+        '/x' '/clear'
+    display_help_item 'help screen' \
+        '/h' '/help'
+    display_help_item 'exit app' \
+        '/q' '/exit' '/quit' '/bye' '<ctrl>+c'
 }
 
 ### MAIN ###
@@ -850,6 +868,11 @@ while true; do
         option_recipient_nickname=${option_array[1]}
         unset option_array
         recipient_delete "$option_recipient_nickname"
+        option_reset
+        ;;
+    /w | /welcome)
+        history_save
+        message_to_user "$sender_nickname" "@all" "$(printf "Hi @all. My name is %s. You can add me to Your recipients list with ${COLOR_CYAN_I}%s${COLOR_CYAN} command" "$sender_nickname" "/create $sender_nickname $sender_hostname $sender_port")"
         option_reset
         ;;
     \@*)
