@@ -427,7 +427,7 @@ function config_load() {
         time_mode='sec'
         command_name='play'
     else
-        display_error "Mucical command not found! Please install beep (apt install beep) or play (brew install sox)."
+        display_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
         exit 1
     fi
     local _note_type="4"

@@ -2,7 +2,8 @@
 
 Clone this repository with `git clone --recursive https://github.com/Flower7C3/bash-tools` command.
 
-Most of scripts uses custom read method, which allows user to clearly write desired values. See scripts in [_inc/](_inc/) directory.
+Most of scripts uses custom read method, which allows user to clearly write desired values. See scripts
+in [vendor/Flower7C3/bash-helpers/](vendor/Flower7C3/bash-helpers/) directory.
 
 
 ---
@@ -10,47 +11,54 @@ Most of scripts uses custom read method, which allows user to clearly write desi
 # Helpers
 
 ## GIT tools (simplify often used commands)
+
 See them in [git/](git/) directory.
+
 - simplify push and merge, with `bash git-push-n-merge.sh` script
 - rename branch on local and remote, with `bash git-rename-branch.sh` script
 - rename tag on local and remote, with `bash git-tag-rename.sh` script
 - synchronize local from remote, like `git pull` on multiple branches, with `bash git-sync.sh` script
 - create tag with annotation, with `bash git-tag-create.sh` script
 
-
 ## Docker and Docksal
+
 See them in [docker/](docker/) directory.
-- Connect to Docker container terminal by name with `bash docker-bash.sh <name>` script. Will start container if stopped.
+
+- Connect to Docker container terminal by name with `bash docker-bash.sh <name>` script. Will start container if
+  stopped.
 - Read logs from Docker container by name with `bash docker-logs.sh <name>` script. Will start container if stopped.
 - Exec command on Docker container with `bash docker-exec.sh <command>` script. Preserve paths.
 - Simplify Docksal configuration creation with [https://github.com/Flower7C3/docksal-warmup](docksal-warmup) script.
 
-
 ## Database tools
+
 See them in [databases/](databases/) directory.
+
 - MongoDB dump (also via proxy)
 - MySQL dump (also via proxy)
 
-
 ## SSL tools
+
 See them in [ssl/](ssl/) directory.
+
 - check certificate
 - generate a certificate with certbot
 
-
 ## Web development tools
+
 See them in [web_development_tools/](web_development_tools/) directory.
+
 - URL diff, with `bash url-diff.sh` script
 - Facebook cache clear, with `bash facebook-clear-cache.sh` script
 - redirects check, with `bash redirects-check.sh` script
 - REST client, with `bash rest-request.sh` script
 
-
 ## Symfony
+
 See them in [symfony/](symfony/) directory.
 
-
 ## Wordpress
+
 See command line updater in [wordpress/](wordpress/) directory.
 
 
@@ -59,15 +67,21 @@ See command line updater in [wordpress/](wordpress/) directory.
 # Fun zone
 
 ## OSM map to PNG
+
 Download area (by coordinates) with script `bash osm-map-download.sh` and save to PNG image.
 See it in [www_tools/](www_tools/) directory.
 
 ## netcatchat
+
 Chat with collegues via netcat with `bash netcatchat.sh`. It contains a lot of shorcuts and saves history.
 
+Download it
+with `curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/netcatchat.sh netcatchat.sh && chmod +x netcatchat.sh`.
 
 ## beeper (piano music player)
+
 Run `bash beeper.sh` and use keys to generate sound:
+
 - use keyboard keys **zxcvbnm,** to play white piano keys (notes from **c** to **b**)
 - use keyboard keys **sdghj** to play on black piano keys
 - play them with **Shift** keyboard key to activate sustain
@@ -75,8 +89,13 @@ Run `bash beeper.sh` and use keys to generate sound:
 - use **Left** and **Right** keyboard arrows to change speed
 - use keyboard keys **12345** to set note type (whole, half, quarter, eighth, sixtennth)
 
-Use `php piano-notes-to-beeper.php <piano_notes_file_name>` to convert piano notes to beeper format and then call `bash beeper.sh <beeper_file_name>`.
+Download it
+with `curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper.sh netcatchat.sh && chmod +x beeper.sh`.
+
+Use `php piano-notes-to-beeper.php <piano_notes_file_name>` to convert piano notes to beeper format and then
+call `bash beeper.sh <beeper_file_name>`.
 Beeper file format is `TO,LS ` value separated by space, where:
+
 - **T** is note tone from **c** to **b**
 - **O** is note octave from **1** to **8**
 - **L** is note length, from **1** to **16** where 1 is sixtennth (100 ms)
