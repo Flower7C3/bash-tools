@@ -189,6 +189,7 @@ function config_load() {
         esac
         shift
     done
+    # shellcheck disable=SC2207
     local _has_previous_process=($(ps -a | grep "nc -l -k ${sender_port}" | grep -v 'grep' | awk '{print $1;}'))
     if [[ "${#_has_previous_process[*]}" -gt "0" ]]; then
         for _pid in "${_has_previous_process[@]}"; do
@@ -220,10 +221,10 @@ function config_delete() {
 ### NETCAT ###
 function netcat_start() {
     if [[ -n "$sender_port" ]]; then
-        nc -l -k ${sender_port} 2>/dev/null &
+        nc -l -k $sender_port 2>/dev/null &
         nc_pid=$!
-        display_info 'Start netcat server on "%s" port at "%s" pid' "$sender_port" "$nc_pid"
-        message_from_system "${sender_nickname} in now connected to netchat from ${sender_hostname} ${sender_port}"
+        display_info "$(printf "Start netcat server on ${COLOR_CYAN_I}%s${COLOR_CYAN} port with ${COLOR_CYAN_I}%s${COLOR_CYAN} pid" "$sender_port" "$nc_pid")"
+        message_from_system "${sender_nickname} in now connected to netcatchat from ${sender_hostname} ${sender_port}"
     else
         display_error "Sender port is not defined"
         app_setup_port
@@ -652,31 +653,35 @@ function message_unicast() {
     _recipient_name=$(nickname_to_name "$_recipient_nickname")
     local _message="$2"
     local _recipient_address
+    # shellcheck disable=SC2206
     _recipient_address=(${chat_users[$_recipient_name]})
+    # shellcheck disable=SC2128
     if [[ -z "$_recipient_address" ]]; then
-        display_error "$(printf "Recipient %s is not recognized, use ${COLOR_RED_I}/create${COLOR_RED} to define new recipient or ${COLOR_RED_I}/list${COLOR_RED} to list all recipients" "$_recipient_nickname")"
+        display_error "$(printf "Recipient ${COLOR_RED_I}%s${COLOR_RED} is not recognized, use ${COLOR_RED_I}/create${COLOR_RED} to define new recipient or ${COLOR_RED_I}/list${COLOR_RED} to list all recipients" "$_recipient_nickname")"
         return 99
     else
         local _recipient_hostname=${_recipient_address[0]}
         # check status
         local _recipient_online_status=0
-        _recipient_online_status=$(ping ${_recipient_hostname} -c 1 -t 1 | grep -e 'packets' | awk '{print $4;}')
+        _recipient_online_status=$(ping "$_recipient_hostname" -c 1 -t 1 | grep -e 'packets' | awk '{print $4;}')
         if [[ "$_recipient_online_status" -gt "0" ]]; then
             # send message
             local _formatted_message
-            _formatted_message="$(display_message "$DISPLAY_LINE_SILENT_BELL" "${_message}")"
-            echo "${_formatted_message}" | nc -c ${_recipient_address[*]}
+            _formatted_message="$(display_message "$DISPLAY_LINE_SILENT_BELL" "$_message")"
+            _formatted_message+="$(display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_PREPEND_NL" "$DISPLAY_LINE_APPEND_NULL" "Chat: ")"
+            # shellcheck disable=SC2086
+            echo -n "${_formatted_message}" | nc -c ${_recipient_address[*]}
             local _message_send_response=$?
             # check response
             if [[ "$_message_send_response" == "0" ]]; then
                 display_message "$_message"
                 return 0
             else
-                display_error "Recipient %s is not connected on %s" "$_recipient_nickname" "${_recipient_address[*]}"
+                display_error "$(printf "Recipient ${COLOR_RED_I}%s${COLOR_RED} is not connected on %s" "$_recipient_nickname" "${_recipient_address[*]}")"
                 return $_message_send_response
             fi
         else
-            display_error "Recipient %s is offline" "$_recipient_nickname"
+            display_error "$(printf "Recipient %s is offline" "$_recipient_nickname")"
             return 99
         fi
     fi
