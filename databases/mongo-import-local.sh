@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## CONFIG
 _mongo_host="localhost"
@@ -9,10 +8,8 @@ _mongo_base="example"
 _export_dir_name="backup_$(date "+%Y%m%d-%H%M%S")"
 _export_file_name="backup_$(date "+%Y%m%d-%H%M%S").tar.gz"
 
-
 ## WELCOME
 program_title "SQL import to local"
-
 
 ## VARIABLES
 prompt_variable mongo_host "Mongo host" "$_mongo_host" 1 "$@"
@@ -25,8 +22,6 @@ trigger_file_name=${mongo_base}".json"
 prompt_variable export_dir_name "Export dir name (from ${COLOR_QUESTION_H}${local_data_dir_path}${COLOR_QUESTION_B} path)" "$_export_dir_name" 3 "$@"
 prompt_variable export_file_name "Export file name (from ${COLOR_QUESTION_H}${local_data_dir_path}${COLOR_QUESTION_B} path)" "$_export_file_name" 4 "$@"
 
-
-
 ## PROGRAM
 confirm_or_exit "Import SQL to ${COLOR_QUESTION_H}${mongo_base}${COLOR_QUESTION} database at ${COLOR_QUESTION_H}${sql_host}${COLOR_QUESTION} mysql host from ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION} export file and ${COLOR_QUESTION_H}${trigger_file_name}${COLOR_QUESTION} trigger file?"
 
@@ -36,9 +31,9 @@ mongorestore --host ${mongo_host} --drop --db ${mongo_base} --gzip --dir ${local
 color_reset
 
 if [ -f "${local_trigger_dir_path}${trigger_file_name}" ]; then
-  printf "${COLOR_INFO_B}Execute ${COLOR_INFO_H}${trigger_file_name}${COLOR_INFO_B} trigger file to ${COLOR_INFO_H}${mongo_base}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
-  mongo --host ${mongo_host} < ${local_trigger_dir_path}${trigger_file_name}
-  color_reset
+    printf "${COLOR_INFO_B}Execute ${COLOR_INFO_H}${trigger_file_name}${COLOR_INFO_B} trigger file to ${COLOR_INFO_H}${mongo_base}${COLOR_INFO_B} database on local ${COLOR_INFO} \n"
+    mongo --host ${mongo_host} <${local_trigger_dir_path}${trigger_file_name}
+    color_reset
 fi
 
 remove_file_from_local "${local_data_dir_path}" "${export_file_name}"

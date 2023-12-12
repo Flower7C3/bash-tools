@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## CONFIG
 BASE_DIR="$(pwd)/"
@@ -10,7 +9,6 @@ _git_branch=""
 _folder_to_keep=""
 _git_destination_url=""
 _folder_to_save=""
-
 
 ## WELCOME
 program_title "Move files from one repository to another, preserving git history"
@@ -37,56 +35,56 @@ git filter-branch --subdirectory-filter $folder_to_keep -- --all
 
 display_info "Clean the unwanted data."
 git reset --hard
-git gc --aggressive 
+git gc --aggressive
 git prune
 git clean -fd
 
 if [[ -n "$folder_to_save" ]]; then
 
-	display_info "Move all the files and directories to a ${COLOR_INFO_B}${folder_to_save}${COLOR_INFO} which you want to push to ${COLOR_INFO_B}repository B${COLOR_INFO}."
-	mkdir $folder_to_save
-	mv * $folder_to_save
+    display_info "Move all the files and directories to a ${COLOR_INFO_B}${folder_to_save}${COLOR_INFO} which you want to push to ${COLOR_INFO_B}repository B${COLOR_INFO}."
+    mkdir $folder_to_save
+    mv * $folder_to_save
 
-	display_info "Add the changes and commit them locally"
-	git add .
-	git commit -m "import from ${git_source_url}/${folder_to_keep}#${git_branch}"
+    display_info "Add the changes and commit them locally"
+    git add .
+    git commit -m "import from ${git_source_url}/${folder_to_keep}#${git_branch}"
 
-	display_info "Make a copy of ${COLOR_INFO_B}${git_destination_url}${COLOR_INFO} if you don’t have one already."
-	mkdir ${BASE_DIR}repoB/
-	cd ${BASE_DIR}repoB/
-	git clone ${git_destination_url} .
+    display_info "Make a copy of ${COLOR_INFO_B}${git_destination_url}${COLOR_INFO} if you don’t have one already."
+    mkdir ${BASE_DIR}repoB/
+    cd ${BASE_DIR}repoB/
+    git clone ${git_destination_url} .
 
-	display_info "Create a remote connection to ${COLOR_INFO_B}repository A${COLOR_INFO} as a branch in ${COLOR_INFO_B}repository B${COLOR_INFO}."
-	git remote add repoA ${BASE_DIR}repoA/
+    display_info "Create a remote connection to ${COLOR_INFO_B}repository A${COLOR_INFO} as a branch in ${COLOR_INFO_B}repository B${COLOR_INFO}."
+    git remote add repoA ${BASE_DIR}repoA/
 
-	display_info "Pull files and history from this branch (containing only the directory you want to move) into ${COLOR_INFO_B}repository B${COLOR_INFO}."
-	git pull repoA master --allow-unrelated-histories
+    display_info "Pull files and history from this branch (containing only the directory you want to move) into ${COLOR_INFO_B}repository B${COLOR_INFO}."
+    git pull repoA master --allow-unrelated-histories
 
-	display_info "Remove the remote connection to ${COLOR_INFO_B}repository A${COLOR_INFO}."
-	git remote rm repoA
+    display_info "Remove the remote connection to ${COLOR_INFO_B}repository A${COLOR_INFO}."
+    git remote rm repoA
 
-	display_info "Push the changes"
-	git rev-parse --verify HEAD
-	if [[ "$?" != "0" ]]; then
-		git push -u origin master
-	else
-		git push
-	fi
+    display_info "Push the changes"
+    git rev-parse --verify HEAD
+    if [[ "$?" != "0" ]]; then
+        git push -u origin master
+    else
+        git push
+    fi
 
-	display_info "Cleanup"
-	rm -rf ${BASE_DIR}repoA/
-	rm -rf ${BASE_DIR}repoB/
+    display_info "Cleanup"
+    rm -rf ${BASE_DIR}repoA/
+    rm -rf ${BASE_DIR}repoB/
 
 else
 
-	display_info "Connect local repository to ${COLOR_INFO_B}${git_destination_url}${COLOR_INFO} repository."
-	git remote add origin ${git_destination_url}
+    display_info "Connect local repository to ${COLOR_INFO_B}${git_destination_url}${COLOR_INFO} repository."
+    git remote add origin ${git_destination_url}
 
-	display_info "Push the changes"
-	git push -u origin master
+    display_info "Push the changes"
+    git push -u origin master
 
-	display_info "Cleanup"
-	rm -rf ${BASE_DIR}repoA/
+    display_info "Cleanup"
+    rm -rf ${BASE_DIR}repoA/
 
 fi
 

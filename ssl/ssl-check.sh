@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## WELCOME
 program_title "OpenSSL domain check"
 
-
 ## VARIABLES
 prompt_variable domain_name "Domain name" "" 1 "$@"
-
 
 ## PROGRAM
 printf "${COLOR_INFO_B}Check ${COLOR_INFO_BI}%s${COLOR_INFO_B} domain${COLOR_INFO} \n" "$domain_name"

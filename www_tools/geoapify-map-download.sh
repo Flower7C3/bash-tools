@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 program_title "GeoApify map download"
 
@@ -77,7 +77,7 @@ function download_maps() {
     for map_key in "${@}"; do
         map_info=$(eval echo \${"$map_key"[@]})
         # echo "» $map_info"
-       download_map $map_info
+        download_map $map_info
     done
 }
 

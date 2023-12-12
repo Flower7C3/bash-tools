@@ -1,17 +1,14 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## WELCOME
 program_title "Rename GIT tag"
-display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_INFO_B} directory."
-
+display_info "You are in ${COLOR_INFO_H}$(pwd)${COLOR_INFO_B} directory."
 
 ## VARIABLES
 prompt_variable old_tag_name "Old tag name" "" 1 "$@"
 prompt_variable new_tag_name "New tag name" "" 2 "$@"
-
 
 ## PROGRAM
 confirm_or_exit "Rename tag ${COLOR_QUESTION_H}${old_tag_name}${COLOR_QUESTION} to ${COLOR_QUESTION_H}${new_tag_name}${COLOR_QUESTION}?"

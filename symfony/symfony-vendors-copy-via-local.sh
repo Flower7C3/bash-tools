@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 clear
-
 
 host_src=${1:-"source-host"}
 home_src=${2:-'~/master/'}
@@ -15,7 +14,6 @@ backup_path=${5:-"vendor/"}
 date=$(date "+%Y%m%d-%H%M%S")
 backup_file='vendors-'$date'.tar'
 home_local="${HOME}/"
-
 
 printf "${COLOR_NOTICE_B}Prepare directory ${COLOR_NOTICE_H}${home_src}${backup_path}${COLOR_NOTICE_B} at ${COLOR_NOTICE_H}${host_src}${COLOR_NOTICE_B} host ${COLOR_NOTICE} \n"
 ssh ${host_src} "cd "${home_src}";tar -cf "${home_src}${backup_file}" "${backup_path}

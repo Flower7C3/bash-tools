@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 _wp_version="latest"
 _wp_docroot=$(pwd)
@@ -8,18 +8,15 @@ _issue_no=""
 wp_directories=(wp-admin/ wp-includes/)
 wp_files=(index.php license.txt readme.html wp-activate.php wp-blog-header.php wp-comments-post.php wp-config-sample.php wp-links-opml.php wp-load.php wp-login.php wp-mail.php wp-settings.php wp-signup.php wp-trackback.php xmlrpc.php)
 
-
 ## WELCOME
 program_title "Update WordPress to specific version"
 display_info "How to at https://cactusthemes.com/blog/how-to-downgrade-upgrade-wordpress-to-specific-version/"
-
 
 ## VARIABLES
 display_info "Browse all versions https://wordpress.org/download/releases/"
 prompt_variable_not_null wp_version "Destination version?" "$_wp_version" 1 "$@"
 prompt_variable_not_null wp_docroot "Docroot path" "$_wp_docroot" 2 "$@"
 prompt_variable_not_null issue_no "Issue number" "$_issue_no" 3 "$@"
-
 
 # PROGRAM
 confirm_or_exit "Upgrade WordPress?"
@@ -41,7 +38,7 @@ done
 
 display_info "Download ${wp_version} version"
 mkdir -p ${wp_upgrade_dir}
-curl ${wp_upgrade_zip_url} > ${wp_upgrade_zip_file}
+curl ${wp_upgrade_zip_url} >${wp_upgrade_zip_file}
 
 display_info "Unpack ${wp_version} version"
 unzip ${wp_upgrade_zip_file} -d ${wp_upgrade_dir}
@@ -59,7 +56,6 @@ for name in "${wp_files[@]}"; do
 done
 rm -rf ${wp_upgrade_zip_dir}
 
-
 # PROGRAM
 confirm_or_exit "Save changes in repository?"
 
@@ -72,7 +68,6 @@ Upgrade to WordPress ${wp_version}
 
 Issue: ${issue_no}
 EOF
-
 
 # END
 color_reset

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-env > /tmp/cleanup_env_vars
+env >/tmp/cleanup_env_vars
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-source "$(dirname ${BASH_SOURCE})/config/_certbot.${CERTBOT_DOMAIN}.sh"
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
+source "$(dirname "$BASH_SOURCE")/config/_certbot.${CERTBOT_DOMAIN}.sh"
 
 ## WELCOME
 echo "Remove ${FTP_USER}@${FTP_USER}${FTP_DOMAIN_PATH}${ACME_PATH}${CERTBOT_TOKEN} file"

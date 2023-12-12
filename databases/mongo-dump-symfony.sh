@@ -1,35 +1,32 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## CONFIG
 backup_dir_path=${HOME}/backup/
 
-
 ## WELCOME
 program_title "Mongo dump on Symfony app"
 
-
 ## VARIABLES
 _directory="master"
-prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)"  "$_directory" 1 "$@"
+prompt_variable directory "Remote symfony directory (relative to "'${HOME}'" directory)" "$_directory" 1 "$@"
 symfony_config_file_path=${HOME}/${directory}/app/config/parameters.yml
 mongo_host=$(sed -n "s/\([ ]\{1,\}\)mongo_host:\(.*\)/\2/p" $symfony_config_file_path | xargs)
 if [[ "$mongo_host" == "~" || "$mongo_host" == "" || "$mongo_host" == "null" ]]; then
-	mongo_host='localhost'
+    mongo_host='localhost'
 fi
 mongo_port=$(sed -n "s/\([ ]\{1,\}\)mongo_port:\(.*\)/\2/p" $symfony_config_file_path | xargs)
 if [[ "$mongo_port" == "~" || "$mongo_port" == "" || "$mongo_port" == "null" ]]; then
-	mongo_port=27017
+    mongo_port=27017
 fi
 mongo_user=$(sed -n "s/\([ ]\{1,\}\)mongo_user:\(.*\)/\2/p" $symfony_config_file_path | xargs)
 if [[ "$mongo_user" == "~" || "$mongo_user" == "" || "$mongo_user" == "null" ]]; then
-	mongo_user='root'
+    mongo_user='root'
 fi
 mongo_pass=$(sed -n "s/\([ ]\{1,\}\)mongo_password:\(.*\)/\2/p" $symfony_config_file_path | xargs)
 if [[ "$mongo_pass" == "~" || "$mongo_pass" == "" || "$mongo_pass" == "null" ]]; then
-	mongo_pass=''
+    mongo_pass=''
 fi
 mongo_base=$(sed -n "s/\([ ]\{1,\}\)mongo_database:\(.*\)/\2/p" $symfony_config_file_path | xargs)
 _export_dir_name="${mongo_base}-$(date "+%Y%m%d-%H%M%S")"
@@ -38,7 +35,6 @@ _export_file_name="${mongo_base}-$(date "+%Y%m%d-%H%M%S").tar.gz"
 prompt_variable export_file_name "Export filename" "$_export_file_name" 3 "$@"
 _backup_time=0
 prompt_variable backup_time "Backup time (days)" "$_backup_time" 4 "$@"
-
 
 ## PROGRAM
 confirm_or_exit "Dump Mongo from ${COLOR_QUESTION_H}${mongo_user}@${mongo_host}/${mongo_base}${COLOR_QUESTION_B} base to ${COLOR_QUESTION_H}${export_file_name}${COLOR_QUESTION_B} file?"
@@ -50,8 +46,8 @@ mongodump --host ${mongo_host} --port ${mongo_port} --username ${mongo_user} --p
 (cd ${backup_dir_path} && tar -zcvf ${backup_dir_path}${export_file_name} ${export_dir_name} && rm -rf ${export_dir_name})
 
 if [[ $backup_time > 0 ]]; then
-	printf "${COLOR_NOTICE_B}Clean old backups ${COLOR_NOTICE} \n"
-	find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
+    printf "${COLOR_NOTICE_B}Clean old backups ${COLOR_NOTICE} \n"
+    find ${backup_dir_path} -mtime +${backup_time} -exec rm {} \;
 fi
 
 print_new_line

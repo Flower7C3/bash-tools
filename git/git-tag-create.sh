@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 
-source $(dirname ${BASH_SOURCE})/../vendor/Flower7C3/bash-helpers/_base.sh
-
+source "$(dirname "$BASH_SOURCE")/../vendor/Flower7C3/bash-helpers/_base.sh"
 
 ## WELCOME
 program_title "Create GIT tag"
-display_info "You are in ${COLOR_INFO_H}`pwd`${COLOR_OFF} directory."
-
+display_info "You are in ${COLOR_INFO_H}$(pwd)${COLOR_OFF} directory."
 
 ## VARIABLES
 prompt_variable commit_hash "Commit hash" "" 1 "$@"
 prompt_variable tag_name "Tag name" "" 2 "$@"
 prompt_variable tag_message "Tag message" "" 3 "$@"
-
 
 ## PROGRAM
 confirm_or_exit "Create ${COLOR_QUESTION_H}${tag_name}${COLOR_QUESTION} tag in ${COLOR_QUESTION_H}${commit_hash}${COLOR_QUESTION} commit hash?"
