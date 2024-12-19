@@ -26,11 +26,13 @@ for index in $(seq 1 3 $mapping_amount); do
     expected_code=$(echo "${mapping[$((index))]}" | tr -d '\n' | tr -d '\r')
     expected_url=$(echo "${mapping[$((index + 1))]}" | tr -d '\n' | tr -d '\r')
     printf "%s %4d/%d %-80s " '-' "$((index / 3 + 1))" "$((mapping_amount / 3))" "$request_url"
-    response=($(curl -H 'Cache-Control: no-cache' -s -i -k --max-time 2 -o /dev/null --write-out '%{http_code} %{redirect_url} ' "$request_url"))
+    response=($(curl -I -H 'Cache-Control: no-cache' -s -i -k --max-time 2 -o /dev/null --write-out '%{http_code} %{redirect_url} ' "$request_url"))
     response_code=${response[0]}
     response_url=${response[1]}
-    if [[ "$expected_code" == "$response_code" ]] && [[ "$expected_url" == "$response_url" ]]; then
-        printf "${COLOR_SUCCESS}${ICON_SUCCESS} %s" "OK"
+    if [[ "$expected_code" == "$response_code" ]] && [[ "$expected_code" -gt 299 ]] && [[ "$expected_code" -lt 400 ]] && [[ "$expected_url" == "$response_url" ]]; then
+        printf "${COLOR_SUCCESS}${ICON_SUCCESS} %s OK" "$expected_code"
+    elif [[ "$expected_code" == "$response_code" ]]; then
+        printf "${COLOR_SUCCESS}${ICON_SUCCESS} %s OK" "$expected_code"
     else
         printf "${COLOR_ERROR}${ICON_ERROR} %s %s" "$response_code" "$response_url"
         printf "%s\t%s\t%s\n" "$request_url" "$response_code" "$response_url" >>"${data_file}.error.log"
