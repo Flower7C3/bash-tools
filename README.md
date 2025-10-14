@@ -6,7 +6,6 @@ Collection of useful bash scripts for development and system administration.
 
 ### Development Tools
 - `jpg-to-mp4` - Convert JPG images to MP4 video
-- `minecraft-pack-builder` - Build Minecraft Bedrock Edition addons
 - `wordpress-update` - Update WordPress installations safely
 
 ### Network Tools
