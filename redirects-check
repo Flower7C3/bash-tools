@@ -1,0 +1,337 @@
+#!/usr/bin/env bash
+
+# URL redirects and status code checker
+# Usage: ./redirects-check [OPTIONS] <data_file>
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  redirects_main "$@"
+}
+
+# Function to display usage
+show_usage() {
+  echo
+  log_usage_line "$0 [OPTIONS] <data_file>"
+  echo
+  echo "Check URL redirects and status codes from a data file"
+  echo
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
+  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
+  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
+  log_usage_options_line "Output file for results" "-o" "--output FILE"
+  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format FORMAT"
+  log_usage_options_line "Enable parallel processing" "-p" "--parallel"
+  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel NUM"
+  log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
+  log_usage_options_line "Show this help message" "-h" "--help"
+  echo
+  echo -e "${BOLD}${YELLOW}Data file format:${RESET}"
+  echo "  Each line should contain three space-separated values:"
+  echo "  OLD_URL EXPECTED_CODE NEW_URL"
+  echo
+  echo "  Example:"
+  echo "  https://example.com/old 301 https://example.com/new"
+  echo "  https://test.com/page 302 https://test.com/redirect"
+  echo
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  log_usage_example_line "$0 redirects.txt"
+  log_usage_example_line "$0 -t 30 -v redirects.txt"
+  log_usage_example_line "$0 -F json -o results.json redirects.txt"
+  log_usage_example_line "$0 -p -P 10 redirects.txt"
+  exit 0
+}
+
+# Default values
+DEFAULT_TIMEOUT=10
+DEFAULT_USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) Gecko/20100101 Firefox/87.0"
+DEFAULT_MAX_REDIRECTS=5
+
+# Global variables
+timeout=$DEFAULT_TIMEOUT
+user_agent="$DEFAULT_USER_AGENT"
+max_redirects=$DEFAULT_MAX_REDIRECTS
+output_format="text"
+output_file=""
+ssl_verify=1
+parallel=0
+max_parallel=5
+data_file=""
+
+# Function to check redirect
+check_redirect() {
+  local old_url="$1"
+  local expected_code="$2"
+  local expected_url="$3"
+  local line_number="$4"
+
+  # Build curl command
+  local curl_cmd="curl -s -i -k --max-time $timeout"
+
+  # Add user agent
+  curl_cmd="$curl_cmd -H 'User-Agent: $user_agent'"
+
+  # Add SSL verification
+  if [[ "$ssl_verify" == "0" ]]; then
+    curl_cmd="$curl_cmd -k"
+  fi
+
+  # Add redirect handling
+  curl_cmd="$curl_cmd --max-redirs $max_redirects"
+
+  # Add output format
+  curl_cmd="$curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{url_effective}'"
+
+  # Execute curl command
+  local response
+  if ! response=$(eval "$curl_cmd '$old_url'" 2>/dev/null); then
+    log_error "Failed to check URL: $old_url"
+    return 1
+  fi
+
+  # Parse response
+  IFS='|' read -r response_code redirect_url time_total url_effective <<<"$response"
+
+  # Check if redirect is correct
+  local is_correct=0
+  local status_message=""
+
+  if [[ "$response_code" == "$expected_code" ]]; then
+    if [[ "$expected_code" -ge 300 && "$expected_code" -lt 400 ]]; then
+      # For redirect codes, check if the redirect URL matches
+      if [[ "$redirect_url" == "$expected_url" ]]; then
+        is_correct=1
+        status_message="✓ Redirect correct"
+      else
+        status_message="✗ Redirect URL mismatch: got '$redirect_url', expected '$expected_url'"
+      fi
+    else
+      # For non-redirect codes, just check the code
+      is_correct=1
+      status_message="✓ Status code correct"
+    fi
+  else
+    status_message="✗ Status code mismatch: got '$response_code', expected '$expected_code'"
+  fi
+
+  # Output results based on format
+  case "$output_format" in
+  "json")
+    cat <<EOF
+{
+  "line_number": $line_number,
+  "old_url": "$old_url",
+  "expected_code": $expected_code,
+  "expected_url": "$expected_url",
+  "actual_code": $response_code,
+  "actual_url": "$redirect_url",
+  "final_url": "$url_effective",
+  "response_time": $time_total,
+  "is_correct": $is_correct,
+  "status": "$status_message"
+}
+EOF
+    ;;
+  "csv")
+    echo "$line_number,$old_url,$expected_code,$expected_url,$response_code,$redirect_url,$url_effective,$time_total,$is_correct,\"$status_message\""
+    ;;
+  *)
+    # Text format
+    printf "%-4d %-60s " "$line_number" "$old_url"
+    if [[ $is_correct -eq 1 ]]; then
+      printf "${GREEN}✓${NC} %s" "$status_message"
+    else
+      printf "${RED}✗${NC} %s" "$status_message"
+    fi
+    printf " (${time_total}s)"
+    echo
+    ;;
+  esac
+
+  # Log error to file if incorrect
+  if [[ $is_correct -eq 0 ]]; then
+    echo "$old_url	$response_code	$redirect_url" >>"${data_file}.error.log"
+  fi
+
+  return $is_correct
+}
+
+# Function to process data file
+process_data_file() {
+  local file="$1"
+
+  if [[ ! -f "$file" ]]; then
+    log_error "Data file not found: $file"
+    return 1
+  fi
+
+  log_info "Processing redirects from file: $file"
+
+  # Create error log file
+  rm -f "${file}.error.log"
+  touch "${file}.error.log"
+
+  # Add CSV header if output format is CSV
+  if [[ "$output_format" == "csv" ]]; then
+    echo "Line,Old URL,Expected Code,Expected URL,Actual Code,Actual URL,Final URL,Response Time,Correct,Status"
+  fi
+
+  local line_number=0
+  local correct_count=0
+  local total_count=0
+
+  while IFS= read -r line; do
+    ((line_number++))
+
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+    # Parse line: OLD_URL EXPECTED_CODE NEW_URL
+    local old_url expected_code expected_url
+    read -r old_url expected_code expected_url <<<"$line"
+
+    # Validate inputs
+    if [[ -z "$old_url" || -z "$expected_code" || -z "$expected_url" ]]; then
+      log_warning "Skipping malformed line $line_number: $line"
+      continue
+    fi
+
+    if ! validate_url "$old_url"; then
+      continue
+    fi
+
+    if ! validate_url "$expected_url"; then
+      continue
+    fi
+
+    if ! [[ "$expected_code" =~ ^[0-9]+$ ]]; then
+      log_warning "Invalid expected code on line $line_number: $expected_code"
+      continue
+    fi
+
+    # Check redirect
+    if check_redirect "$old_url" "$expected_code" "$expected_url" "$line_number"; then
+      ((correct_count++))
+    fi
+
+    ((total_count++))
+
+  done <"$file"
+
+  # Summary
+  log_info "Processed $total_count redirects: $correct_count correct, $((total_count - correct_count)) incorrect"
+
+  if [[ -s "${file}.error.log" ]]; then
+    log_warning "Errors logged to: ${file}.error.log"
+  fi
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -t | --timeout)
+      timeout="$2"
+      if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
+        log_error "Invalid timeout: $timeout"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -u | --user-agent)
+      user_agent="$2"
+      shift 2
+      ;;
+    -r | --max-redirects)
+      max_redirects="$2"
+      if ! [[ "$max_redirects" =~ ^[0-9]+$ ]] || [[ "$max_redirects" -lt 0 ]]; then
+        log_error "Invalid max redirects: $max_redirects"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -o | --output)
+      output_file="$2"
+      shift 2
+      ;;
+    -F | --format)
+      output_format="$2"
+      if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
+        log_error "Invalid output format: $output_format"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -p | --parallel)
+      parallel=1
+      shift
+      ;;
+    -P | --max-parallel)
+      max_parallel="$2"
+      if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || [[ "$max_parallel" -lt 1 ]]; then
+        log_error "Invalid max parallel: $max_parallel"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -k | --insecure)
+      ssl_verify=0
+      shift
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    -*)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    *)
+      if [[ -z "$data_file" ]]; then
+        data_file="$1"
+      else
+        log_error "Multiple data files specified"
+        exit 1
+      fi
+      shift
+      ;;
+    esac
+  done
+}
+
+# Main function
+redirects_main() {
+  log_title "Redirects Checker"
+
+  # Check if curl is available
+  check_dependencies curl
+
+  # Parse arguments
+  parse_arguments "$@"
+
+  # Validate input
+  if [[ -z "$data_file" ]]; then
+    log_error "No data file specified"
+    show_usage
+  fi
+
+  # Process data file
+  process_data_file "$data_file"
+}
+
+# Run main function
+main "$@"

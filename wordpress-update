@@ -1,0 +1,396 @@
+#!/usr/bin/env bash
+
+# WordPress installation updater
+# Usage: ./wordpress-update [OPTIONS]
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  wordpress_main "$@"
+}
+
+# Function to display usage
+show_usage() {
+  log_usage_line "$0 [OPTIONS]"
+  echo ""
+  echo "Update WordPress installations safely"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "WordPress version to install (default: $DEFAULT_WP_VERSION)" "-v" "--version VERSION"
+  log_usage_options_line "WordPress source directory path (default: current directory)" "-s" "--source PATH"
+  log_usage_options_line "Issue/ticket number for git commit" "-i" "--issue ISSUE"
+  log_usage_options_line "Skip creating backup before update" "-b" "--no-backup"
+  log_usage_options_line "Skip git operations" "-g" "--no-git"
+  log_usage_options_line "Show what would be done without making changes" "-n" "--dry-run"
+  log_usage_options_line "Force update even if version is the same" "-f" "--force"
+  log_usage_options_line "Show this help message" "-h" "--help"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  log_usage_example_line "$0 --version 6.4.2 --source /var/www/html"
+  log_usage_example_line "$0 --version latest --issue \"WP-123\""
+  log_usage_example_line "$0 --dry-run --version 6.4.1"
+  log_usage_example_line "$0 --no-backup --no-git --version 6.4.2"
+  echo ""
+  echo "Notes:"
+  echo "  - Always backup your WordPress installation before updating"
+  echo "  - The script will update core WordPress files only"
+  echo "  - Plugins and themes are not affected"
+  echo "  - wp-config.php is preserved"
+  echo "  - Custom uploads and content are preserved"
+  exit 0
+}
+
+# Default values
+DEFAULT_WP_VERSION="latest"
+DEFAULT_WP_SOURCE="$(pwd)"
+DEFAULT_ISSUE_NO=""
+DEFAULT_BACKUP=1
+DEFAULT_GIT_COMMIT=1
+
+# WordPress core files and directories
+readonly WP_DIRECTORIES=("wp-admin/" "wp-includes/")
+readonly WP_FILES=("index.php" "license.txt" "readme.html" "wp-activate.php" "wp-blog-header.php" "wp-comments-post.php" "wp-config-sample.php" "wp-links-opml.php" "wp-load.php" "wp-login.php" "wp-mail.php" "wp-settings.php" "wp-signup.php" "wp-trackback.php" "xmlrpc.php")
+
+# Global variables
+wp_version="$DEFAULT_WP_VERSION"
+wp_source="$DEFAULT_WP_SOURCE"
+issue_no="$DEFAULT_ISSUE_NO"
+backup="$DEFAULT_BACKUP"
+git_commit="$DEFAULT_GIT_COMMIT"
+dry_run=0
+force=0
+
+# Function to get current WordPress version
+get_current_wp_version() {
+  local docroot="$1"
+  local version_file="$docroot/wp-includes/version.php"
+
+  if [[ -f "$version_file" ]]; then
+    grep "wp_version =" "$version_file" | cut -d"'" -f2
+  else
+    echo "unknown"
+  fi
+}
+
+# Function to get latest WordPress version
+get_latest_wp_version() {
+  local latest_version
+  if ! latest_version=$(curl -s "https://api.wordpress.org/core/version-check/1.7/" | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4); then
+    log_error "Failed to get latest WordPress version"
+    return 1
+  fi
+  echo "$latest_version"
+}
+
+# Function to create backup
+create_backup() {
+  local docroot="$1"
+  local backup_dir="${docroot}/../wp-backup-$(date +%Y%m%d-%H%M%S)"
+
+  log_info "Creating backup to: $backup_dir"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log_info "DRY RUN: Would create backup at $backup_dir"
+    return 0
+  fi
+
+  mkdir -p "$backup_dir"
+
+  # Copy WordPress core files
+  for dir in "${WP_DIRECTORIES[@]}"; do
+    if [[ -d "$docroot/$dir" ]]; then
+      cp -r "$docroot/$dir" "$backup_dir/"
+    fi
+  done
+
+  for file in "${WP_FILES[@]}"; do
+    if [[ -f "$docroot/$file" ]]; then
+      cp "$docroot/$file" "$backup_dir/"
+    fi
+  done
+
+  log_success "Backup created: $backup_dir"
+}
+
+# Function to download WordPress
+download_wordpress() {
+  local version="$1"
+  local download_url="https://wordpress.org/wordpress-${version}.zip"
+  local temp_dir="/tmp/wp-update-$$"
+  local zip_file="$temp_dir/wordpress.zip"
+
+  log_info "Downloading WordPress $version from: $download_url"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log_info "DRY RUN: Would download from $download_url"
+    return 0
+  fi
+
+  mkdir -p "$temp_dir"
+
+  if ! curl -L -o "$zip_file" "$download_url"; then
+    log_error "Failed to download WordPress $version"
+    return 1
+  fi
+
+  log_success "WordPress $version downloaded successfully"
+  echo "$zip_file"
+}
+
+# Function to extract WordPress
+extract_wordpress() {
+  local zip_file="$1"
+  local extract_dir="$(dirname "$zip_file")/wordpress"
+
+  log_info "Extracting WordPress archive"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log_info "DRY RUN: Would extract to $extract_dir"
+    return 0
+  fi
+
+  if ! unzip -q "$zip_file" -d "$(dirname "$zip_file")"; then
+    log_error "Failed to extract WordPress archive"
+    return 1
+  fi
+
+  log_success "WordPress extracted successfully"
+  echo "$extract_dir"
+}
+
+# Function to update WordPress files
+update_wordpress_files() {
+  local docroot="$1"
+  local extract_dir="$2"
+
+  log_info "Updating WordPress core files"
+
+  # Remove old core files
+  for dir in "${WP_DIRECTORIES[@]}"; do
+    if [[ -d "$docroot/$dir" ]]; then
+      if [[ "$dry_run" != "1" ]]; then
+        rm -rf "$docroot/$dir"
+      fi
+    fi
+  done
+
+  for file in "${WP_FILES[@]}"; do
+    if [[ -f "$docroot/$file" ]]; then
+      if [[ "$dry_run" != "1" ]]; then
+        rm -f "$docroot/$file"
+      fi
+    fi
+  done
+
+  # Copy new core files
+  for dir in "${WP_DIRECTORIES[@]}"; do
+    if [[ -d "$extract_dir/$dir" ]]; then
+      if [[ "$dry_run" != "1" ]]; then
+        cp -r "$extract_dir/$dir" "$docroot/"
+      fi
+    fi
+  done
+
+  for file in "${WP_FILES[@]}"; do
+    if [[ -f "$extract_dir/$file" ]]; then
+      if [[ "$dry_run" != "1" ]]; then
+        cp "$extract_dir/$file" "$docroot/"
+      fi
+    fi
+  done
+
+  log_success "WordPress core files updated successfully"
+}
+
+# Function to commit to git
+commit_to_git() {
+  local docroot="$1"
+  local version="$2"
+  local issue="$3"
+
+  if [[ "$git_commit" != "1" ]]; then
+    return 0
+  fi
+
+  log_info "Committing changes to git"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log_info "DRY RUN: Would commit to git"
+    return 0
+  fi
+
+  # Check if we're in a git repository
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    log_warning "Not in a git repository, skipping git operations"
+    return 0
+  fi
+
+  # Add changes
+  git add "$docroot"
+
+  # Create commit message
+  local commit_message="Upgrade to WordPress $version"
+  if [[ -n "$issue" ]]; then
+    commit_message="$commit_message
+
+Issue: $issue"
+  fi
+
+  # Commit changes
+  if ! git commit -m "$commit_message"; then
+    log_warning "Git commit failed or no changes to commit"
+  else
+    log_success "Changes committed to git"
+  fi
+}
+
+# Function to cleanup temporary files
+cleanup() {
+  local temp_dir="$1"
+  if [[ -n "$temp_dir" && -d "$temp_dir" ]]; then
+    rm -rf "$temp_dir"
+  fi
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -v | --version)
+      wp_version="$2"
+      shift 2
+      ;;
+    -s | --source)
+      wp_source="$2"
+      shift 2
+      ;;
+    -i | --issue)
+      issue_no="$2"
+      shift 2
+      ;;
+    -b | --no-backup)
+      backup=0
+      shift
+      ;;
+    -g | --no-git)
+      git_commit=0
+      shift
+      ;;
+    -n | --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -f | --force)
+      force=1
+      shift
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    -*)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    *)
+      log_error "Unexpected argument: $1"
+      show_usage
+      ;;
+    esac
+  done
+}
+
+# Main function
+wordpress_main() {
+  log_title "WordPress Update"
+
+  # Parse arguments
+  parse_arguments "$@"
+
+  # Check dependencies
+  check_dependencies curl git
+
+  # Validate WordPress directory
+  if ! validate_wp_directory "$wp_source"; then
+    exit 1
+  fi
+
+  # Get current version
+  local current_version
+  current_version=$(get_current_wp_version "$wp_source")
+  log_info "Current WordPress version: $current_version"
+
+  # Handle "latest" version
+  if [[ "$wp_version" == "latest" ]]; then
+    wp_version=$(get_latest_wp_version)
+    log_info "Latest WordPress version: $wp_version"
+  fi
+
+  # Check if update is needed
+  if [[ "$current_version" == "$wp_version" && "$force" != "1" ]]; then
+    log_info "WordPress is already at version $wp_version"
+    if [[ "$force" != "1" ]]; then
+      log_info "Use --force to update anyway"
+      exit 0
+    fi
+  fi
+
+  # Confirm update
+  if [[ "$dry_run" != "1" ]]; then
+    echo
+    log_warning "This will update WordPress from $current_version to $wp_version"
+    log_warning "Make sure you have a backup before proceeding!"
+    echo
+    read -p "Do you want to continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Update cancelled"
+      exit 0
+    fi
+  fi
+
+  # Create backup
+  if [[ "$backup" == "1" ]]; then
+    create_backup "$wp_source"
+  fi
+
+  # Download WordPress
+  local zip_file
+  zip_file=$(download_wordpress "$wp_version")
+
+  # Extract WordPress
+  local extract_dir
+  extract_dir=$(extract_wordpress "$zip_file")
+
+  # Update WordPress files
+  update_wordpress_files "$wp_source" "$extract_dir"
+
+  # Commit to git
+  commit_to_git "$wp_source" "$wp_version" "$issue_no"
+
+  # Cleanup
+  cleanup "$(dirname "$zip_file")"
+
+  # Final success message
+  log_success "WordPress updated successfully from $current_version to $wp_version"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log_info "This was a dry run - no actual changes were made"
+  fi
+}
+
+# Run main function
+main "$@"

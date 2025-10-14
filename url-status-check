@@ -1,0 +1,366 @@
+#!/usr/bin/env bash
+
+# HTTP status code and redirect checker
+# Usage: ./url-status-check [OPTIONS] <URLs...>
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  url_main "$@"
+}
+
+# Function to display usage
+show_usage() {
+  echo
+  log_usage_line "$0 [OPTIONS] <URLs...>"
+  echo
+  echo "Check HTTP status codes and redirects"
+  echo
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
+  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
+  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
+  log_usage_options_line "HTTP method (default: GET)" "-m" "--method METHOD"
+  log_usage_options_line "Add custom header (can be used multiple times)" "-H" "--header HEADER"
+  log_usage_options_line "Cookie string" "-c" "--cookies STRING"
+  log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
+  log_usage_options_line "Don't follow redirects" "-f" "--no-follow"
+  log_usage_options_line "Enable parallel processing" "-p" "--parallel"
+  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel NUM"
+  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format FORMAT"
+  log_usage_options_line "Show this help message" "-h" "--help"
+  echo
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  log_usage_example_line "$0 https://example.com"
+  log_usage_example_line "$0 -r 10 -t 30 https://example.com"
+  log_usage_example_line "$0 -m POST -H \"Content-Type: application/json\" https://api.example.com"
+  log_usage_example_line "$0 -p -P 10 urls.txt"
+  log_usage_example_line "$0 -F json -o results.json https://example.com"
+  exit 0
+}
+
+# Default values
+DEFAULT_MAX_REDIRECTS=5
+DEFAULT_TIMEOUT=10
+DEFAULT_USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) Gecko/20100101 Firefox/87.0"
+
+# Global variables
+max_redirects=$DEFAULT_MAX_REDIRECTS
+timeout=$DEFAULT_TIMEOUT
+user_agent="$DEFAULT_USER_AGENT"
+follow_redirects=1
+output_format="text"
+method="GET"
+headers=()
+cookies=""
+ssl_verify=1
+parallel=0
+max_parallel=5
+
+# Function to get status color
+get_status_color() {
+  local code="$1"
+  if [[ "$code" -lt 300 ]]; then
+    echo "$GREEN"
+  elif [[ "$code" -lt 400 ]]; then
+    echo "$YELLOW"
+  elif [[ "$code" -lt 500 ]]; then
+    echo "$RED"
+  else
+    echo "$PURPLE"
+  fi
+}
+
+# Function to check URL status
+check_url() {
+  local url="$1"
+  local redirect_count="${2:-0}"
+  local original_url="${3:-}"
+
+  if [[ -z "$original_url" ]]; then
+    original_url="$url"
+  fi
+
+  # Build curl command
+  local curl_cmd="curl -s -i -k --max-time $timeout"
+
+  # Add user agent
+  curl_cmd="$curl_cmd -H 'User-Agent: $user_agent'"
+
+  # Add custom headers
+  for header in "${headers[@]}"; do
+    curl_cmd="$curl_cmd -H '$header'"
+  done
+
+  # Add cookies
+  if [[ -n "$cookies" ]]; then
+    curl_cmd="$curl_cmd -H 'Cookie: $cookies'"
+  fi
+
+  # Add method
+  if [[ "$method" != "GET" ]]; then
+    curl_cmd="$curl_cmd -X $method"
+  fi
+
+  # Add SSL verification
+  if [[ "$ssl_verify" == "0" ]]; then
+    curl_cmd="$curl_cmd -k"
+  fi
+
+  # Add redirect handling
+  if [[ "$follow_redirects" == "0" ]]; then
+    curl_cmd="$curl_cmd --max-redirs 0"
+  else
+    curl_cmd="$curl_cmd --max-redirs $max_redirects"
+  fi
+
+  # Add output format
+  curl_cmd="$curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{size_download}|%{url_effective}'"
+
+  # Execute curl command
+  local response
+  if ! response=$(eval "$curl_cmd '$url'" 2>/dev/null); then
+    log_error "Failed to check URL: $url"
+    return 1
+  fi
+
+  # Parse response
+  IFS='|' read -r response_code redirect_url time_total size_download url_effective <<<"$response"
+
+  # Get status color
+  local color
+  color=$(get_status_color "$response_code")
+
+  # Output results based on format
+  case "$output_format" in
+  "json")
+    cat <<EOF
+{
+  "original_url": "$original_url",
+  "final_url": "$url_effective",
+  "status_code": $response_code,
+  "redirect_url": "$redirect_url",
+  "response_time": $time_total,
+  "content_length": $size_download,
+  "redirect_count": $redirect_count
+}
+EOF
+    ;;
+  "csv")
+    echo "$original_url,$url_effective,$response_code,$redirect_url,$time_total,$size_download,$redirect_count"
+    ;;
+  *)
+    # Text format
+    printf "%-60s " "$url"
+    printf "[${color}%3s${RESET}] " "$response_code"
+    if [[ -n "$redirect_url" ]]; then
+      printf "→ %s " "$redirect_url"
+    fi
+    printf "(${time_total}s, ${size_download} bytes)"
+    if [[ "$redirect_count" -gt 0 ]]; then
+      printf " [%d redirects]" "$redirect_count"
+    fi
+    echo
+    ;;
+  esac
+
+  # Follow redirects if enabled and status is 3xx
+  if [[ "$follow_redirects" == "1" && "$response_code" -ge 300 && "$response_code" -lt 400 && -n "$redirect_url" ]]; then
+    if [[ "$redirect_count" -ge "$max_redirects" ]]; then
+      log_warning "Maximum redirects exceeded for $original_url"
+      return 1
+    fi
+
+    # Recursively check redirect URL
+    check_url "$redirect_url" $((redirect_count + 1)) "$original_url"
+  fi
+}
+
+# Function to process URLs from file
+process_urls_from_file() {
+  local file="$1"
+
+  if [[ ! -f "$file" ]]; then
+    log_error "File not found: $file"
+    return 1
+  fi
+
+  log_info "Processing URLs from file: $file"
+
+  # Add CSV header if output format is CSV
+  if [[ "$output_format" == "csv" ]]; then
+    echo "Original URL,Final URL,Status Code,Redirect URL,Response Time,Content Length,Redirect Count"
+  fi
+
+  while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+    # Trim whitespace
+    line=$(echo "$line" | xargs)
+
+    # Validate URL
+    if ! validate_url "$line"; then
+      continue
+    fi
+
+    # Check URL
+    check_url "$line"
+
+  done <"$file"
+}
+
+# Function to process URLs in parallel
+process_urls_parallel() {
+  local urls=("$@")
+  local pids=()
+  local results=()
+
+  log_info "Processing ${#urls[@]} URLs in parallel (max: $max_parallel)"
+
+  for url in "${urls[@]}"; do
+    # Wait if we've reached max parallel processes
+    while [[ ${#pids[@]} -ge $max_parallel ]]; do
+      for i in "${!pids[@]}"; do
+        if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+          unset pids[$i]
+        fi
+      done
+      sleep 0.1
+    done
+
+    # Start background process
+    check_url "$url" &
+    pids+=($!)
+  done
+
+  # Wait for all processes to complete
+  for pid in "${pids[@]}"; do
+    wait "$pid"
+  done
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -r | --max-redirects)
+      max_redirects="$2"
+      if ! [[ "$max_redirects" =~ ^[0-9]+$ ]] || [[ "$max_redirects" -lt 0 ]]; then
+        log_error "Invalid max redirects: $max_redirects"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -t | --timeout)
+      timeout="$2"
+      if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
+        log_error "Invalid timeout: $timeout"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -u | --user-agent)
+      user_agent="$2"
+      shift 2
+      ;;
+    -m | --method)
+      method="$2"
+      if [[ "$method" != "GET" && "$method" != "POST" && "$method" != "PUT" && "$method" != "DELETE" && "$method" != "HEAD" && "$method" != "OPTIONS" ]]; then
+        log_error "Invalid HTTP method: $method"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -H | --header)
+      headers+=("$2")
+      shift 2
+      ;;
+    -c | --cookies)
+      cookies="$2"
+      shift 2
+      ;;
+    -k | --insecure)
+      ssl_verify=0
+      shift
+      ;;
+    -f | --no-follow)
+      follow_redirects=0
+      shift
+      ;;
+    -p | --parallel)
+      parallel=1
+      shift
+      ;;
+    -P | --max-parallel)
+      max_parallel="$2"
+      if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || [[ "$max_parallel" -lt 1 ]]; then
+        log_error "Invalid max parallel: $max_parallel"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -F | --format)
+      output_format="$2"
+      if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
+        log_error "Invalid output format: $output_format"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    -*)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    *)
+      # URL argument
+      if [[ -f "$1" ]]; then
+        process_urls_from_file "$1"
+      else
+        if ! validate_url "$1"; then
+          exit 1
+        fi
+        check_url "$1"
+      fi
+      shift
+      ;;
+    esac
+  done
+}
+
+# Main function
+url_main() {
+  log_title "URL status check"
+
+  # Check if curl is available
+  check_dependencies curl
+
+    # If no arguments provided, show usage
+    if [[ $# -eq 0 ]]; then
+        log_error "No URLs provided"
+        show_usage
+    fi
+
+  # Parse arguments
+  parse_arguments "$@"
+}
+
+# Run main function
+main "$@"

@@ -1,0 +1,430 @@
+#!/usr/bin/env bash
+
+# Map downloader for GeoApify and OpenStreetMap
+# Usage: ./map-download [OPTIONS]
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  map_main "$@"
+}
+
+# Function to display usage
+show_usage() {
+  log_usage_line "$0 [OPTIONS]"
+  echo ""
+  echo "Download maps from GeoApify or OpenStreetMap"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "Map provider: geoapify, osm (default: $DEFAULT_PROVIDER)" "-p" "--provider PROVIDER"
+  log_usage_options_line "Map zoom level (default: $DEFAULT_ZOOM)" "-z" "--zoom ZOOM"
+  log_usage_options_line "Map type: standard, cycle (default: $DEFAULT_MAP_TYPE)" "-t" "--type TYPE"
+  log_usage_options_line "Output directory (default: $DEFAULT_OUTPUT_DIR)" "-o" "--output DIR"
+  log_usage_options_line "Image width for GeoApify (default: $DEFAULT_WIDTH)" "-w" "--width WIDTH"
+  log_usage_options_line "Image height for GeoApify (default: $DEFAULT_HEIGHT)" "--height HEIGHT"
+  log_usage_options_line "API key for GeoApify" "-k" "--api-key KEY"
+  log_usage_options_line "Center coordinates (for GeoApify)" "-c" "--center LAT,LNG"
+  log_usage_options_line "Bounding box coordinates (for OSM)" "-b" "--bounds W,S,E,N"
+  log_usage_options_line "Marker definitions (for GeoApify)" "-m" "--markers MARKERS"
+  log_usage_options_line "Verbose output" "-v" "--verbose"
+  log_usage_options_line "Debug output" "-d" "--debug"
+  log_usage_options_line "Show this help message" "-h" "--help"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  echo "  # OSM map with bounding box"
+  log_usage_example_line "$0 --provider osm --bounds \"20.2008,49.9817,20.4651,50.0836\" --zoom 15"
+  echo ""
+  echo "  # GeoApify map with center point"
+  log_usage_example_line "$0 --provider geoapify --center \"50.0326,20.0000\" --zoom 15 --api-key YOUR_KEY"
+  echo ""
+  echo "  # GeoApify map with markers"
+  log_usage_example_line "$0 --provider geoapify --center \"50.0326,20.0000\" --markers \"lonlat:20.0000,50.0326;type:circle;color:red\" --api-key YOUR_KEY"
+  echo ""
+  echo "  # OSM cycle map"
+  log_usage_example_line "$0 --provider osm --type cycle --bounds \"20.2008,49.9817,20.4651,50.0836\""
+  exit 0
+}
+
+# Default values
+DEFAULT_PROVIDER="osm"
+DEFAULT_ZOOM=15
+DEFAULT_MAP_TYPE="standard"
+DEFAULT_OUTPUT_DIR="${HOME}/Pictures"
+DEFAULT_WIDTH=800
+DEFAULT_HEIGHT=600
+
+# Global variables
+provider=""
+zoom=$DEFAULT_ZOOM
+map_type=$DEFAULT_MAP_TYPE
+output_dir=$DEFAULT_OUTPUT_DIR
+width=$DEFAULT_WIDTH
+height=$DEFAULT_HEIGHT
+geo_long_w=""
+geo_lat_s=""
+geo_long_e=""
+geo_lat_n=""
+center_lat=""
+center_lng=""
+api_key=""
+markers=""
+verbose=0
+debug=0
+
+# Function to validate coordinates
+validate_coordinates() {
+  local lat="$1"
+  local lng="$2"
+
+  if ! [[ "$lat" =~ ^-?[0-9]+\.?[0-9]*$ ]] || ! [[ "$lng" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
+    log_error "Invalid coordinate format: $lat, $lng"
+    return 1
+  fi
+
+  if (($(echo "$lat < -90 || $lat > 90" | bc -l))); then
+    log_error "Latitude must be between -90 and 90: $lat"
+    return 1
+  fi
+
+  if (($(echo "$lng < -180 || $lng > 180" | bc -l))); then
+    log_error "Longitude must be between -180 and 180: $lng"
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate bounding box
+validate_bounding_box() {
+  local w="$1"
+  local s="$2"
+  local e="$3"
+  local n="$4"
+
+  if ! validate_coordinates "$s" "$w" || ! validate_coordinates "$n" "$e"; then
+    return 1
+  fi
+
+  if (($(echo "$w >= $e" | bc -l))); then
+    log_error "West coordinate must be less than East coordinate"
+    return 1
+  fi
+
+  if (($(echo "$s >= $n" | bc -l))); then
+    log_error "South coordinate must be less than North coordinate"
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to create output directory
+create_output_dir() {
+  if [[ ! -d "$output_dir" ]]; then
+    log_info "Creating output directory: $output_dir"
+    mkdir -p "$output_dir"
+  fi
+}
+
+# Function to download OSM map
+download_osm_map() {
+  log_info "Downloading OSM map..."
+
+  # Convert coordinates to tile coordinates
+  local xtile_min xtile_max ytile_min ytile_max
+
+  # Replace comma with dot for bc calculations
+  local geo_long_w_bc="${geo_long_w//,/.}"
+  local geo_lat_s_bc="${geo_lat_s//,/.}"
+  local geo_long_e_bc="${geo_long_e//,/.}"
+  local geo_lat_n_bc="${geo_lat_n//,/.}"
+
+  # Calculate tile coordinates
+  xtile_min=$(echo "scale=0; (($geo_long_w_bc + 180) / 360 * 2^$zoom)" | bc)
+  xtile_max=$(echo "scale=0; (($geo_long_e_bc + 180) / 360 * 2^$zoom)" | bc)
+  ytile_min=$(echo "scale=0; ((1 - log(tan($geo_lat_n_bc * pi() / 180) + 1 / cos($geo_lat_n_bc * pi() / 180)) / pi()) / 2 * 2^$zoom)" | bc -l)
+  ytile_max=$(echo "scale=0; ((1 - log(tan($geo_lat_s_bc * pi() / 180) + 1 / cos($geo_lat_s_bc * pi() / 180)) / pi()) / 2 * 2^$zoom)" | bc -l)
+
+  log_debug "Tile coordinates: x=$xtile_min-$xtile_max, y=$ytile_min-$ytile_max"
+
+  # Calculate tile amounts
+  local xtile_amount=$((xtile_max - xtile_min + 1))
+  local ytile_amount=$((ytile_max - ytile_min + 1))
+  local tile_amount=$((xtile_amount * ytile_amount))
+
+  log_info "Downloading $tile_amount tiles..."
+
+  # Create temporary directory
+  local temp_dir="/tmp/map_download_$$"
+  mkdir -p "$temp_dir"
+
+  # Download tiles
+  local tile_index=0
+  for ((xtile = xtile_min; xtile <= xtile_max; xtile++)); do
+    for ((ytile = ytile_min; ytile <= ytile_max; ytile++)); do
+      local url
+      local tile_file="$temp_dir/tile_${xtile}_${ytile}.png"
+
+      case "$map_type" in
+      "standard")
+        url="http://a.tile.openstreetmap.org/$zoom/$xtile/$ytile.png"
+        ;;
+      "cycle")
+        url="http://a.tile.opencyclemap.org/cycle/$zoom/$xtile/$ytile.png"
+        ;;
+      *)
+        log_error "Unsupported map type: $map_type"
+        return 1
+        ;;
+      esac
+
+      local progress=$((100 * tile_index / tile_amount))
+      if [[ "$verbose" == "1" ]]; then
+        log_info "Downloading tile $((tile_index + 1))/$tile_amount ($progress%) - $url"
+      else
+        printf "\rDownloading tiles: %d/%d (%d%%)" $((tile_index + 1)) "$tile_amount" "$progress"
+      fi
+
+      if ! curl -s "$url" -o "$tile_file"; then
+        log_warning "Failed to download tile: $url"
+      fi
+
+      ((tile_index++))
+    done
+  done
+
+  if [[ "$verbose" != "1" ]]; then
+    echo # New line after progress indicator
+  fi
+
+  # Create final map
+  local output_file="$output_dir/osm_map_${zoom}_${geo_long_w//,/_}_${geo_lat_s//,/_}_${geo_long_e//,/_}_${geo_lat_n//,/_}_${map_type}.png"
+
+  log_info "Creating final map: $output_file"
+
+  # Combine tiles using ImageMagick
+  local temp_files=()
+  for ((xtile = xtile_min; xtile <= xtile_max; xtile++)); do
+    local row_file="$temp_dir/row_${xtile}.png"
+    local row_files=()
+
+    for ((ytile = ytile_min; ytile <= ytile_max; ytile++)); do
+      local tile_file="$temp_dir/tile_${xtile}_${ytile}.png"
+      if [[ -f "$tile_file" ]]; then
+        row_files+=("$tile_file")
+      fi
+    done
+
+    if [[ ${#row_files[@]} -gt 0 ]]; then
+      convert "${row_files[@]}" +append "$row_file"
+      temp_files+=("$row_file")
+    fi
+  done
+
+  if [[ ${#temp_files[@]} -gt 0 ]]; then
+    convert "${temp_files[@]}" -append "$output_file"
+    log_success "OSM map saved: $output_file"
+  else
+    log_error "No tiles were successfully downloaded"
+    return 1
+  fi
+
+  # Cleanup
+  rm -rf "$temp_dir"
+}
+
+# Function to download GeoApify map
+download_geoapify_map() {
+  log_info "Downloading GeoApify map..."
+
+  if [[ -z "$api_key" ]]; then
+    log_error "API key is required for GeoApify"
+    return 1
+  fi
+
+  if [[ -z "$center_lat" || -z "$center_lng" ]]; then
+    log_error "Center coordinates are required for GeoApify"
+    return 1
+  fi
+
+  # Validate coordinates
+  if ! validate_coordinates "$center_lat" "$center_lng"; then
+    return 1
+  fi
+
+  # Create markers parameter
+  local markers_param=""
+  if [[ -n "$markers" ]]; then
+    markers_param="&marker=$(printf '%s' "$markers" | sed 's/#/%23/g')"
+  fi
+
+  # Build URL
+  local url="https://maps.geoapify.com/v1/staticmap?style=osm-carto&center=lonlat:${center_lng},${center_lat}&zoom=${zoom}&width=${width}&height=${height}&apiKey=${api_key}${markers_param}"
+
+  log_debug "GeoApify URL: $url"
+
+  # Create output filename
+  local output_file="$output_dir/geoapify_map_${zoom}_${center_lat}_${center_lng}_${width}x${height}.jpg"
+
+  # Download map
+  log_info "Downloading map from GeoApify..."
+  if curl -s -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) Gecko/20100101 Firefox/87.0' "$url" -o "$output_file"; then
+    log_success "GeoApify map saved: $output_file"
+  else
+    log_error "Failed to download map from GeoApify"
+    return 1
+  fi
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -p | --provider)
+      provider="$2"
+      if [[ "$provider" != "geoapify" && "$provider" != "osm" ]]; then
+        log_error "Invalid provider: $provider. Must be 'geoapify' or 'osm'"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -z | --zoom)
+      zoom="$2"
+      if ! [[ "$zoom" =~ ^[0-9]+$ ]] || [[ "$zoom" -lt 0 ]] || [[ "$zoom" -gt 20 ]]; then
+        log_error "Invalid zoom level: $zoom. Must be between 0 and 20"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -t | --type)
+      map_type="$2"
+      if [[ "$map_type" != "standard" && "$map_type" != "cycle" ]]; then
+        log_error "Invalid map type: $map_type. Must be 'standard' or 'cycle'"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -o | --output)
+      output_dir="$2"
+      shift 2
+      ;;
+    -w | --width)
+      width="$2"
+      if ! [[ "$width" =~ ^[0-9]+$ ]] || [[ "$width" -lt 1 ]]; then
+        log_error "Invalid width: $width. Must be a positive integer"
+        exit 1
+      fi
+      shift 2
+      ;;
+    --height)
+      height="$2"
+      if ! [[ "$height" =~ ^[0-9]+$ ]] || [[ "$height" -lt 1 ]]; then
+        log_error "Invalid height: $height. Must be a positive integer"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -k | --api-key)
+      api_key="$2"
+      shift 2
+      ;;
+    -c | --center)
+      IFS=',' read -r center_lat center_lng <<<"$2"
+      shift 2
+      ;;
+    -b | --bounds)
+      IFS=',' read -r geo_long_w geo_lat_s geo_long_e geo_lat_n <<<"$2"
+      shift 2
+      ;;
+    -m | --markers)
+      markers="$2"
+      shift 2
+      ;;
+    -v | --verbose)
+      verbose=1
+      shift
+      ;;
+    -d | --debug)
+      debug=1
+      shift
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    -*)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    *)
+      log_error "Unexpected argument: $1"
+      show_usage
+      ;;
+    esac
+  done
+}
+
+
+map_main() {
+  log_title "Map Downloader"
+
+  # Parse arguments
+  parse_arguments "$@"
+
+  # Set default provider if not specified
+  if [[ -z "$provider" ]]; then
+    provider="$DEFAULT_PROVIDER"
+  fi
+
+  # Check dependencies
+  check_dependencies curl bc imagemagick
+
+  # Create output directory
+  create_output_dir
+
+  # Validate inputs based on provider
+  if [[ "$provider" == "osm" ]]; then
+    if [[ -z "$geo_long_w" || -z "$geo_lat_s" || -z "$geo_long_e" || -z "$geo_lat_n" ]]; then
+      log_error "Bounding box coordinates are required for OSM provider"
+      log_error "Use --bounds W,S,E,N to specify coordinates"
+      show_usage
+    fi
+
+    if ! validate_bounding_box "$geo_long_w" "$geo_lat_s" "$geo_long_e" "$geo_lat_n"; then
+      exit 1
+    fi
+
+    download_osm_map
+  elif [[ "$provider" == "geoapify" ]]; then
+    if [[ -z "$api_key" ]]; then
+      log_error "API key is required for GeoApify provider"
+      log_error "Use --api-key YOUR_KEY to specify API key"
+      show_usage
+    fi
+
+    if [[ -z "$center_lat" || -z "$center_lng" ]]; then
+      log_error "Center coordinates are required for GeoApify provider"
+      log_error "Use --center LAT,LNG to specify coordinates"
+      show_usage
+    fi
+
+    download_geoapify_map
+  fi
+}
+
+
+# Run main function
+main "$@"

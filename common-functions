@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+
+# Common functions for bash tools
+# Based on Google Shell Style Guide
+
+# Check bash version
+if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSION" == 2* ]] || [[ "$BASH_VERSION" == 3* ]]; then
+  echo "Bash version is too low. Consider upgrading to bash newer than $BASH_VERSION"
+  if uname | grep -iq Darwin; then
+    echo "Read more on https://itnext.io/upgrading-bash-on-macos-7138bd1066ba"
+  fi
+  exit 9
+fi
+
+# Colors using tput
+readonly RED=$(tput setaf 1)
+readonly GREEN=$(tput setaf 2)
+readonly YELLOW=$(tput setaf 3)
+readonly BLUE=$(tput setaf 4)
+readonly PURPLE=$(tput setaf 5)
+readonly CYAN=$(tput setaf 6)
+readonly BOLD=$(tput bold)
+readonly RESET=$(tput sgr0)
+
+# Display line constants
+readonly DISPLAY_LINE_NO_ICON='display_line.no_icon'
+readonly DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
+readonly DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
+readonly DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
+readonly DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
+readonly DISPLAY_LINE_APPEND_NULL='display_line.line_append_null'
+readonly DISPLAY_LINE_APPEND_NL='display_line.line_append_nl'
+
+# Icons
+readonly ICON_INFO='☞'
+readonly ICON_SUCCESS='✓'
+readonly ICON_WARNING='‼'
+readonly ICON_ERROR='✗'
+readonly ICON_DEBUG=''
+readonly ICON_PROMPT='↳'
+
+# Display line with formatting options
+display_line() {
+  local _color="$1"
+  shift
+  local _icon="$1 "
+  shift
+  local _line_prepend=""
+  local _line_append="\n"
+  while true; do
+    case $1 in
+    "display_line.no_icon")
+      _icon=""
+      ;;
+    "display_line.silent_bell")
+      _line_prepend="\a\r"
+      ;;
+    "display_line.line_prepend_nl")
+      _line_prepend="\n"
+      ;;
+    "display_line.line_prepend_cr")
+      _line_prepend="\r"
+      ;;
+    "display_line.line_prepend_tab")
+      _line_prepend="\t"
+      ;;
+    "display_line.line_append_nl")
+      _line_append="\n"
+      ;;
+    "display_line.line_append_null")
+      _line_append=""
+      ;;
+    *)
+      break
+      ;;
+    esac
+    shift
+  done
+  local _text_pattern="$1"
+  shift
+  local _text
+  # shellcheck disable=SC2059
+  _text=$(printf "$_text_pattern" "$@")
+  echo -e -n "${_line_prepend}${_color}${_icon}${_text}${RESET}${_line_append}"
+}
+
+# Logging functions
+log_info() {
+  display_line "$BLUE" "$ICON_INFO" "$@"
+}
+
+log_success() {
+  display_line "$GREEN" "$ICON_SUCCESS" "$@"
+}
+
+log_warning() {
+  display_line "$YELLOW" "$ICON_WARNING" "$@"
+}
+
+log_error() {
+  display_line "$RED" "$ICON_ERROR" "$@"
+}
+
+log_debug() {
+  if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
+    display_line "$PURPLE" "$ICON_DEBUG" "$@"
+  fi
+}
+
+log_usage_line() {
+  echo -e "${BOLD}${GREEN}Usage:${BLUE} $*${RESET}"
+}
+
+log_usage_options_line() {
+  local description="$1"
+  shift
+  local parameters
+  parameters="$(printf "%s, " "$@")"
+  display_line "" "" "$DISPLAY_LINE_NO_ICON" "  ${BOLD}${CYAN}%-*s${RESET}${CYAN} %s" "30" "${parameters::-2}" "$description"
+}
+
+log_usage_example_line() {
+  display_line "  \$" "$BLUE" "$@"
+}
+
+log_prompt() {
+  if [[ "$#" -gt "1" ]]; then
+    display_line "$YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s [%s]: " "$@"
+  else
+    display_line "$YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s: " "$@"
+  fi
+}
+
+# Die with error message
+die() {
+  log_error "$@"
+  exit 1
+}
+
+# Check if command exists
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# Prompt for input
+prompt_input() {
+  local var_name="$1"
+  local prompt_text="$2"
+  local default_value="${3:-}"
+  local current_value="${4:-}"
+
+  local value
+  if [[ -n "$current_value" ]]; then
+    log_prompt "$prompt_text" "$current_value"
+    read -r value
+    if [[ -z "$value" ]]; then
+      value="$current_value"
+    fi
+  else
+    log_prompt "$prompt_text"
+    read -r value
+    if [[ -z "$value" && -n "$default_value" ]]; then
+      value="$default_value"
+    fi
+  fi
+
+  eval "$var_name=\"$value\""
+}
+
+# Log title
+log_title() {
+  local title="$1"
+  local version="${2:-""}"
+  local title_text
+  if [[ -n "$version" ]]; then
+    title_text="${title} v${version}"
+  else
+    title_text="${title}"
+  fi
+
+  # Calculate padding to center the title
+  local title_length=${#title_text}
+  local total_width=64
+  if [[ "$total_width" -lt "$title_length" ]]; then
+    total_width=$((title_length + 4))
+  fi
+  local padding=$(((total_width - title_length) / 2))
+
+  # Generate top and bottom borders
+
+  border="$(printf "%*s" "$total_width" "" | tr " " "═")"
+  printf "${BOLD}${CYAN}╔%s╗${RESET}\n" "$border"
+  printf "${BOLD}${CYAN}║${RESET}%*s${BOLD}${YELLOW}%s${RESET}%*s${BOLD}${CYAN}║${RESET}\n" $padding "" "$title_text" $padding ""
+  printf "${BOLD}${CYAN}╚%s╝${RESET}\n" "$border"
+}
+
+# Show script title
+show_title() {
+  local script_name="$1"
+  local version="${2:-1.0.0}"
+  echo "${CYAN}## $script_name v$version ##${RESET}"
+}
+
+# Check dependencies
+check_dependencies() {
+  local deps=("$@")
+  local missing_deps=()
+
+  for dep in "${deps[@]}"; do
+    if ! command_exists "$dep"; then
+      missing_deps+=("$dep")
+    fi
+  done
+
+  if [[ ${#missing_deps[@]} -gt 0 ]]; then
+    missing_items="$(printf "${BOLD}${RED}%s${RESET}${RED}, " "${missing_deps[@]}")"
+    die "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
+  fi
+}
+
+# Removed duplicate prompt_input function
+
+# Confirm action
+confirm() {
+  local message="$1"
+  local default="${2:-n}"
+
+  if [[ "$default" == "y" ]]; then
+    log_prompt "$message" "Y/n"
+    read -r response
+    [[ "$response" =~ ^[Yy]?$ ]]
+  else
+    log_prompt "$message" "y/N"
+    read -r response
+    [[ "$response" =~ ^[Yy]$ ]]
+  fi
+}
+
+# Validate URL format
+validate_url() {
+  local url="$1"
+  if [[ ! "$url" =~ ^https?:// ]]; then
+    log_error "Invalid URL format: $url (must start with http:// or https://)"
+    return 1
+  fi
+  return 0
+}
+
+# Validate domain format
+validate_domain() {
+  local domain="$1"
+  if [[ -z "$domain" ]]; then
+    log_error "Domain cannot be empty"
+    return 1
+  fi
+  if [[ ! "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+    log_error "Invalid domain format: $domain"
+    return 1
+  fi
+  return 0
+}
+
+# Validate WordPress directory
+validate_wp_directory() {
+  local wp_dir="$1"
+  if [[ ! -d "$wp_dir" ]]; then
+    log_error "WordPress directory does not exist: $wp_dir"
+    return 1
+  fi
+  if [[ ! -f "$wp_dir/wp-config.php" ]]; then
+    log_error "Not a valid WordPress directory (wp-config.php not found): $wp_dir"
+    return 1
+  fi
+  return 0
+}
+
+# Validate directory exists
+validate_directory() {
+  local dir="$1"
+  if [[ ! -d "$dir" ]]; then
+    log_error "Directory does not exist: $dir"
+    return 1
+  fi
+  return 0
+}
+
+# Validate file exists
+validate_file() {
+  local file="$1"
+  if [[ ! -f "$file" ]]; then
+    log_error "File does not exist: $file"
+    return 1
+  fi
+  return 0
+}
+
+# Validate positive number
+validate_positive_number() {
+  local num="$1"
+  local name="${2:-number}"
+
+  if ! [[ "$num" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (($(echo "$num <= 0" | bc -l))); then
+    log_error "$name must be a positive number"
+    return 1
+  fi
+  return 0
+}
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  "$@"
+}

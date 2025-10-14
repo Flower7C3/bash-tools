@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
 
-### COLORS ###
-declare -r COLOR_OFF='\033[0m'       # Text Reset
-declare -r COLOR_RED='\033[0;31m'    # Red
-declare -r COLOR_GREEN='\033[0;32m'  # Green
-declare -r COLOR_YELLOW='\033[0;33m' # Yellow
-declare -r COLOR_CYAN='\033[0;36m'   # Cyan
-declare -r COLOR_WHITE='\033[0;37m'  # White
-declare -r ICON_INFO='☞'
-declare -r ICON_SUCCESS='✓'
-declare -r ICON_ERROR='✗'
-declare -r ICON_MESSAGE='✉'
-declare -r ICON_PROMPT='↳'
-declare -r DISPLAY_LINE_NO_ICON='display_line.no_icon'
-declare -r DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
-declare -r DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
-declare -r DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
-declare -r DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
-declare -r DISPLAY_LINE_APPEND_NULL='display_line.line_append_null'
-declare -r DISPLAY_LINE_APPEND_NL='display_line.line_append_nl'
+# Set strict mode
+set -euo pipefail
+
+# Main function wrapper
+main() {
+    # Check if common-functions exists
+    if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+        echo "Downloading common-functions from GitHub..."
+        if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+            echo "Failed to download common-functions"
+            exit 1
+        fi
+    fi
+
+    # Source common functions
+    source "$(dirname "$0")/common-functions"
+
+    # Call the actual main function
+    beeper_main "$@"
+}
+
+show_usage(){
+  log_usage_line "$0 [-t <int>] [-s <int>] [-o <int>] [-f <path>]"
+  log_usage_options_line "note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth" "-t" "--type"
+  log_usage_options_line "note speed; integer; from 30 to 200" "-s" "--speed"
+  log_usage_options_line "note octave; integer; from 1 to 8" "-o" "--octave"
+  log_usage_options_line "filepath of tabs" "-f" "--file"
+  log_usage_options_line "update app" "-u" "--update"
+  log_usage_options_line "show this help" "-h" "--help"
+}
 
 ### NOTES ###
 # notes, see http://people.virginia.edu/~pdr4h/pitch-freq.html
@@ -132,69 +143,13 @@ NOTE_g_9=12543.855
 NOTE_G_9=13289.752
 MUSIC_NOTE_WHOLE="\uF88C "
 MUSIC_NOTE_HALF="\uF888 "
-MUSIC_NOTE_QUARTER="\uF88A "
-MUSIC_NOTE_EIGHTH="\uF887 "
-MUSIC_NOTE_SIXTENNTH="\uF88B "
+MUSIC_NOTE_QUARTER="\u2669 "
+MUSIC_NOTE_EIGHTH="\u266A "
+MUSIC_NOTE_SIXTENNTH="\u266C "
 MUSIC_CLEF_G='𝄞'      # \xF0\x9D\x84\x9E
 MUSIC_SIGN_FLAT='♭'    # \xe2\x99\xad
 MUSIC_SIGN_NATURAL='♮' # \xe2\x99\xae
 MUSIC_SIGN_SHARP='♯'   # \xe2\x99\xaf
-
-### DISPLAY ###
-function display_line() {
-    local _color=$1
-    shift
-    local _icon="$1 "
-    shift
-    local _line_prepend=""
-    local _line_append="\n"
-    while true; do
-        case $1 in
-        $DISPLAY_LINE_NO_ICON)
-            _icon=""
-            ;;
-        $DISPLAY_LINE_SILENT_BELL)
-            _line_prepend="\eg\a\r"
-            ;;
-        $DISPLAY_LINE_PREPEND_NL)
-            _line_prepend="\n"
-            ;;
-        $DISPLAY_LINE_PREPEND_CR)
-            _line_prepend="\r"
-            ;;
-        $DISPLAY_LINE_PREPEND_TAB)
-            _line_prepend="\t"
-            ;;
-        $DISPLAY_LINE_APPEND_NL)
-            _line_append="\n"
-            ;;
-        $DISPLAY_LINE_APPEND_NULL)
-            _line_append=""
-            ;;
-        *)
-            break
-            ;;
-        esac
-        shift
-    done
-    local _text_pattern="$1"
-    shift
-    local _text
-    _text=$(printf "$_text_pattern" "$@")
-    echo -e -n "${_line_prepend}${_color}${_icon}${_text}${COLOR_OFF}${_line_append}"
-}
-function display_info() {
-    display_line "$COLOR_CYAN" "$ICON_INFO" "$@"
-}
-function display_message() {
-    display_line "$COLOR_WHITE" "$ICON_MESSAGE" "$@"
-}
-function display_success() {
-    display_line "$COLOR_GREEN" "$ICON_SUCCESS" "$@"
-}
-function display_error() {
-    display_line "$COLOR_RED" "$ICON_ERROR" "$@"
-}
 
 ### CONFIG ###
 command_pattern_normal=''
@@ -212,7 +167,6 @@ note_type_icon=''
 note_speed=''
 note_length_ms=''
 note_length_sec=''
-verbose='1'
 force_stop='n'
 
 ### BEEPER ###
@@ -242,9 +196,7 @@ function set_note_type() {
     esac
     local _icon_key="MUSIC_NOTE_${_note_length_name}"
     note_type_icon=${!_icon_key}
-    if [[ "$verbose" -gt '0' ]]; then
-        display_info "Set note type as %s $note_type_icon\n" "$_note_length_name"
-    fi
+    log_info "Set note type as %s $note_type_icon" "$_note_length_name"
 }
 function set_note_speed() {
     local _speed="$1"
@@ -255,9 +207,7 @@ function set_note_speed() {
         _speed='200'
     fi
     note_speed="$_speed"
-    if [[ "$verbose" -gt '0' ]]; then
-        display_info "Set speed as %s\n" "$note_speed"
-    fi
+    log_info "Set speed as %s" "$note_speed"
 }
 function set_note_octave() {
     local _note_octave="$1"
@@ -268,9 +218,7 @@ function set_note_octave() {
         _note_octave='8'
     fi
     note_octave="$_note_octave"
-    if [[ "$verbose" -gt '0' ]]; then
-        display_info "Set octave as %s\n" "$note_octave"
-    fi
+    log_info "Set octave as %s" "$note_octave"
 }
 function set_note_tone() {
     local _tone_key="$1"
@@ -391,7 +339,6 @@ function main_loop() {
 }
 function file_read() {
     local _notes_data=($(cat "$notes_file_name" | grep -v '#'))
-    verbose='0'
     local _total=$((${#_notes_data[@]} - 1))
     local _i=0
     while true; do
@@ -427,26 +374,21 @@ function config_load() {
         time_mode='sec'
         command_name='play'
     else
-        display_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
+        log_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
         exit 1
     fi
     local _note_type="4"
     local _note_speed="120"
     local _note_octave="4"
-    while [[ "$1" != "" ]]; do
+    while [[ "${1:-}" != "" ]]; do
         case ${1} in
         -h | --help)
-            display_info "$0 [-t <int>] [-s <int>] [-o <int>] [-f <path>]"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-t|--type - note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-s|--speed - note speed; integer; from 30 to 200"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-o|--octave - note octave; integer; from 1 to 8"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-f|--file - filepath of tabs"
-            display_info "$DISPLAY_LINE_PREPEND_TAB" "$DISPLAY_LINE_NO_ICON" "%s\t%s" "-u|--update - update app"
+            show_usage
             exit 0
             ;;
         -u | --update)
-            display_info "Downloading new app version"
-            curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper.sh" >$0
+            log_info "Downloading new app version"
+            curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper" >$0
             exit
             ;;
         -t | --type)
@@ -471,7 +413,9 @@ function config_load() {
     set_note_type "$_note_type"
     set_note_speed "$_note_speed"
     set_note_octave "$_note_octave"
+    return 0
 }
+
 ### TRAP ###
 function finish() {
     force_stop='y'
@@ -479,16 +423,26 @@ function finish() {
 }
 trap finish EXIT
 
-### MAIN ###
-display_message "Press [CTRL+C] to stop.."
-config_load "$@"
-if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
-    file_read
-else
-    while true; do
-        if [[ "$force_stop" == "y" ]]; then
-            break
-        fi
-        main_loop
-    done
-fi
+beeper_main() {
+    log_title "Beeper"
+
+    if ! config_load "$@"; then
+        # Help was shown, exit
+        return 0
+    fi
+
+    log_info "Press [CTRL+C] to stop.."
+    if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
+        file_read
+    else
+        while true; do
+            if [[ "$force_stop" == "y" ]]; then
+                break
+            fi
+            main_loop
+        done
+    fi
+}
+
+# Call main function
+main "$@"

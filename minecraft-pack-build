@@ -1,0 +1,276 @@
+#!/usr/bin/env bash
+
+# Minecraft Bedrock Edition addon builder
+# Usage: ./minecraft-pack-build [OPTIONS]
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  minecraft_main "$@"
+}
+
+# Show detailed usage
+show_usage() {
+  log_usage_line "$0 [OPTIONS]"
+  echo
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "input directory location" "-i" "--input DIR"
+  log_usage_options_line "output directory location (only for creating mcpack or mcaddon files" "-o" "--output DIR"
+  echo
+  echo -e "${BOLD}${YELLOW}Build options:${RESET}"
+  log_usage_options_line "create mcaddon file" "-a" "--mcaddon"
+  log_usage_options_line "create mcpack files" "-p" "--mcpack"
+  log_usage_options_line "install addon to local Minecraft folder" "-l" "--local-installation"
+  echo
+  echo -e "${BOLD}${YELLOW}Build modes:${RESET}"
+  log_usage_options_line "do not bump package version" "-b" "--no-bump"
+  log_usage_options_line "do not add version to built file names" "-v" "--no-version"
+  log_usage_options_line "do not add datetime to built file names" "-t" "--no-time"
+  log_usage_options_line "show this help message" "-h" "--help"
+  echo
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  log_usage_example_line "$0 --input ./my-pack --mcaddon"
+  log_usage_example_line "$0 -i ./my-pack -o ./builds --mcpack --no-bump"
+  log_usage_example_line "$0 -i ./my-pack --local-installation"
+  echo
+  exit 0
+}
+
+## FUNCTIONS
+
+get_version_string() {
+  # shellcheck disable=SC2317
+  array_to_string "$(jq -r '.header.version' "$1/manifest.json")"
+}
+
+get_version() {
+  # shellcheck disable=SC2317
+  echo "$1" | jq '.header.version'
+}
+
+to_title_case() {
+  echo "$1" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++){sub(/./,toupper(substr($i,1,1)),$i)}print}'
+}
+
+array_to_string() {
+  echo "$1" | jq -r 'join(".")'
+}
+
+get_shared_version() {
+  local version_file="${INPUT_DIR}/version.json"
+  if [[ -f "$version_file" ]]; then
+    array_to_string "$(jq -r '.version' "$version_file")"
+  else
+    # Fallback to BP version if shared version file doesn't exist
+    array_to_string "$(jq -r '.header.version' "${INPUT_DIR}/${BP_DIR}/manifest.json")"
+  fi
+}
+
+set_shared_version() {
+  local version_file="${INPUT_DIR}/version.json"
+  local version_array="$1"
+
+  # Create version.json if it doesn't exist
+  if [[ ! -f "$version_file" ]]; then
+    echo '{"version": [1, 0, 0]}' >"$version_file"
+  fi
+
+  # Update the version in the shared file
+  local current_content
+  current_content=$(cat "$version_file")
+  echo "$current_content" | jq --argjson ver "$version_array" '.version = $ver' >"$version_file"
+}
+
+bump_versions() {
+  local bp_path="${INPUT_DIR}/${BP_DIR}/manifest.json"
+  local rp_path="${INPUT_DIR}/${RP_DIR}/manifest.json"
+  echo "Bumping shared version for BP and RP"
+
+  local bp_content
+  bp_content=$(cat "$bp_path")
+
+  local rp_content
+  rp_content=$(cat "$rp_path")
+
+  local bp_uuid
+  bp_uuid="$(echo "$bp_content" | jq -r '.header.uuid')"
+
+  local rp_uuid
+  rp_uuid="$(echo "$rp_content" | jq -r '.header.uuid')"
+
+  # Get current shared version and bump it
+  local current_shared_version
+  current_shared_version=$(jq -r '.version' "${INPUT_DIR}/version.json" 2>/dev/null || echo '[1, 0, 0]')
+  local new_shared_version
+  new_shared_version=$(echo "$current_shared_version" | jq '.[2] += 1')
+
+  # Update shared version file
+  set_shared_version "$new_shared_version"
+  echo "Bumped version to $(array_to_string "$new_shared_version")"
+
+  # Update BP manifest
+  bp_content=$(echo "$bp_content" | jq --argjson ver "$new_shared_version" '.header.version = $ver')
+  bp_content=$(echo "$bp_content" | jq --argjson ver "$new_shared_version" '(.dependencies[]? | select(.uuid == "'"$rp_uuid"'") | .version) = $ver')
+  echo "$bp_content" >"$bp_path"
+  echo "Saved BP version"
+
+  # Update RP manifest
+  rp_content=$(echo "$rp_content" | jq --argjson ver "$new_shared_version" '.header.version = $ver')
+  rp_content=$(echo "$rp_content" | jq --argjson ver "$new_shared_version" '(.dependencies[]? | select(.uuid == "'"$bp_uuid"'") | .version) = $ver')
+  echo "$rp_content" >"$rp_path"
+  echo "Saved RP version"
+}
+
+get_filename() {
+  local extension="$1"
+  local suffix="$2"
+  local name="$PACKNAME"
+  if [[ $APPEND_VERSION_TO_BUILD_FILE -eq 1 ]]; then
+    name+=" v$(get_shared_version)"
+  fi
+  if [[ $APPEND_TIME_TO_BUILD_FILE -eq 1 ]]; then
+    name+=" $(date +"%Y%m%d%H%M%S")"
+  fi
+  if [[ "$suffix" != "" ]]; then
+    name+=" $suffix"
+  fi
+  echo "${OUTPUT_DIR}/${name}.${extension}"
+}
+
+build_mcaddon() {
+  cd "$INPUT_DIR"
+  echo "Building MCAddon"
+  local mc_addon_file_path
+  mc_addon_file_path=$(get_filename "mcaddon")
+
+  mkdir -p "$OUTPUT_DIR"
+
+  if [[ -f "$mc_addon_file_path" ]]; then
+    rm -rvf "$mc_addon_file_path" && echo "Removed old file version"
+  fi
+
+  (zip -r "$mc_addon_file_path" "$BP_DIR" "$RP_DIR" && echo "Created as '$(realpath "$mc_addon_file_path")'")
+}
+
+build_mcpack() {
+  cd "$INPUT_DIR"
+  echo "Building MCPack"
+  local mc_pack_bp_file_path mc_pack_rp_file_path
+  mc_pack_bp_file_path=$(get_filename "mcpack" "BP")
+  mc_pack_rp_file_path=$(get_filename "mcpack" "RP")
+
+  mkdir -p "$OUTPUT_DIR"
+
+  if [[ -f "$mc_pack_bp_file_path" ]]; then
+    rm -rf "$mc_pack_bp_file_path" && echo "Removed old BP file version"
+  fi
+  (cd "$BP_DIR" && zip -r "$mc_pack_bp_file_path" . && echo "Created as '$mc_pack_bp_file_path'")
+
+  if [[ -f "$mc_pack_rp_file_path" ]]; then
+    rm -rf "$mc_pack_rp_file_path" && echo "Removed old RP file version"
+  fi
+  (cd "$RP_DIR" && zip -r "$mc_pack_rp_file_path" . && echo "Created as '$mc_pack_rp_file_path'")
+}
+
+install_locally() {
+  echo "Clean old packs"
+  rm -rf "${MOJANG_PATH}development_behavior_packs/"
+  rm -rf "${MOJANG_PATH}development_resource_packs/"
+  rm -rf "${MOJANG_PATH}behavior_packs/$PACKNAME"
+  rm -rf "${MOJANG_PATH}resource_packs/$PACKNAME"
+
+  echo "Copying new files"
+
+  cp -r "${INPUT_DIR}/${BP_DIR}" "${MOJANG_PATH}behavior_packs/$PACKNAME"
+  echo "Installed in '${MOJANG_PATH}behavior_packs/$PACKNAME'"
+
+  cp -r "${INPUT_DIR}/${RP_DIR}" "${MOJANG_PATH}resource_packs/$PACKNAME"
+  echo "Installed in '${MOJANG_PATH}resource_packs/$PACKNAME'"
+}
+
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --input | -i)
+      INPUT_DIR="$2"
+      OUTPUT_DIR="$2/dist/"
+      shift
+      ;;
+    --output | -o)
+      OUTPUT_DIR="$(realpath "$2")"
+      shift
+      ;;
+    --mcaddon | -a) MCADDON=1 ;;
+    --mcpack | -p) MCPACK=1 ;;
+    --local-installation | -l) INSTALL_ON_LOCAL=1 ;;
+    --no-bump | -b) VERSION_BUMP=0 ;;
+    --no-version | -v) APPEND_VERSION_TO_BUILD_FILE=0 ;;
+    --no-time) APPEND_TIME_TO_BUILD_FILE=0 ;;
+    -h | --help) show_usage ;;
+    *)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    esac
+    shift
+  done
+
+}
+
+## CONFIGURATION
+
+declare -r MOJANG_PATH="/Users/bartlomiej.kwiatek/Library/Application Support/mcpelauncher/games/com.mojang/"
+declare -r BP_DIR="BP/"
+declare -r RP_DIR="RP/"
+
+## INPUT OPTIONS
+
+MCADDON=0
+MCPACK=0
+VERSION_BUMP=1
+APPEND_VERSION_TO_BUILD_FILE=1
+APPEND_TIME_TO_BUILD_FILE=1
+INSTALL_ON_LOCAL=0
+INPUT_DIR="/not-defined"
+OUTPUT_DIR="dist"
+
+# Main function
+minecraft_main() {
+  log_title "Minecraft Builder"
+
+  parse_arguments "$@"
+
+  if [[ $MCADDON -ne 1 && $MCPACK -ne 1 && $INSTALL_ON_LOCAL -ne 1 ]]; then
+    log_error "No build options selected."
+    show_usage
+  fi
+
+  if [[ ! -d "$INPUT_DIR" ]]; then
+    die "Source directory does not exist: $INPUT_DIR"
+  fi
+
+  PACKNAME="$(cd "$INPUT_DIR" && basename "$(pwd)")"
+  PACKNAME="$(to_title_case "$PACKNAME")"
+  log_info "Building Minecraft packs for '$PACKNAME' project"
+  [ $VERSION_BUMP -eq 1 ] && bump_versions
+  [ $MCADDON -eq 1 ] && build_mcaddon
+  [ $MCPACK -eq 1 ] && build_mcpack
+  [ $INSTALL_ON_LOCAL -eq 1 ] && install_locally
+}
+
+# Run main function
+main "$@"

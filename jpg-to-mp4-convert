@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+
+# Convert JPG images to MP4 video
+# Usage: ./jpg-to-mp4-convert [OPTIONS]
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
+
+  # Call the actual main function
+  converter_main "$@"
+}
+
+# Function to display usage
+show_usage() {
+  log_usage_line "$0 [OPTIONS]"
+  echo ""
+  echo "Convert JPG images to MP4 video"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  log_usage_options_line "Source directory containing JPG images" "-s" "--source DIR"
+  log_usage_options_line "Frame rate for output video (default: $DEFAULT_FRAMERATE)" "-f" "--framerate FPS"
+  log_usage_options_line "Show this help message" "-h" "--help"
+  echo ""
+  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  log_usage_example_line "$0 --source /path/to/images"
+  log_usage_example_line "$0 -s /path/to/images -f 30"
+  log_usage_example_line "$0                    # Will prompt for source directory"
+  exit 0
+}
+
+# Default values
+readonly DEFAULT_FRAMERATE=15
+source_dir=""
+framerate=$DEFAULT_FRAMERATE
+
+# Function to parse command line arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -s | --source)
+      source_dir="$2"
+      shift 2
+      ;;
+    -f | --framerate)
+      framerate="$2"
+      if ! validate_positive_number "$framerate" "Framerate"; then
+        exit 1
+      fi
+      shift 2
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    *)
+      log_error "Unknown option: $1"
+      show_usage
+      ;;
+    esac
+  done
+}
+
+# Function to prompt for directory
+prompt_for_directory() {
+  while true; do
+    log_prompt "Enter source directory path"
+    read -r source_dir
+    if [ -z "$source_dir" ]; then
+      log_error "Directory path cannot be empty"
+      continue
+    fi
+
+    # Expand tilde and resolve relative paths
+    source_dir=$(eval echo "$source_dir")
+
+    if ! validate_directory "$source_dir"; then
+      continue
+    fi
+
+    # Check if directory contains JPG files
+    jpg_count=$(find "$source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | wc -l)
+    if [ "$jpg_count" -eq 0 ]; then
+      log_error "No JPG files found in directory '$source_dir'"
+      continue
+    fi
+
+    log_info "Found $jpg_count JPG files in '$source_dir'"
+    break
+  done
+}
+
+# Function to verify directory and JPG files
+verify_directory() {
+  local dir="$1"
+
+  if ! validate_directory "$dir"; then
+    return 1
+  fi
+
+  # Check if directory contains JPG files
+  local jpg_count=$(find "$dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | wc -l)
+  if [ "$jpg_count" -eq 0 ]; then
+    log_error "No JPG files found in directory '$dir'"
+    return 1
+  fi
+
+  log_info "Found $jpg_count JPG files in '$dir'"
+  return 0
+}
+
+
+# Main function
+converter_main() {
+  log_title "JPG to MP4 Converter"
+
+  # Parse command line arguments
+  parse_arguments "$@"
+
+  # If no source directory provided, prompt for it
+  if [ -z "$source_dir" ]; then
+    prompt_for_directory
+  else
+    # Expand tilde and resolve relative paths
+    source_dir=$(eval echo "$source_dir")
+
+    if ! verify_directory "$source_dir"; then
+      exit 1
+    fi
+  fi
+
+  # Check dependencies
+  check_dependencies ffmpeg
+
+  # Change to source directory
+  cd "$source_dir" || die "Cannot access directory '$source_dir'"
+
+  # Create output filename with timestamp
+  output_file="video_$(date +%Y%m%d_%H%M%S).mp4"
+
+  log_info "Converting JPG images to MP4 video..."
+  log_info "Source directory: $source_dir"
+  log_info "Framerate: $framerate fps"
+  log_info "Output file: $output_file"
+
+  # Get list of JPG files and sort them
+  jpg_files=($(find "$source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | sort))
+
+  if [ ${#jpg_files[@]} -eq 0 ]; then
+    die "No JPG files found in directory '$source_dir'"
+  fi
+
+  # Create a temporary directory for renamed files
+  temp_dir="/tmp/animate_jpg_$$"
+  mkdir -p "$temp_dir"
+
+  # Get the extension from the first file
+  first_file=$(basename "${jpg_files[0]}")
+  extension="${first_file##*.}"
+
+  # Rename files to sequential pattern for ffmpeg
+  for i in "${!jpg_files[@]}"; do
+    new_name=$(printf "img%05d.%s" $((i + 1)) "$extension")
+    cp "${jpg_files[$i]}" "$temp_dir/$new_name"
+  done
+
+  # Run ffmpeg conversion
+  ffmpeg -framerate "$framerate" -i "$temp_dir/img%05d.$extension" -vf format=yuv420p "$output_file"
+
+  # Cleanup temporary directory
+  rm -rf "$temp_dir"
+
+  if [ $? -eq 0 ]; then
+    log_success "Video created: $output_file"
+  else
+    die "Video conversion failed"
+  fi
+}
+
+# Call main function
+main "$@"
