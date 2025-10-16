@@ -30,7 +30,7 @@ show_usage() {
   echo
   echo "Check URL redirects and status codes from a data file"
   echo
-  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
   log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
   log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
   log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
@@ -41,7 +41,7 @@ show_usage() {
   log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo
-  echo -e "${BOLD}${YELLOW}Data file format:${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Data file format:${FORMAT_RESET}"
   echo "  Each line should contain three space-separated values:"
   echo "  OLD_URL EXPECTED_CODE NEW_URL"
   echo
@@ -49,7 +49,7 @@ show_usage() {
   echo "  https://example.com/old 301 https://example.com/new"
   echo "  https://test.com/page 302 https://test.com/redirect"
   echo
-  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
   log_usage_example_line "$0 redirects.txt"
   log_usage_example_line "$0 -t 30 -v redirects.txt"
   log_usage_example_line "$0 -F json -o results.json redirects.txt"
@@ -154,9 +154,9 @@ EOF
     # Text format
     printf "%-4d %-60s " "$line_number" "$old_url"
     if [[ $is_correct -eq 1 ]]; then
-      printf "${GREEN}✓${NC} %s" "$status_message"
+      printf "${COLOR_GREEN}✓${NC} %s" "$status_message"
     else
-      printf "${RED}✗${NC} %s" "$status_message"
+      printf "${COLOR_RED}✗${NC} %s" "$status_message"
     fi
     printf " (${time_total}s)"
     echo

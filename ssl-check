@@ -30,7 +30,7 @@ show_usage() {
     echo
     echo "Check SSL/TLS certificates for domains"
     echo
-    echo -e "${BOLD}${YELLOW}Options:${RESET}"
+    echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
     log_usage_options_line "Port to check (default: $DEFAULT_PORT)" "-p" "--port PORT"
     log_usage_options_line "Connection timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
     log_usage_options_line "Batch mode for multiple domains" "-b" "--batch"
@@ -40,7 +40,7 @@ show_usage() {
     log_usage_options_line "Skip expiry date checking" "-e" "--no-expiry"
     log_usage_options_line "Show this help message" "-h" "--help"
     echo ""
-    echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+    echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
     log_usage_example_line "$0 example.com"
     log_usage_example_line "$0 -p 8443 example.com"
     log_usage_example_line "$0 -b -f json domains.txt"
@@ -153,7 +153,7 @@ EOF
             ;;
         *)
             # Text format
-            echo -e "${BOLD}Certificate Information for $domain:$port${RESET}"
+            echo -e "${FORMAT_BOLD}Certificate Information for $domain:$port${FORMAT_RESET}"
             echo "Subject: $subject"
             echo "Issuer: $issuer"
             echo "Valid From: $not_before"
@@ -162,13 +162,13 @@ EOF
             echo "SHA1 Fingerprint: $fingerprint"
             
             if [[ $is_expired -eq 1 ]]; then
-                echo -e "Status: ${RED}EXPIRED${RESET}"
+                echo -e "Status: ${COLOR_RED}EXPIRED${FORMAT_RESET}"
             elif [[ $not_yet_valid -eq 1 ]]; then
-                echo -e "Status: ${YELLOW}NOT YET VALID${RESET}"
+                echo -e "Status: ${COLOR_YELLOW}NOT YET VALID${FORMAT_RESET}"
             elif [[ $expires_soon -eq 1 ]]; then
-                echo -e "Status: ${YELLOW}EXPIRES SOON ($days_until_expiry days)${RESET}"
+                echo -e "Status: ${COLOR_YELLOW}EXPIRES SOON ($days_until_expiry days)${FORMAT_RESET}"
             else
-                echo -e "Status: ${GREEN}VALID ($days_until_expiry days remaining)${RESET}"
+                echo -e "Status: ${COLOR_GREEN}VALID ($days_until_expiry days remaining)${FORMAT_RESET}"
             fi
             ;;
     esac
@@ -187,7 +187,7 @@ check_certificate_chain() {
         return 1
     fi
     
-    echo -e "${BOLD}Certificate Chain for $domain:$port${RESET}"
+    echo -e "${FORMAT_BOLD}Certificate Chain for $domain:$port${FORMAT_RESET}"
     echo "$chain_info" | grep -E "(Certificate chain|subject=|issuer=)"
 }
 
@@ -210,7 +210,7 @@ check_certificate_revocation() {
     ocsp_url=$(echo "$cert" | openssl x509 -noout -ocsp_uri 2>/dev/null || echo "")
     
     if [[ -n "$ocsp_url" ]]; then
-        echo -e "${BOLD}OCSP Information for $domain:$port${RESET}"
+        echo -e "${FORMAT_BOLD}OCSP Information for $domain:$port${FORMAT_RESET}"
         echo "OCSP URL: $ocsp_url"
         # Note: Full OCSP checking would require additional tools
         echo "Note: Full OCSP verification requires additional tools"

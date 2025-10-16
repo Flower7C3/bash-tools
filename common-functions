@@ -12,15 +12,15 @@ if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSI
   exit 9
 fi
 
-# Colors using tput
-readonly RED=$(tput setaf 1)
-readonly GREEN=$(tput setaf 2)
-readonly YELLOW=$(tput setaf 3)
-readonly BLUE=$(tput setaf 4)
-readonly PURPLE=$(tput setaf 5)
-readonly CYAN=$(tput setaf 6)
-readonly BOLD=$(tput bold)
-readonly RESET=$(tput sgr0)
+# Formatting using tput
+readonly COLOR_RED=$(tput setaf 1)
+readonly COLOR_GREEN=$(tput setaf 2)
+readonly COLOR_YELLOW=$(tput setaf 3)
+readonly COLOR_BLUE=$(tput setaf 4)
+readonly COLOR_PURPLE=$(tput setaf 5)
+readonly COLOR_CYAN=$(tput setaf 6)
+readonly FORMAT_BOLD=$(tput bold)
+readonly FORMAT_RESET=$(tput sgr0)
 
 # Display line constants
 readonly DISPLAY_LINE_NO_ICON='display_line.no_icon'
@@ -81,34 +81,38 @@ display_line() {
   local _text
   # shellcheck disable=SC2059
   _text=$(printf "$_text_pattern" "$@")
-  echo -e -n "${_line_prepend}${_color}${_icon}${_text}${RESET}${_line_append}"
+  _text=${_text//<b>/${FORMAT_BOLD}${_color}}
+  _text=${_text//<\/b>/${FORMAT_RESET}${_color}}
+  _text=${_text//<u>/$(tput smul)${_color}}
+  _text=${_text//<\/u>/$(tput rmul)${_color}}
+  echo -e -n "${_line_prepend}${_color}${_icon}${_text}${FORMAT_RESET}${_line_append}"
 }
 
 # Logging functions
 log_info() {
-  display_line "$BLUE" "$ICON_INFO" "$@"
+  display_line "$COLOR_BLUE" "$ICON_INFO" "$@"
 }
 
 log_success() {
-  display_line "$GREEN" "$ICON_SUCCESS" "$@"
+  display_line "$COLOR_GREEN" "$ICON_SUCCESS" "$@"
 }
 
 log_warning() {
-  display_line "$YELLOW" "$ICON_WARNING" "$@"
+  display_line "$COLOR_YELLOW" "$ICON_WARNING" "$@"
 }
 
 log_error() {
-  display_line "$RED" "$ICON_ERROR" "$@"
+  display_line "$COLOR_RED" "$ICON_ERROR" "$@"
 }
 
 log_debug() {
   if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
-    display_line "$PURPLE" "$ICON_DEBUG" "$@"
+    display_line "$COLOR_PURPLE" "$ICON_DEBUG" "$@"
   fi
 }
 
 log_usage_line() {
-  echo -e "${BOLD}${GREEN}Usage:${BLUE} $*${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_GREEN}Usage:${COLOR_BLUE} $*${FORMAT_RESET}"
 }
 
 log_usage_options_line() {
@@ -116,18 +120,18 @@ log_usage_options_line() {
   shift
   local parameters
   parameters="$(printf "%s, " "$@")"
-  display_line "" "" "$DISPLAY_LINE_NO_ICON" "  ${BOLD}${CYAN}%-*s${RESET}${CYAN} %s" "30" "${parameters::-2}" "$description"
+  display_line "" "" "$DISPLAY_LINE_NO_ICON" "  ${FORMAT_BOLD}${COLOR_CYAN}%-*s${FORMAT_RESET}${COLOR_CYAN} %s" "30" "${parameters::-2}" "$description"
 }
 
 log_usage_example_line() {
-  display_line "  \$" "$BLUE" "$@"
+  display_line "  \$" "$COLOR_BLUE" "$@"
 }
 
 log_prompt() {
   if [[ "$#" -gt "1" ]]; then
-    display_line "$YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s [%s]: " "$@"
+    display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s [%s]: " "$@"
   else
-    display_line "$YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s: " "$@"
+    display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s: " "$@"
   fi
 }
 
@@ -189,16 +193,16 @@ log_title() {
   # Generate top and bottom borders
 
   border="$(printf "%*s" "$total_width" "" | tr " " "═")"
-  printf "${BOLD}${CYAN}╔%s╗${RESET}\n" "$border"
-  printf "${BOLD}${CYAN}║${RESET}%*s${BOLD}${YELLOW}%s${RESET}%*s${BOLD}${CYAN}║${RESET}\n" $padding "" "$title_text" $padding ""
-  printf "${BOLD}${CYAN}╚%s╝${RESET}\n" "$border"
+  printf "${FORMAT_BOLD}${COLOR_CYAN}╔%s╗${FORMAT_RESET}\n" "$border"
+  printf "${FORMAT_BOLD}${COLOR_CYAN}║${FORMAT_RESET}%*s${FORMAT_BOLD}${COLOR_YELLOW}%s${FORMAT_RESET}%*s${FORMAT_BOLD}${COLOR_CYAN}║${FORMAT_RESET}\n" $padding "" "$title_text" $padding ""
+  printf "${FORMAT_BOLD}${COLOR_CYAN}╚%s╝${FORMAT_RESET}\n" "$border"
 }
 
 # Show script title
 show_title() {
   local script_name="$1"
   local version="${2:-1.0.0}"
-  echo "${CYAN}## $script_name v$version ##${RESET}"
+  echo "${COLOR_CYAN}## $script_name v$version ##${FORMAT_RESET}"
 }
 
 # Check dependencies
@@ -213,7 +217,7 @@ check_dependencies() {
   done
 
   if [[ ${#missing_deps[@]} -gt 0 ]]; then
-    missing_items="$(printf "${BOLD}${RED}%s${RESET}${RED}, " "${missing_deps[@]}")"
+    missing_items="$(printf "${FORMAT_BOLD}${COLOR_RED}%s${FORMAT_RESET}${COLOR_RED}, " "${missing_deps[@]}")"
     die "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
   fi
 }

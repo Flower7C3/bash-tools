@@ -30,7 +30,7 @@ show_usage() {
   echo
   echo "Check HTTP status codes and redirects"
   echo
-  echo -e "${BOLD}${YELLOW}Options:${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
   log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
   log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
   log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
@@ -44,7 +44,7 @@ show_usage() {
   log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format FORMAT"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo
-  echo -e "${BOLD}${YELLOW}Examples:${RESET}"
+  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
   log_usage_example_line "$0 https://example.com"
   log_usage_example_line "$0 -r 10 -t 30 https://example.com"
   log_usage_example_line "$0 -m POST -H \"Content-Type: application/json\" https://api.example.com"
@@ -75,13 +75,13 @@ max_parallel=5
 get_status_color() {
   local code="$1"
   if [[ "$code" -lt 300 ]]; then
-    echo "$GREEN"
+    echo "$COLOR_GREEN"
   elif [[ "$code" -lt 400 ]]; then
-    echo "$YELLOW"
+    echo "$COLOR_YELLOW"
   elif [[ "$code" -lt 500 ]]; then
-    echo "$RED"
+    echo "$COLOR_RED"
   else
-    echo "$PURPLE"
+    echo "$COLOR_PURPLE"
   fi
 }
 
@@ -166,7 +166,7 @@ EOF
   *)
     # Text format
     printf "%-60s " "$url"
-    printf "[${color}%3s${RESET}] " "$response_code"
+    printf "[${color}%3s${FORMAT_RESET}] " "$response_code"
     if [[ -n "$redirect_url" ]]; then
       printf "→ %s " "$redirect_url"
     fi
