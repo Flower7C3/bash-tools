@@ -5,151 +5,250 @@ set -euo pipefail
 
 # Main function wrapper
 main() {
-    # Check if common-functions exists
-    if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
-        echo "Downloading common-functions from GitHub..."
-        if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
-            echo "Failed to download common-functions"
-            exit 1
-        fi
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
     fi
+  fi
 
-    # Source common functions
-    source "$(dirname "$0")/common-functions"
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
 
-    # Call the actual main function
-    beeper_main "$@"
+  # Call the actual main function
+  beeper_main "$@"
 }
 
-show_usage(){
-  log_usage_line "$0 [-t <int>] [-s <int>] [-o <int>] [-f <path>]"
+show_usage() {
+  log_usage_line "$0 [-v] [-t <int>] [-s <int>] [-o <int>] [-f <path>]"
   log_usage_options_line "note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth" "-t" "--type"
-  log_usage_options_line "note speed; integer; from 30 to 200" "-s" "--speed"
-  log_usage_options_line "note octave; integer; from 1 to 8" "-o" "--octave"
+  log_usage_options_line "note speed; integer; from 30 to 500" "-s" "--speed"
+  log_usage_options_line "note octave; integer; from 1 to 9" "-o" "--octave"
   log_usage_options_line "filepath of tabs" "-f" "--file"
   log_usage_options_line "update app" "-u" "--update"
+  log_usage_options_line "verbose setters" "-v" "--verbose"
   log_usage_options_line "show this help" "-h" "--help"
 }
 
 ### NOTES ###
-# notes, see http://people.virginia.edu/~pdr4h/pitch-freq.html
-NOTE_a_0=27.500
-NOTE_A_0=29.135
-NOTE_b_0=30.868
-NOTE_c_1=32.703
-NOTE_C_1=34.648
-NOTE_d_1=36.708
-NOTE_D_1=38.891
-NOTE_e_1=41.203
-NOTE_f_1=43.654
-NOTE_F_1=46.249
-NOTE_g_1=48.999
-NOTE_G_1=51.913
-NOTE_a_1=55.000
-NOTE_A_1=58.270
-NOTE_b_1=61.735
-NOTE_c_2=65.406
-NOTE_C_2=69.296
-NOTE_d_2=73.416
-NOTE_D_2=77.782
-NOTE_e_2=82.407
-NOTE_f_2=87.307
-NOTE_F_2=92.499
-NOTE_g_2=97.999
-NOTE_G_2=103.826
-NOTE_a_2=110.000
-NOTE_A_2=116.541
-NOTE_b_2=123.471
-NOTE_c_3=130.813
-NOTE_C_3=138.591
-NOTE_d_3=146.832
-NOTE_D_3=155.564
-NOTE_e_3=164.814
-NOTE_f_3=174.614
-NOTE_F_3=184.997
-NOTE_g_3=195.998
-NOTE_G_3=207.652
-NOTE_a_3=220.000
-NOTE_A_3=233.082
-NOTE_b_3=246.942
-NOTE_c_4=261.626
-NOTE_C_4=277.183
-NOTE_d_4=293.665
-NOTE_D_4=311.127
-NOTE_e_4=329.628
-NOTE_f_4=349.228
-NOTE_F_4=369.994
-NOTE_g_4=391.995
-NOTE_G_4=415.305
-NOTE_a_4=440.000
-NOTE_A_4=466.164
-NOTE_b_4=493.883
-NOTE_c_5=523.251
-NOTE_C_5=554.365
-NOTE_d_5=587.330
-NOTE_D_5=622.254
-NOTE_e_5=659.255
-NOTE_f_5=698.457
-NOTE_F_5=739.989
-NOTE_g_5=783.991
-NOTE_G_5=830.609
-NOTE_a_5=880.000
-NOTE_A_5=932.328
-NOTE_b_5=987.767
-NOTE_c_6=1046.502
-NOTE_C_6=1108.731
-NOTE_d_6=1174.659
-NOTE_D_6=1244.508
-NOTE_e_6=1318.510
-NOTE_f_6=1396.913
-NOTE_F_6=1479.978
-NOTE_g_6=1567.982
-NOTE_G_6=1661.219
-NOTE_a_6=1760.000
-NOTE_A_6=1864.655
-NOTE_b_6=1975.533
-NOTE_c_7=2093.005
-NOTE_C_7=2217.461
-NOTE_d_7=2349.318
-NOTE_D_7=2489.016
-NOTE_e_7=2637.021
-NOTE_f_7=2793.826
-NOTE_F_7=2959.956
-NOTE_g_7=3135.964
-NOTE_G_7=3322.438
-NOTE_a_7=3520.000
-NOTE_A_7=3729.310
-NOTE_b_7=3951.066
-NOTE_c_8=4186.009
-NOTE_C_8=4434.922
-NOTE_d_8=4698.637
-NOTE_D_8=4978.032
-NOTE_e_8=5274.042
-NOTE_f_8=5587.652
-NOTE_F_8=5919.912
-NOTE_g_8=6271.928
-NOTE_G_8=6644.876
-NOTE_a_8=7040.000
-NOTE_A_8=7458.620
-NOTE_b_8=7902.133
-NOTE_c_9=8372.019
-NOTE_C_9=8869.845
-NOTE_d_9=9397.273
-NOTE_D_9=9956.064
-NOTE_e_9=10548.083
-NOTE_f_9=11175.305
-NOTE_F_9=11839.823
-NOTE_g_9=12543.855
-NOTE_G_9=13289.752
-MUSIC_NOTE_WHOLE="\uF88C "
-MUSIC_NOTE_HALF="\uF888 "
-MUSIC_NOTE_QUARTER="\u2669 "
-MUSIC_NOTE_EIGHTH="\u266A "
+# notes, see https://en.wikipedia.org/wiki/Scientific_pitch_notation
+NOTE_A_0=27.500
+NOTE_A_SHARP_0=29.135
+NOTE_B_FLAT_0=29.135
+NOTE_B_0=30.868
+NOTE_C_FLAT_1=30.868
+NOTE_B_SHARP_0=32.703
+NOTE_C_1=32.703
+NOTE_C_SHARP_1=34.648
+NOTE_D_FLAT_1=34.648
+NOTE_D_1=36.708
+NOTE_D_SHARP_1=38.891
+NOTE_E_FLAT_1=38.891
+NOTE_E_1=41.203
+NOTE_E_SHARP_1=43.654
+NOTE_F_FLAT_1=41.203
+NOTE_F_1=43.654
+NOTE_F_SHARP_1=46.249
+NOTE_G_FLAT_1=46.249
+NOTE_G_1=48.999
+NOTE_G_SHARP_1=51.913
+NOTE_A_FLAT_1=51.913
+NOTE_A_1=55.000
+NOTE_A_SHARP_1=58.270
+NOTE_B_FLAT_1=58.270
+NOTE_B_1=61.735
+NOTE_C_FLAT_2=61.735
+NOTE_B_SHARP_1=65.406
+NOTE_C_2=65.406
+NOTE_C_SHARP_2=69.296
+NOTE_D_FLAT_2=69.296
+NOTE_D_2=73.416
+NOTE_D_SHARP_2=77.782
+NOTE_E_FLAT_2=77.782
+NOTE_E_2=82.407
+NOTE_E_SHARP_2=87.307
+NOTE_F_FLAT_2=82.407
+NOTE_F_2=87.307
+NOTE_F_SHARP_2=92.499
+NOTE_G_FLAT_2=92.499
+NOTE_G_2=97.999
+NOTE_G_SHARP_2=103.826
+NOTE_A_FLAT_2=103.826
+NOTE_A_2=110.000
+NOTE_A_SHARP_2=116.541
+NOTE_B_FLAT_2=116.541
+NOTE_B_2=123.471
+NOTE_C_FLAT_3=123.471
+NOTE_B_SHARP_2=130.813
+NOTE_C_3=130.813
+NOTE_C_SHARP_3=138.591
+NOTE_D_FLAT_3=138.591
+NOTE_D_3=146.832
+NOTE_D_SHARP_3=155.564
+NOTE_E_FLAT_3=155.564
+NOTE_E_3=164.814
+NOTE_E_SHARP_3=174.614
+NOTE_F_FLAT_3=164.814
+NOTE_F_3=174.614
+NOTE_F_SHARP_3=184.997
+NOTE_G_FLAT_3=184.997
+NOTE_G_3=195.998
+NOTE_G_SHARP_3=207.652
+NOTE_A_FLAT_3=207.652
+NOTE_A_3=220.000
+NOTE_A_SHARP_3=233.082
+NOTE_B_FLAT_3=233.082
+NOTE_B_3=246.942
+NOTE_C_FLAT_4=246.942
+NOTE_B_SHARP_3=261.626
+NOTE_C_4=261.626
+NOTE_C_SHARP_4=277.183
+NOTE_D_FLAT_4=277.183
+NOTE_D_4=293.665
+NOTE_D_SHARP_4=311.127
+NOTE_E_FLAT_4=311.127
+NOTE_E_4=329.628
+NOTE_E_SHARP_4=349.228
+NOTE_F_FLAT_4=329.628
+NOTE_F_4=349.228
+NOTE_F_SHARP_4=369.994
+NOTE_G_FLAT_4=369.994
+NOTE_G_4=391.995
+NOTE_G_SHARP_4=415.305
+NOTE_A_FLAT_4=415.305
+NOTE_A_4=440.000
+NOTE_A_SHARP_4=466.164
+NOTE_B_FLAT_4=466.164
+NOTE_B_4=493.883
+NOTE_C_FLAT_5=493.883
+NOTE_B_SHARP_4=523.251
+NOTE_C_5=523.251
+NOTE_C_SHARP_5=554.365
+NOTE_D_FLAT_5=554.365
+NOTE_D_5=587.330
+NOTE_D_SHARP_5=622.254
+NOTE_E_FLAT_5=622.254
+NOTE_E_5=659.255
+NOTE_E_SHARP_5=698.457
+NOTE_F_FLAT_5=659.255
+NOTE_F_5=698.457
+NOTE_F_SHARP_5=739.989
+NOTE_G_FLAT_5=739.989
+NOTE_G_5=783.991
+NOTE_G_SHARP_5=830.609
+NOTE_A_FLAT_5=830.609
+NOTE_A_5=880.000
+NOTE_A_SHARP_5=932.328
+NOTE_B_FLAT_5=932.328
+NOTE_B_5=987.767
+NOTE_C_FLAT_6=987.767
+NOTE_B_SHARP_5=1046.502
+NOTE_C_6=1046.502
+NOTE_C_SHARP_6=1108.731
+NOTE_D_FLAT_6=1108.731
+NOTE_D_6=1174.659
+NOTE_D_SHARP_6=1244.508
+NOTE_E_FLAT_6=1244.508
+NOTE_E_6=1318.510
+NOTE_E_SHARP_6=1396.913
+NOTE_F_FLAT_6=1318.510
+NOTE_F_6=1396.913
+NOTE_F_SHARP_6=1479.978
+NOTE_G_FLAT_6=1479.978
+NOTE_G_6=1567.982
+NOTE_G_SHARP_6=1661.219
+NOTE_A_FLAT_6=1661.219
+NOTE_A_6=1760.000
+NOTE_A_SHARP_6=1864.655
+NOTE_B_FLAT_6=1864.655
+NOTE_B_6=1975.533
+NOTE_C_FLAT_7=1975.533
+NOTE_B_SHARP_6=2093.005
+NOTE_C_7=2093.005
+NOTE_C_SHARP_7=2217.461
+NOTE_D_FLAT_7=2217.461
+NOTE_D_7=2349.318
+NOTE_D_SHARP_7=2489.016
+NOTE_E_FLAT_7=2489.016
+NOTE_E_7=2637.021
+NOTE_E_SHARP_7=2793.826
+NOTE_F_FLAT_7=2637.021
+NOTE_F_7=2793.826
+NOTE_F_SHARP_7=2959.956
+NOTE_G_FLAT_7=2959.956
+NOTE_G_7=3135.964
+NOTE_G_SHARP_7=3322.438
+NOTE_A_FLAT_7=3322.438
+NOTE_A_7=3520.000
+NOTE_A_SHARP_7=3729.310
+NOTE_B_FLAT_7=3729.310
+NOTE_B_7=3951.066
+NOTE_C_FLAT_8=3951.066
+NOTE_B_SHARP_7=4186.009
+NOTE_C_8=4186.009
+NOTE_C_SHARP_8=4434.922
+NOTE_D_FLAT_8=4434.922
+NOTE_D_8=4698.637
+NOTE_D_SHARP_8=4978.032
+NOTE_E_FLAT_8=4978.032
+NOTE_E_8=5274.042
+NOTE_E_SHARP_8=5587.652
+NOTE_F_FLAT_8=5274.042
+NOTE_F_8=5587.652
+NOTE_F_SHARP_8=5919.912
+NOTE_G_FLAT_8=5919.912
+NOTE_G_8=6271.928
+NOTE_G_SHARP_8=6644.876
+NOTE_A_FLAT_8=6644.876
+NOTE_A_8=7040.000
+NOTE_A_SHARP_8=7458.620
+NOTE_B_FLAT_8=7458.620
+NOTE_B_8=7902.133
+NOTE_C_FLAT_9=7902.133
+NOTE_B_SHARP_8=8372.019
+NOTE_C_9=8372.019
+NOTE_C_SHARP_9=8869.845
+NOTE_D_FLAT_9=8869.845
+NOTE_D_9=9397.273
+NOTE_D_SHARP_9=9956.064
+NOTE_E_FLAT_9=9956.064
+NOTE_E_9=10548.083
+NOTE_E_SHARP_9=11175.305
+NOTE_F_FLAT_9=10548.083
+NOTE_F_9=11175.305
+NOTE_F_SHARP_9=11839.823
+NOTE_G_FLAT_9=11839.823
+NOTE_G_9=12543.855
+NOTE_G_SHARP_9=13289.752
+NOTE_A_FLAT_9=13289.752
+NOTE_A_9=14080.00
+NOTE_A_SHARP_9=14917.24
+NOTE_B_FLAT_9=14917.24
+NOTE_B_9=15804.27
+NOTE_C_1FLAT_0=15804.27
+NOTE_B_SHARP_9=16744.04
+NOTE_C_10=16744.04
+
+### SYMBOLS ###
 MUSIC_NOTE_SIXTENNTH="\u266C "
-MUSIC_CLEF_G='𝄞'      # \xF0\x9D\x84\x9E
-MUSIC_SIGN_FLAT='♭'    # \xe2\x99\xad
-MUSIC_SIGN_NATURAL='♮' # \xe2\x99\xae
-MUSIC_SIGN_SHARP='♯'   # \xe2\x99\xaf
+MUSIC_NOTE_EIGHTH="\u266A "
+MUSIC_NOTE_EIGHTH_EXTENDED="\u266A."
+MUSIC_NOTE_QUARTER="\u2669 "
+MUSIC_NOTE_QUARTER_EXTENDED="\u2669."
+MUSIC_NOTE_HALF="\u2af0 "
+MUSIC_NOTE_HALF_EXTENDED="\u2af0."
+MUSIC_NOTE_WHOLE="\u26AC "
+MUSIC_NOTE_WHOLE_EXTENDED="\u26AC."
+
+MUSIC_CLEF_G='𝄞'          # \xF0\x9D\x84\x9E
+MUSIC_SIGN_FLAT="\u266D"  # \xe2\x99\xad
+MUSIC_SIGN_NATURAL='♮'    # \xe2\x99\xae
+MUSIC_SIGN_SHARP="\u266F" # \xe2\x99\xaf
+
+OCTAVE_SIGNS=(₂ ₁ "" ⁰ ¹ ² ³ ⁴ ⁵)
+OCTAVE_NAMES=(subcontra contra major minor one-line two-line three-line four-line five-line)
 
 ### CONFIG ###
 command_pattern_normal=''
@@ -161,287 +260,317 @@ note_sustain='n'
 note_tone_key=''
 note_tone_name=''
 note_tone_freq=''
-note_octave=''
-note_type_id=''
+note_octave_no=''
+note_type_id='4'
 note_type_icon=''
-note_speed=''
+note_speed='60'
 note_length_ms=''
 note_length_sec=''
 force_stop='n'
 
 ### BEEPER ###
 function reset_note() {
-    note_sustain='n'
-    note_tone_key=''
+  note_sustain='n'
+  note_tone_key=''
 }
 function set_note_sustain() {
-    note_sustain='y'
+  note_sustain='y'
+}
+function update_note_length() {
+  note_length_ms=$(echo "scale=3; $note_type_id/4 * 1000 * 60/$note_speed" | bc -l)
+  note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
 }
 function set_note_type() {
-    local _note_type_id="$1"
-    if [[ "$_note_type_id" -lt '1' ]]; then
-        _note_type_id='1'
-    fi
-    if [[ "$_note_type_id" -gt '16' ]]; then
-        _note_type_id='16'
-    fi
-    note_type_id="$_note_type_id"
-    local _note_length_name
-    case "$note_type_id" in
-    16) _note_length_name='WHOLE' ;;
-    8 | $((note_type_id > 8))*) _note_length_name='HALF' ;;
-    4 | $((note_type_id > 4))*) _note_length_name='QUARTER' ;;
-    2 | $((note_type_id > 2))*) _note_length_name='EIGHTH' ;;
-    1 | $((note_type_id > 1))*) _note_length_name='SIXTENNTH' ;;
-    esac
-    local _icon_key="MUSIC_NOTE_${_note_length_name}"
-    note_type_icon=${!_icon_key}
-    log_info "Set note type as %s $note_type_icon" "$_note_length_name"
+  note_type_id="$1"
+  if (($(echo "$note_type_id <= 0" | bc -l))); then
+    note_type_id='1'
+  fi
+  if (($(echo "$note_type_id > 16" | bc -l))); then
+    note_type_id='16'
+  fi
+  local _note_length_name
+  case "$note_type_id" in
+  24) _note_length_name='WHOLE_EXTENDED' ;;
+  16) _note_length_name='WHOLE' ;;
+  12) _note_length_name='HALF_EXTENDED' ;;
+  8) _note_length_name='HALF' ;;
+  6) _note_length_name='QUARTER_EXTENDED' ;;
+  4 | "4/3") _note_length_name='QUARTER' ;;
+  3) _note_length_name='EIGHTH_EXTENDED' ;;
+  2 | "2/3") _note_length_name='EIGHTH' ;;
+  1) _note_length_name='SIXTENNTH' ;;
+  esac
+  local _icon_key="MUSIC_NOTE_${_note_length_name}"
+  note_type_icon="$(echo -e "${!_icon_key}")"
+  update_note_length
+  log_debug "\rSet note type as <b>%s</b> %s (%s ms)" "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
 }
 function set_note_speed() {
-    local _speed="$1"
-    if [[ "$_speed" -lt '30' ]]; then
-        _speed='30'
-    fi
-    if [[ "$_speed" -gt '200' ]]; then
-        _speed='200'
-    fi
-    note_speed="$_speed"
-    log_info "Set speed as %s" "$note_speed"
+  local _speed="$1"
+  if [[ "$_speed" -lt '30' ]]; then
+    _speed='30'
+  fi
+  if [[ "$_speed" -gt '500' ]]; then
+    _speed='500'
+  fi
+  note_speed="$_speed"
+  update_note_length
+  log_debug "\rSet speed as <b>%s</b>" "$note_speed"
 }
 function set_note_octave() {
-    local _note_octave="$1"
-    if [[ "$_note_octave" -lt '1' ]]; then
-        _note_octave='1'
-    fi
-    if [[ "$_note_octave" -gt '8' ]]; then
-        _note_octave='8'
-    fi
-    note_octave="$_note_octave"
-    log_info "Set octave as %s" "$note_octave"
+  note_octave_no="$1"
+  if [[ "$note_octave_no" -lt '1' ]]; then
+    note_octave_no='1'
+  fi
+  if [[ "$note_octave_no" -gt '9' ]]; then
+    note_octave_no='9'
+  fi
+  log_debug "\rSet octave as <b>%s</b> (%d)" "${OCTAVE_NAMES[$((note_octave_no-1))]}" "$note_octave_no"
 }
 function set_note_tone() {
-    local _tone_key="$1"
-    note_tone_key="$_tone_key"
-    note_tone_name=${note_tone_key^^}
-    case $note_tone_key in
-    C | D | F | G | A) note_tone_name="${note_tone_key}${MUSIC_SIGN_SHARP}" ;;
-    esac
+  local _tone_key="${1:0:1}"
+  local _tone_mod="${1:0-1}"
+  if [[ "$note_octave_no" -lt "4" ]]; then
+    note_tone_name="${_tone_key^^}"
+  else
+    note_tone_name="${_tone_key,,}"
+  fi
+  note_tone_key="${_tone_key^^}"
+  if [[ "$_tone_mod" == "-" ]]; then
+    note_tone_name+="$(echo -e $MUSIC_SIGN_FLAT)"
+    note_tone_key+="_FLAT"
+  elif [[ "$_tone_mod" == "+" ]]; then
+    note_tone_name+="$(echo -e $MUSIC_SIGN_SHARP)"
+    note_tone_key+="_SHARP"
+  fi
+  note_tone_name+="${OCTAVE_SIGNS[$((note_octave_no-1))]}"
+
 }
 function play_value() {
-    note_length_ms=$(echo "$note_type_id * 15000/$note_speed" | bc)
-    note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
-    if [[ "$note_tone_key" == 'p' ]]; then
-        play_pause
-    else
-        local _frequency_key="NOTE_${note_tone_key}_${note_octave}"
-        note_tone_freq="${!_frequency_key}"
-        play_note
-    fi
+  if [[ "$note_tone_key" == 'p' || "$note_tone_key" == 'P' ]]; then
+    play_pause
+  else
+    local _frequency_key="NOTE_${note_tone_key}_${note_octave_no}"
+    note_tone_freq="${!_frequency_key}"
+    play_note
+  fi
 }
 function play_pause() {
-    if [[ "$note_sustain" == 'y' ]]; then
-        printf "$note_type_icon p Led. (%s ms)" "$note_length_ms"
-        sleep "$note_length_sec" &
-    else
-        printf "$note_type_icon p (%s ms)" "$note_length_ms"
-        sleep "$note_length_sec"
-    fi
-    printf "\n"
+  local _suffix=""
+  if [[ "$note_sustain" == 'y' ]]; then
+    _suffix="Led."
+  fi
+  printf "$(tput setaf 3)%6.3s ms %s %s" "${note_length_ms/./,}" "${note_type_icon}p" "$_suffix"
+  if [[ "$note_sustain" == 'y' ]]; then
+    sleep "$note_length_sec" &
+  else
+    sleep "$note_length_sec"
+  fi
+  echo -e "$FORMAT_RESET"
 }
 function play_note() {
-    local _time="0"
-    if [[ "$time_mode" == "ms" ]]; then
-        _time="$note_length_ms"
-    elif [[ "$time_mode" == "sec" ]]; then
-        _time="$note_length_sec"
-    fi
-    if [[ "$note_sustain" == 'y' ]]; then
-        printf "$note_type_icon %s%s Led. (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
-        eval "$(printf "$command_pattern_sustain" "$_time" "$note_tone_freq")"
-    else
-        printf "$note_type_icon %s%s (%s ms %s Hz)" "$note_tone_name" "$note_octave" "$note_length_ms" "$note_tone_freq"
-        eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
-    fi
-    printf "\n"
+  local _time="0"
+  if [[ "$time_mode" == "ms" ]]; then
+    _time="$note_length_ms"
+  elif [[ "$time_mode" == "sec" ]]; then
+    _time="$note_length_sec"
+  fi
+  local _suffix=""
+  if [[ "$note_sustain" == 'y' ]]; then
+    _suffix="Led."
+  fi
+  printf "$(tput setaf 3)%6.1fms %s %8.2fHz %s %s" "${note_length_ms/./,}" "$note_type_icon" "${note_tone_freq/./,}" "$note_tone_name" "$_suffix"
+  if [[ "$note_sustain" == 'y' ]]; then
+    # shellcheck disable=SC2059
+    eval "$(printf "$command_pattern_sustain" "$_time" "$note_tone_freq")"
+  else
+    # shellcheck disable=SC2059
+    eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
+  fi
+  echo -e "$FORMAT_RESET"
 }
 function main_loop() {
-    # RESET
-    reset_note
-    local _octave_extra='n'
-    local _escape_char
-    _escape_char=$(printf "\u1b")
-    # READ
-    read -r -n 1 -p "$MUSIC_CLEF_G " key
-    printf "\r$MUSIC_CLEF_G "
-    if [[ $key == "$_escape_char" ]]; then
-        read -rsn2 key # read 2 more chars
-    fi
-    # octave extra
-    if [[ "$key" == ',' ]] || [[ "$key" == '<' ]]; then
-        _octave_extra='y'
-    fi
+  # FORMAT_RESET
+  reset_note
+  local _octave_extra='n'
+  local _escape_char
+  _escape_char=$(printf "\u1b")
+  # READ
+  
+  read -r -n 1 -p "$(tput setaf 7)$(tput bold)$MUSIC_CLEF_G $(tput setaf 0)" key
+  tput sgr0
+  if [[ $key == "$_escape_char" ]]; then
+    read -rsn2 key # read 2 more chars
+  fi
+  # octave extra
+  if [[ "$key" == ',' ]] || [[ "$key" == '<' ]]; then
+    _octave_extra='y'
+  fi
 
-    if [[ "$_octave_extra" == 'y' ]]; then
-        note_octave=$((note_octave + 1))
-    fi
+  if [[ "$_octave_extra" == 'y' ]]; then
+    set_note_octave "$((note_octave_no + 1))"
+  fi
 
-    case "$key" in
-    # NOTE SPEED
-    '[C')
-        set_note_speed $((note_speed + 5))
-        ;;
-    '[D')
-        set_note_speed $((note_speed - 5))
-        ;;
-    # NOTE TYPE
-    1) set_note_type 16 ;;
-    2) set_note_type 8 ;;
-    3) set_note_type 4 ;;
-    4) set_note_type 2 ;;
-    5) set_note_type 1 ;;
-    '[A')
-        set_note_octave $((note_octave + 1))
-        ;;
-    '[B')
-        set_note_octave $((note_octave - 1))
-        ;;
-    # NOTE TONE
-    \`) set_note_tone 'p' ;;
-    z | Z) set_note_tone 'c' ;;
-    s | S) set_note_tone 'C' ;;
-    x | X) set_note_tone 'd' ;;
-    d | D) set_note_tone 'D' ;;
-    c | C) set_note_tone 'e' ;;
-    v | V) set_note_tone 'f' ;;
-    g | G) set_note_tone 'F' ;;
-    b | B) set_note_tone 'g' ;;
-    h | H) set_note_tone 'G' ;;
-    n | N) set_note_tone 'a' ;;
-    j | J) set_note_tone 'A' ;;
-    m | M) set_note_tone 'b' ;;
-    , | \<) set_note_tone 'c' ;;
-    *) printf " \r" ;;
-    esac
-    # SUSTAIN
-    case "$key" in
-    Z | S | X | D | C | V | G | B | H | N | J | M | \<)
-        set_note_sustain
-        ;;
-    esac
-    # PLAY
-    if [[ "$note_tone_key" != '' ]]; then
-        play_value
-    fi
-    if [[ "$_octave_extra" == 'y' ]]; then
-        note_octave=$((note_octave - 1))
-    fi
+  case "$key" in
+  # NOTE SPEED
+  '[C')
+    set_note_speed $((note_speed + 5))
+    ;;
+  '[D')
+    set_note_speed $((note_speed - 5))
+    ;;
+  # NOTE TYPE
+  1) set_note_type 1 ;;
+  2) set_note_type 2 ;;
+  3) set_note_type 4 ;;
+  4) set_note_type 8 ;;
+  5) set_note_type 16 ;;
+  '[A')
+    set_note_octave $((note_octave_no + 1))
+    ;;
+  '[B')
+    set_note_octave $((note_octave_no - 1))
+    ;;
+  # NOTE TONE
+  \`) set_note_tone 'p' ;;
+  z | Z) set_note_tone 'c' ;;
+  s | S) set_note_tone 'c+' ;;
+  x | X) set_note_tone 'd' ;;
+  d | D) set_note_tone 'd+' ;;
+  c | C) set_note_tone 'e' ;;
+  v | V) set_note_tone 'f' ;;
+  g | G) set_note_tone 'f+' ;;
+  b | B) set_note_tone 'g' ;;
+  h | H) set_note_tone 'g+' ;;
+  n | N) set_note_tone 'a' ;;
+  j | J) set_note_tone 'a+' ;;
+  m | M) set_note_tone 'b' ;;
+  , | \<) set_note_tone 'c' ;;
+  *) printf " \r" ;;
+  esac
+  # SUSTAIN
+  case "$key" in
+  Z | S | X | D | C | V | G | B | H | N | J | M | \<)
+    set_note_sustain
+    ;;
+  esac
+  # PLAY
+  if [[ "$note_tone_key" != '' ]]; then
+    play_value
+  fi
+  if [[ "$_octave_extra" == 'y' ]]; then
+    set_note_octave "$((note_octave_no - 1))"
+  fi
 }
 function file_read() {
-    local _notes_data=($(cat "$notes_file_name" | grep -v '#'))
-    local _total=$((${#_notes_data[@]} - 1))
-    local _i=0
-    while true; do
-        if [[ "$_i" -gt "$_total" ]] || [[ "$force_stop" == "y" ]]; then
-            break
-        fi
-        reset_note
-        local _note_data
-        _note_data="${_notes_data[$_i]}"
-        local _note_arr
-        _note_arr=($(echo "${_note_data}" | sed 's/,/ /g'))
-        local _note_tone_arr
-        _note_tone_arr=($(echo "${_note_arr[0]}" | sed 's/./& /g'))
-        set_note_type "${_note_arr[1]}"
-        set_note_tone "${_note_tone_arr[0]}"
-        set_note_octave "${_note_tone_arr[1]}"
-        if [[ -n "${_note_arr[2]}" ]]; then
-            set_note_sustain
-        fi
-        play_value
-        _i=$((_i + 1))
-    done
+  local _notes_data=($(cat "$notes_file_name" | grep -v '#'))
+  local _total=${#_notes_data[@]}
+  local _index=0
+  while true; do
+    if [[ "$_index" -ge "$_total" ]] || [[ "$force_stop" == "y" ]]; then
+      break
+    fi
+    reset_note
+    local _note_data
+    _note_data="${_notes_data[$_index]}"
+    local _note_arr
+    read -r -a _note_arr <<<"${_note_data/,/ }"
+    set_note_type "${_note_arr[1]}"
+    set_note_octave "${_note_arr[0]:0-1}"
+    set_note_tone "${_note_arr[0]:0:-1}"
+    _index=$((_index + 1))
+    printf "%4d : " "$_index"
+    if [[ -n "${_note_arr[2]:-""}" ]]; then
+      set_note_sustain
+    fi
+    play_value
+  done
 }
 function config_load() {
-    if hash 'beep' 2>/dev/null; then
-        command_pattern_normal='beep -l %s -f %s'
-        command_pattern_sustain='beep -l %s -f %s &'
-        time_mode='ms'
-        command_name='beep'
-    elif hash 'play' 2>/dev/null; then
-        command_pattern_normal='play -q -n -c1 synth %s sine %s'
-        command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
-        time_mode='sec'
-        command_name='play'
-    else
-        log_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
-        exit 1
-    fi
-    local _note_type="4"
-    local _note_speed="120"
-    local _note_octave="4"
-    while [[ "${1:-}" != "" ]]; do
-        case ${1} in
-        -h | --help)
-            show_usage
-            exit 0
-            ;;
-        -u | --update)
-            log_info "Downloading new app version"
-            curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper" >$0
-            exit
-            ;;
-        -t | --type)
-            shift
-            _note_type="$1"
-            ;;
-        -s | --speed)
-            shift
-            _note_speed="$1"
-            ;;
-        -o | --octave)
-            shift
-            _note_octave="$1"
-            ;;
-        -f | --file)
-            shift
-            notes_file_name="$1"
-            ;;
-        esac
-        shift
-    done
-    set_note_type "$_note_type"
-    set_note_speed "$_note_speed"
-    set_note_octave "$_note_octave"
-    return 0
+  if hash 'beep' 2>/dev/null; then
+    command_pattern_normal='beep -l %s -f %s'
+    command_pattern_sustain='beep -l %s -f %s &'
+    time_mode='ms'
+    command_name='beep'
+  elif hash 'play' 2>/dev/null; then
+    command_pattern_normal='play -q -n -c1 synth %s sine %s'
+    command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
+    time_mode='sec'
+    command_name='play'
+  else
+    log_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
+    exit 1
+  fi
+  local _note_type="4"
+  local _note_speed="120"
+  local _note_octave_no="4"
+  while [[ "${1:-}" != "" ]]; do
+    case ${1} in
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -u | --update)
+      log_info "Downloading new app version"
+      curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper" >$0
+      exit
+      ;;
+    -v | --verbose)
+      DEBUG=1
+      ;;
+    -t | --type)
+      shift
+      _note_type="$1"
+      ;;
+    -s | --speed)
+      shift
+      _note_speed="$1"
+      ;;
+    -o | --octave)
+      shift
+      _note_octave_no="$1"
+      ;;
+    -f | --file)
+      shift
+      notes_file_name="$1"
+      ;;
+    esac
+    shift
+  done
+  set_note_speed "$_note_speed"
+  set_note_type "$_note_type"
+  set_note_octave "$_note_octave_no"
+  return 0
 }
 
 ### TRAP ###
 function finish() {
-    force_stop='y'
-    killall $command_name
+  force_stop='y'
+  killall $command_name
 }
 trap finish EXIT
 
 beeper_main() {
-    log_title "Beeper"
+  log_title "Beeper"
 
-    if ! config_load "$@"; then
-        # Help was shown, exit
-        return 0
-    fi
+  if ! config_load "$@"; then
+    # Help was shown, exit
+    return 0
+  fi
 
-    log_info "Press [CTRL+C] to stop.."
-    if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
-        file_read
-    else
-        while true; do
-            if [[ "$force_stop" == "y" ]]; then
-                break
-            fi
-            main_loop
-        done
-    fi
+  log_info "Press [CTRL+C] to stop.."
+  if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
+    DEBUG=${DEBUG:-0}
+    file_read
+  else
+    DEBUG=1
+    while true; do
+      if [[ "$force_stop" == "y" ]]; then
+        break
+      fi
+      main_loop
+    done
+  fi
 }
 
 # Call main function
