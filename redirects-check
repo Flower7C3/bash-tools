@@ -30,26 +30,23 @@ show_usage() {
   echo
   echo "Check URL redirects and status codes from a data file"
   echo
-  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
-  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
-  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
-  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
-  log_usage_options_line "Output file for results" "-o" "--output FILE"
-  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format FORMAT"
-  log_usage_options_line "Enable parallel processing" "-p" "--parallel"
-  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel NUM"
+  log_header "Options"
+  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
+  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent <STRING>"
+  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects <NUM>"
+  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format <FORMAT>"
   log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo
-  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Data file format:${FORMAT_RESET}"
+  log_header "Data file format"
   echo "  Each line should contain three space-separated values:"
-  echo "  OLD_URL EXPECTED_CODE NEW_URL"
+  echo -e "  $(styler text "YELLOW")OLD_URL EXPECTED_CODE NEW_URL$(styler reset)"
   echo
   echo "  Example:"
-  echo "  https://example.com/old 301 https://example.com/new"
-  echo "  https://test.com/page 302 https://test.com/redirect"
+  echo -e "  $(styler text "YELLOW")https://example.com/old 301 https://example.com/new$(styler reset)"
+  echo -e "  $(styler text "YELLOW")https://test.com/page 302 https://test.com/redirect$(styler reset)"
   echo
-  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
+  log_header "Examples"
   log_usage_example_line "$0 redirects.txt"
   log_usage_example_line "$0 -t 30 -v redirects.txt"
   log_usage_example_line "$0 -F json -o results.json redirects.txt"
@@ -67,21 +64,18 @@ timeout=$DEFAULT_TIMEOUT
 user_agent="$DEFAULT_USER_AGENT"
 max_redirects=$DEFAULT_MAX_REDIRECTS
 output_format="text"
-output_file=""
 ssl_verify=1
-parallel=0
-max_parallel=5
 data_file=""
 
 # Function to check redirect
 check_redirect() {
-  local old_url="$1"
-  local expected_code="$2"
-  local expected_url="$3"
-  local line_number="$4"
+  local _old_url="$1"
+  local _expected_code="$2"
+  local _expected_url="$3"
+  local _line_number="$4"
 
   # Build curl command
-  local curl_cmd="curl -s -i -k --max-time $timeout"
+  local _curl_cmd="curl -s -i -k --max-time $timeout"
 
   # Add user agent
   curl_cmd="$curl_cmd -H 'User-Agent: $user_agent'"
@@ -98,7 +92,7 @@ check_redirect() {
   curl_cmd="$curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{url_effective}'"
 
   # Execute curl command
-  local response
+  local _response
   if ! response=$(eval "$curl_cmd '$old_url'" 2>/dev/null); then
     log_error "Failed to check URL: $old_url"
     return 1
@@ -108,8 +102,8 @@ check_redirect() {
   IFS='|' read -r response_code redirect_url time_total url_effective <<<"$response"
 
   # Check if redirect is correct
-  local is_correct=0
-  local status_message=""
+  local _is_correct=0
+  local _status_message=""
 
   if [[ "$response_code" == "$expected_code" ]]; then
     if [[ "$expected_code" -ge 300 && "$expected_code" -lt 400 ]]; then
@@ -154,11 +148,11 @@ EOF
     # Text format
     printf "%-4d %-60s " "$line_number" "$old_url"
     if [[ $is_correct -eq 1 ]]; then
-      printf "${COLOR_GREEN}✓${NC} %s" "$status_message"
+      printf "$(styler text "GREEN")✓${NC} %s" "$status_message"
     else
-      printf "${COLOR_RED}✗${NC} %s" "$status_message"
+      printf "$(styler text "RED")✗${NC} %s" "$status_message"
     fi
-    printf " (${time_total}s)"
+    printf " (%ss)" "$time_total"
     echo
     ;;
   esac
@@ -173,27 +167,27 @@ EOF
 
 # Function to process data file
 process_data_file() {
-  local file="$1"
+  local _file="$1"
 
-  if [[ ! -f "$file" ]]; then
-    log_error "Data file not found: $file"
+  if [[ ! -f "$_file" ]]; then
+    log_error "Data file not found: $_file"
     return 1
   fi
 
-  log_info "Processing redirects from file: $file"
+  log_info "Processing redirects from file: $_file"
 
   # Create error log file
-  rm -f "${file}.error.log"
-  touch "${file}.error.log"
+  rm -f "${_file}.error.log"
+  touch "${_file}.error.log"
 
   # Add CSV header if output format is CSV
   if [[ "$output_format" == "csv" ]]; then
     echo "Line,Old URL,Expected Code,Expected URL,Actual Code,Actual URL,Final URL,Response Time,Correct,Status"
   fi
 
-  local line_number=0
-  local correct_count=0
-  local total_count=0
+  local _line_number=0
+  local _correct_count=0
+  local _total_count=0
 
   while IFS= read -r line; do
     ((line_number++))
@@ -202,7 +196,7 @@ process_data_file() {
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 
     # Parse line: OLD_URL EXPECTED_CODE NEW_URL
-    local old_url expected_code expected_url
+    local _old_url _expected_code _expected_url
     read -r old_url expected_code expected_url <<<"$line"
 
     # Validate inputs
@@ -231,13 +225,13 @@ process_data_file() {
 
     ((total_count++))
 
-  done <"$file"
+  done <"$_file"
 
   # Summary
   log_info "Processed $total_count redirects: $correct_count correct, $((total_count - correct_count)) incorrect"
 
-  if [[ -s "${file}.error.log" ]]; then
-    log_warning "Errors logged to: ${file}.error.log"
+  if [[ -s "${_file}.error.log" ]]; then
+    log_warning "Errors logged to: ${_file}.error.log"
   fi
 }
 
@@ -265,26 +259,10 @@ parse_arguments() {
       fi
       shift 2
       ;;
-    -o | --output)
-      output_file="$2"
-      shift 2
-      ;;
     -F | --format)
       output_format="$2"
       if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
         log_error "Invalid output format: $output_format"
-        exit 1
-      fi
-      shift 2
-      ;;
-    -p | --parallel)
-      parallel=1
-      shift
-      ;;
-    -P | --max-parallel)
-      max_parallel="$2"
-      if ! [[ "$max_parallel" =~ ^[0-9]+$ ]] || [[ "$max_parallel" -lt 1 ]]; then
-        log_error "Invalid max parallel: $max_parallel"
         exit 1
       fi
       shift 2

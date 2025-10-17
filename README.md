@@ -17,6 +17,7 @@ Collection of useful bash scripts for development and system administration.
 ### System Tools
 - `map-download` - Download maps from GeoApify or OpenStreetMap
 - `beeper` - Piano music player using system beep
+- `wallpaper-crop` - Automatic creation of wallpapers for vertical layout with aligned centers
 
 ## Installation
 

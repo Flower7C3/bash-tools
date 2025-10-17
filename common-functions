@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Common functions for bash tools
-# Based on Google Shell Style Guide
+# Common functions for bash tools based on Google Shell Style Guide
 
-# Check bash version
+##----Check bash version------------------------------------------------------------------------------------------------------------
+
 if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSION" == 2* ]] || [[ "$BASH_VERSION" == 3* ]]; then
   echo "Bash version is too low. Consider upgrading to bash newer than $BASH_VERSION"
   if uname | grep -iq Darwin; then
@@ -12,24 +12,45 @@ if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSI
   exit 9
 fi
 
-# Formatting using tput
-readonly COLOR_RED=$(tput setaf 1)
-readonly COLOR_GREEN=$(tput setaf 2)
-readonly COLOR_YELLOW=$(tput setaf 3)
-readonly COLOR_BLUE=$(tput setaf 4)
-readonly COLOR_PURPLE=$(tput setaf 5)
-readonly COLOR_CYAN=$(tput setaf 6)
-readonly FORMAT_BOLD=$(tput bold)
-readonly FORMAT_RESET=$(tput sgr0)
+# Set terminal type for proper color support
+export TERM=xterm-256color
+shopt -s extglob
 
-# Display line constants
-readonly DISPLAY_LINE_NO_ICON='display_line.no_icon'
-readonly DISPLAY_LINE_SILENT_BELL='display_line.silent_bell'
-readonly DISPLAY_LINE_PREPEND_NL='display_line.line_prepend_nl'
-readonly DISPLAY_LINE_PREPEND_CR='display_line.line_prepend_cr'
-readonly DISPLAY_LINE_PREPEND_TAB='display_line.line_prepend_tab'
-readonly DISPLAY_LINE_APPEND_NULL='display_line.line_append_null'
-readonly DISPLAY_LINE_APPEND_NL='display_line.line_append_nl'
+##----Formatting------------------------------------------------------------------------------------------------------------
+
+styler() {
+  case "$1" in
+  font | text | FONT | TEXT)
+    case "$2" in
+    black | BLACK) tput setaf 0 ;;
+    red | RED) tput setaf 1 ;;
+    green | GREEN) tput setaf 2 ;;
+    yellow | YELLOW) tput setaf 3 ;;
+    blue | BLUE) tput setaf 4 ;;
+    purple | PURPLE) tput setaf 5 ;;
+    cyan | CYAN) tput setaf 6 ;;
+    white | WHITE) tput setaf 7 ;;
+    *) tput setaf 9 ;;
+    esac
+    ;;
+  bg | background | BG | BACKGROUND)
+    case "$2" in
+    reset | REST) tput sgr0 ;;
+    black | BLACK) tput setab 0 ;;
+    red | RED) tput setab 1 ;;
+    green | GREEN) tput setab 2 ;;
+    yellow | YELLOW) tput setab 3 ;;
+    blue | BLUE) tput setab 4 ;;
+    purple | PURPLE) tput setab 5 ;;
+    cyan | CYAN) tput setab 6 ;;
+    white | WHITE) tput setab 7 ;;
+    *) tput setab 9 ;;
+    esac
+    ;;
+  bold | BOLD) tput bold ;;
+  reset | REST) tput sgr0 ;;
+  esac
+}
 
 # Icons
 readonly ICON_INFO='☞'
@@ -39,80 +60,159 @@ readonly ICON_ERROR='✗'
 readonly ICON_DEBUG=''
 readonly ICON_PROMPT='↳'
 
-# Display line with formatting options
-display_line() {
-  local _color="$1"
-  shift
-  local _icon="$1 "
-  shift
+readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
+readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
+
+##----Display line------------------------------------------------------------------------------------------------------------
+
+log_message() {
+  function _text_format() {
+    local _color_value="$1"
+    shift
+    local _pattern="$1"
+    shift
+    local _text
+    # shellcheck disable=SC2059
+    _text=$(printf -- "$_pattern" "$@")
+    _text=${_text//<b>/$(styler bold)${_color_value}}
+    _text=${_text//<\/b>/$(styler reset)${_color_value}}
+    _text=${_text//<u>/$(tput smul)${_color_value}}
+    _text=${_text//<\/u>/$(tput rmul)${_color_value}}
+    _text=${_text//<code>/$(styler bg "CYAN")$(styler text "BLACK")}
+    _text=${_text//<\/code>/$(styler reset)${_color_value}}
+    echo -e "$_text"
+  }
+  local _color_value=""
+  local _icon=""
   local _line_prepend=""
   local _line_append="\n"
-  while true; do
-    case $1 in
-    "display_line.no_icon")
-      _icon=""
+  local _text
+  local _status=""
+  while [[ "${1:-}" != "" ]]; do
+    case ${1} in
+    -c | --color)
+      shift
+      _color_value="$(styler text "$1")"
       ;;
-    "display_line.silent_bell")
-      _line_prepend="\a\r"
+    -i | --icon)
+      shift
+      _icon="$1"
       ;;
-    "display_line.line_prepend_nl")
-      _line_prepend="\n"
+    -p | --prepend)
+      shift
+      _line_prepend="$_line_prepend$1"
       ;;
-    "display_line.line_prepend_cr")
-      _line_prepend="\r"
+    -b | --bell)
+      _line_prepend="$_line_prepend\a"
       ;;
-    "display_line.line_prepend_tab")
-      _line_prepend="\t"
+    -r | --reset)
+      _line_prepend="\r$_line_prepend"
       ;;
-    "display_line.line_append_nl")
-      _line_append="\n"
-      ;;
-    "display_line.line_append_null")
+    -o | --one-line)
       _line_append=""
       ;;
-    *)
-      break
+    -s | --status)
+      shift
+      _status="$1"
       ;;
+    *) break ;;
     esac
     shift
   done
-  local _text_pattern="$1"
-  shift
-  local _text
   # shellcheck disable=SC2059
-  _text=$(printf "$_text_pattern" "$@")
-  _text=${_text//<b>/${FORMAT_BOLD}${_color}}
-  _text=${_text//<\/b>/${FORMAT_RESET}${_color}}
-  _text=${_text//<u>/$(tput smul)${_color}}
-  _text=${_text//<\/u>/$(tput rmul)${_color}}
-  echo -e -n "${_line_prepend}${_color}${_icon}${_text}${FORMAT_RESET}${_line_append}"
+  _text="$(_text_format "$_color_value" "$@")"
+  if [[ -n "$_icon" ]]; then
+    _text="$(_text_format "$_color_value" " <b>%s</b> %s" "$_icon" "$_text")"
+  fi
+  if [[ -n "$_status" ]]; then
+    local _raw_bytes
+    _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
+    local _text_bytes
+    _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
+    local _text_chars
+    _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
+    local _padding=$((64 + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
+    _text="$(_text_format "$_color_value" "%-*s [<b>%s</b>]" "$_padding" "$_text" "$_status")"
+  fi
+  echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
 
-# Logging functions
+prepare_log_message() {
+  local _color="$1"
+  shift
+  local _icon="$1"
+  shift
+  while [[ "${1:-}" != "" ]]; do
+    case ${1} in
+    -c | --color)
+      shift
+      _color="$1"
+      ;;
+    -i | --icon)
+      shift
+      _icon="$1"
+      ;;
+    *) break ;;
+    esac
+    shift
+  done
+  log_message --color "$_color" --icon "$_icon" "$@"
+}
+
 log_info() {
-  display_line "$COLOR_BLUE" "$ICON_INFO" "$@"
+  prepare_log_message "CYAN" "$ICON_INFO" "$@"
 }
 
 log_success() {
-  display_line "$COLOR_GREEN" "$ICON_SUCCESS" "$@"
+  prepare_log_message "GREEN" "$ICON_SUCCESS" "$@"
 }
 
 log_warning() {
-  display_line "$COLOR_YELLOW" "$ICON_WARNING" "$@"
+  prepare_log_message "BLUE" "$ICON_WARNING" "$@"
 }
 
 log_error() {
-  display_line "$COLOR_RED" "$ICON_ERROR" "$@"
+  prepare_log_message "RED" "$ICON_ERROR" "$@"
 }
 
 log_debug() {
   if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
-    display_line "$COLOR_PURPLE" "$ICON_DEBUG" "$@"
+    prepare_log_message "PURPLE" "$ICON_DEBUG" "$@"
   fi
 }
 
+log_title() {
+  local _title="$1"
+  local _version="${2:-}"
+  local _title_text
+  if [[ -n "$_version" ]]; then
+    _title_text="${_title} v${_version}"
+  else
+    _title_text="${_title}"
+  fi
+
+  # Calculate padding to center the title
+  local _title_length=${#_title_text}
+  local _total_width=64
+  if [[ "$_title_length" -gt "$_total_width" ]]; then
+    _total_width=$((_title_length + 4))
+  fi
+  if [[ $((_title_length % 2)) -eq 1 ]]; then
+    _total_width="$((_total_width - 1))"
+  fi
+  local _padding=$(((_total_width - _title_length) / 2))
+
+  log_message --color "WHITE" "<b>╔%s╗</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
+  log_message --color "WHITE" "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" $_padding "" "$_title_text" $_padding ""
+  log_message --color "WHITE" "<b>╚%s╝</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
+}
+
+log_header() {
+  log_message --color "PURPLE" "<b>%s</b>" "$1"
+}
+
 log_usage_line() {
-  echo -e "${FORMAT_BOLD}${COLOR_GREEN}Usage:${COLOR_BLUE} $*${FORMAT_RESET}"
+  log_message --color "PURPLE" "<b>Usage</b> <code>$*</code>"
 }
 
 log_usage_options_line() {
@@ -120,19 +220,11 @@ log_usage_options_line() {
   shift
   local parameters
   parameters="$(printf "%s, " "$@")"
-  display_line "" "" "$DISPLAY_LINE_NO_ICON" "  ${FORMAT_BOLD}${COLOR_CYAN}%-*s${FORMAT_RESET}${COLOR_CYAN} %s" "30" "${parameters::-2}" "$description"
+  log_message "  <b>%-*s</b> %s" "30" "${parameters::-2}" "$description"
 }
 
 log_usage_example_line() {
-  display_line "  \$" "$COLOR_BLUE" "$@"
-}
-
-log_prompt() {
-  if [[ "$#" -gt "1" ]]; then
-    display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s [%s]: " "$@"
-  else
-    display_line "$COLOR_YELLOW" "$ICON_PROMPT" "$DISPLAY_LINE_APPEND_NULL" "%s: " "$@"
-  fi
+  log_message --color "CYAN" --icon " \$" "<code>%s</code>" "$@"
 }
 
 # Die with error message
@@ -141,71 +233,137 @@ die() {
   exit 1
 }
 
+##----Loading animation------------------------------------------------------------------------------------------------------------
+
+play_loading_animation_loop() {
+  while [ $# -gt 0 ]; do
+    case $1 in
+    -t | --time)
+      shift
+      loading_animation_timer="$1"
+      ;;
+    -m | --message)
+      shift
+      loading_animation_message="$1"
+      ;;
+    esac
+    shift
+  done
+  (
+    _step=0
+    while true; do
+      for _frame in "${LOADING_ANIMATION[@]}"; do
+        if [[ "$loading_animation_message" != "" ]]; then
+          log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
+          sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
+        else
+          log_message --color "CYAN" --one-line "waiting %s" "$(echo "$loading_animation_timer - $_step" | bc -z)"
+          sleep "1"
+        fi
+        _step="$((_step + 1))"
+        printf "\r"
+      done
+    done
+  ) &
+  loading_animation_pid=$!
+}
+
+kill_loading_animation_loop() {
+  if [[ -n "${loading_animation_pid:-}" ]]; then
+    kill "$loading_animation_pid" &>/dev/null
+    printf "\r%100s\r$(styler reset)" ""
+    code=0
+    status=""
+    while [ $# -gt 0 ]; do
+      case $1 in
+      -c | --code)
+        shift
+        code="$1"
+        ;;
+      -s | --status)
+        shift
+        status="$1"
+        ;;
+      -m | --message)
+        shift
+        loading_animation_message="$1"
+        ;;
+      esac
+      shift
+    done
+    if [[ "$loading_animation_message" != "" ]]; then
+      if [[ "$code" -gt "0" ]]; then
+        log_error --status "$status" "$loading_animation_message"
+      elif [[ "$code" -lt "0" ]]; then
+        log_warning --status "$status" "$loading_animation_message"
+      else
+        log_success --status "$status" "$loading_animation_message"
+      fi
+    fi
+    loading_animation_pid=""
+    loading_animation_message=""
+    loading_animation_timer=""
+  fi
+}
+
+wait_moment() {
+  play_loading_animation_loop --time "$RETRY_INTERVAL"
+  sleep "$RETRY_INTERVAL"
+  kill_loading_animation_loop --code 0
+}
+
+trap "kill_loading_animation_loop;exit" SIGINT
+trap "kill_loading_animation_loop;exit" EXIT
+
+##----IO------------------------------------------------------------------------------------------------------------
+
+prompt_input() {
+  # prepare
+  local _var_name="$1"
+  shift
+  local _prompt_text="$1"
+  shift
+  local _default_value="${1:-}"
+  shift
+  # options
+  local _options
+  _options="$(printf "<b>%s</b>," "$@")"
+  local _message
+  if [[ -n "$_options" ]]; then
+    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s [%s]: " "$_prompt_text" "${_options::-1}")"
+  else
+    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s: " "$_prompt_text")"
+  fi
+
+  # get
+  local _value
+  read -r -p "$_message" -e -i "$_default_value" _value
+  if [[ -z "$_value" ]]; then
+    _value="$_default_value"
+  fi
+
+  # set
+  eval "$_var_name=\"$_value\""
+}
+
+confirm_or_exit() {
+  local _message="$1"
+  local _default_value="${2:-}"
+  local _response="z"
+
+  while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
+    prompt_input _response "$_message" "$_default_value" "Y" "y" "N" "n"
+    [[ "$_response" =~ ^[Yy]?$ ]] && break
+  done
+}
+
+##----Checking------------------------------------------------------------------------------------------------------------
+
 # Check if command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-# Prompt for input
-prompt_input() {
-  local var_name="$1"
-  local prompt_text="$2"
-  local default_value="${3:-}"
-  local current_value="${4:-}"
-
-  local value
-  if [[ -n "$current_value" ]]; then
-    log_prompt "$prompt_text" "$current_value"
-    read -r value
-    if [[ -z "$value" ]]; then
-      value="$current_value"
-    fi
-  else
-    log_prompt "$prompt_text"
-    read -r value
-    if [[ -z "$value" && -n "$default_value" ]]; then
-      value="$default_value"
-    fi
-  fi
-
-  eval "$var_name=\"$value\""
-}
-
-# Log title
-log_title() {
-  local title="$1"
-  local version="${2:-""}"
-  local title_text
-  if [[ -n "$version" ]]; then
-    title_text="${title} v${version}"
-  else
-    title_text="${title}"
-  fi
-
-  # Calculate padding to center the title
-  local title_length=${#title_text}
-  local total_width=64
-  if [[ "$total_width" -lt "$title_length" ]]; then
-    total_width=$((title_length + 4))
-  fi
-  local padding=$(((total_width - title_length) / 2))
-
-  # Generate top and bottom borders
-
-  border="$(printf "%*s" "$total_width" "" | tr " " "═")"
-  printf "${FORMAT_BOLD}${COLOR_CYAN}╔%s╗${FORMAT_RESET}\n" "$border"
-  printf "${FORMAT_BOLD}${COLOR_CYAN}║${FORMAT_RESET}%*s${FORMAT_BOLD}${COLOR_YELLOW}%s${FORMAT_RESET}%*s${FORMAT_BOLD}${COLOR_CYAN}║${FORMAT_RESET}\n" $padding "" "$title_text" $padding ""
-  printf "${FORMAT_BOLD}${COLOR_CYAN}╚%s╝${FORMAT_RESET}\n" "$border"
-}
-
-# Show script title
-show_title() {
-  local script_name="$1"
-  local version="${2:-1.0.0}"
-  echo "${COLOR_CYAN}## $script_name v$version ##${FORMAT_RESET}"
-}
-
-# Check dependencies
 check_dependencies() {
   local deps=("$@")
   local missing_deps=()
@@ -217,26 +375,8 @@ check_dependencies() {
   done
 
   if [[ ${#missing_deps[@]} -gt 0 ]]; then
-    missing_items="$(printf "${FORMAT_BOLD}${COLOR_RED}%s${FORMAT_RESET}${COLOR_RED}, " "${missing_deps[@]}")"
+    missing_items="$(printf "<b>%s</b>, " "${missing_deps[@]}")"
     die "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
-  fi
-}
-
-# Removed duplicate prompt_input function
-
-# Confirm action
-confirm() {
-  local message="$1"
-  local default="${2:-n}"
-
-  if [[ "$default" == "y" ]]; then
-    log_prompt "$message" "Y/n"
-    read -r response
-    [[ "$response" =~ ^[Yy]?$ ]]
-  else
-    log_prompt "$message" "y/N"
-    read -r response
-    [[ "$response" =~ ^[Yy]$ ]]
   fi
 }
 
@@ -268,11 +408,11 @@ validate_domain() {
 validate_wp_directory() {
   local wp_dir="$1"
   if [[ ! -d "$wp_dir" ]]; then
-    log_error "WordPress directory does not exist: $wp_dir"
+    log_error "WordPress directory <u>$wp_dir</u> does not exist"
     return 1
   fi
   if [[ ! -f "$wp_dir/wp-config.php" ]]; then
-    log_error "Not a valid WordPress directory (wp-config.php not found): $wp_dir"
+    log_error "Given directory <u>$wp_dir</u> is not a valid WordPress installation (wp-config.php not found)"
     return 1
   fi
   return 0
@@ -308,22 +448,4 @@ validate_positive_number() {
     return 1
   fi
   return 0
-}
-
-# Main function wrapper
-main() {
-  # Check if common-functions exists
-  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
-    echo "Downloading common-functions from GitHub..."
-    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
-      echo "Failed to download common-functions"
-      exit 1
-    fi
-  fi
-
-  # Source common functions
-  source "$(dirname "$0")/common-functions"
-
-  # Call the actual main function
-  "$@"
 }

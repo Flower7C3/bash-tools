@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Set terminal type for proper color support
+export TERM=xterm-256color
+
 # Main function wrapper
 main() {
     # Check if common-functions exists
@@ -30,17 +33,17 @@ show_usage() {
     echo
     echo "Check SSL/TLS certificates for domains"
     echo
-    echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
-    log_usage_options_line "Port to check (default: $DEFAULT_PORT)" "-p" "--port PORT"
-    log_usage_options_line "Connection timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
+    log_header "Options"
+    log_usage_options_line "Port to check (default: $DEFAULT_PORT)" "-p" "--port <PORT>"
+    log_usage_options_line "Connection timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
     log_usage_options_line "Batch mode for multiple domains" "-b" "--batch"
-    log_usage_options_line "Output format: text, json, csv (default: text)" "-f" "--format FORMAT"
+    log_usage_options_line "Output format: text, json, csv (default: text)" "-f" "--format <FORMAT>"
     log_usage_options_line "Check certificate chain" "-c" "--chain"
     log_usage_options_line "Check certificate revocation" "-r" "--revocation"
     log_usage_options_line "Skip expiry date checking" "-e" "--no-expiry"
     log_usage_options_line "Show this help message" "-h" "--help"
     echo ""
-    echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
+    log_header "Examples"
     log_usage_example_line "$0 example.com"
     log_usage_example_line "$0 -p 8443 example.com"
     log_usage_example_line "$0 -b -f json domains.txt"
@@ -60,14 +63,13 @@ timeout=$DEFAULT_TIMEOUT
 batch_mode=$DEFAULT_BATCH
 output_format="text"
 check_chain=0
-check_expiry=1
 check_revocation=0
 
 # Function to get certificate information
 get_certificate_info() {
-    local domain="$1"
-    local port="$2"
-    local timeout="$3"
+    local _domain="$1"
+    local _port="$2"
+    local _timeout="$3"
     
     
     # Get certificate details
@@ -153,7 +155,7 @@ EOF
             ;;
         *)
             # Text format
-            echo -e "${FORMAT_BOLD}Certificate Information for $domain:$port${FORMAT_RESET}"
+            echo -e "$(styler bold)Certificate Information for $domain:$port$(styler reset)"
             echo "Subject: $subject"
             echo "Issuer: $issuer"
             echo "Valid From: $not_before"
@@ -162,13 +164,13 @@ EOF
             echo "SHA1 Fingerprint: $fingerprint"
             
             if [[ $is_expired -eq 1 ]]; then
-                echo -e "Status: ${COLOR_RED}EXPIRED${FORMAT_RESET}"
+                echo -e "Status: $(styler text "RED")EXPIRED$(styler reset)"
             elif [[ $not_yet_valid -eq 1 ]]; then
-                echo -e "Status: ${COLOR_YELLOW}NOT YET VALID${FORMAT_RESET}"
+                echo -e "Status: $(styler text "YELLOW")NOT YET VALID$(styler reset)"
             elif [[ $expires_soon -eq 1 ]]; then
-                echo -e "Status: ${COLOR_YELLOW}EXPIRES SOON ($days_until_expiry days)${FORMAT_RESET}"
+                echo -e "Status: $(styler text "YELLOW")EXPIRES SOON ($days_until_expiry days)$(styler reset)"
             else
-                echo -e "Status: ${COLOR_GREEN}VALID ($days_until_expiry days remaining)${FORMAT_RESET}"
+                echo -e "Status: $(styler text "GREEN")VALID ($days_until_expiry days remaining)$(styler reset)"
             fi
             ;;
     esac
@@ -187,7 +189,7 @@ check_certificate_chain() {
         return 1
     fi
     
-    echo -e "${FORMAT_BOLD}Certificate Chain for $domain:$port${FORMAT_RESET}"
+    echo -e "$(styler bold)Certificate Chain for $domain:$port$(styler reset)"
     echo "$chain_info" | grep -E "(Certificate chain|subject=|issuer=)"
 }
 
@@ -210,7 +212,7 @@ check_certificate_revocation() {
     ocsp_url=$(echo "$cert" | openssl x509 -noout -ocsp_uri 2>/dev/null || echo "")
     
     if [[ -n "$ocsp_url" ]]; then
-        echo -e "${FORMAT_BOLD}OCSP Information for $domain:$port${FORMAT_RESET}"
+        echo -e "$(styler bold)OCSP Information for $domain:$port$(styler reset)"
         echo "OCSP URL: $ocsp_url"
         # Note: Full OCSP checking would require additional tools
         echo "Note: Full OCSP verification requires additional tools"
@@ -305,10 +307,6 @@ parse_arguments() {
                 ;;
             -r|--revocation)
                 check_revocation=1
-                shift
-                ;;
-            -e|--no-expiry)
-                check_expiry=0
                 shift
                 ;;
             -h|--help)

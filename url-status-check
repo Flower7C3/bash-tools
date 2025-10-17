@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Set terminal type for proper color support
+export TERM=xterm-256color
+
 # Main function wrapper
 main() {
   # Check if common-functions exists
@@ -30,21 +33,21 @@ show_usage() {
   echo
   echo "Check HTTP status codes and redirects"
   echo
-  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Options:${FORMAT_RESET}"
-  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects NUM"
-  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout SECONDS"
-  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent STRING"
-  log_usage_options_line "HTTP method (default: GET)" "-m" "--method METHOD"
-  log_usage_options_line "Add custom header (can be used multiple times)" "-H" "--header HEADER"
-  log_usage_options_line "Cookie string" "-c" "--cookies STRING"
+  log_header "Options"
+  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects <NUM>"
+  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
+  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent <STRING>"
+  log_usage_options_line "HTTP method (default: GET)" "-m" "--method <METHOD>"
+  log_usage_options_line "Add custom header (can be used multiple times)" "-H" "--header <HEADER>"
+  log_usage_options_line "Cookie string" "-c" "--cookies <STRING>"
   log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
   log_usage_options_line "Don't follow redirects" "-f" "--no-follow"
   log_usage_options_line "Enable parallel processing" "-p" "--parallel"
-  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel NUM"
-  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format FORMAT"
+  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel <NUM>"
+  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format <FORMAT>"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo
-  echo -e "${FORMAT_BOLD}${COLOR_YELLOW}Examples:${FORMAT_RESET}"
+  log_header "Examples"
   log_usage_example_line "$0 https://example.com"
   log_usage_example_line "$0 -r 10 -t 30 https://example.com"
   log_usage_example_line "$0 -m POST -H \"Content-Type: application/json\" https://api.example.com"
@@ -73,67 +76,67 @@ max_parallel=5
 
 # Function to get status color
 get_status_color() {
-  local code="$1"
-  if [[ "$code" -lt 300 ]]; then
-    echo "$COLOR_GREEN"
-  elif [[ "$code" -lt 400 ]]; then
-    echo "$COLOR_YELLOW"
-  elif [[ "$code" -lt 500 ]]; then
-    echo "$COLOR_RED"
+  local _code="$1"
+  if [[ "$_code" -lt 300 ]]; then
+    echo -e "$(styler text "GREEN")"
+  elif [[ "$_code" -lt 400 ]]; then
+    echo -e "$(styler text "YELLOW")"
+  elif [[ "$_code" -lt 500 ]]; then
+    echo -e "$(styler text "RED")"
   else
-    echo "$COLOR_PURPLE"
+    echo -e "$(styler text "PURPLE")"
   fi
 }
 
 # Function to check URL status
 check_url() {
-  local url="$1"
-  local redirect_count="${2:-0}"
-  local original_url="${3:-}"
+  local _url="$1"
+  local _redirect_count="${2:-0}"
+  local _original_url="${3:-}"
 
   if [[ -z "$original_url" ]]; then
     original_url="$url"
   fi
 
   # Build curl command
-  local curl_cmd="curl -s -i -k --max-time $timeout"
+  local _curl_cmd="curl -s -i -k --max-time $timeout"
 
   # Add user agent
-  curl_cmd="$curl_cmd -H 'User-Agent: $user_agent'"
+  _curl_cmd="$_curl_cmd -H 'User-Agent: $user_agent'"
 
   # Add custom headers
   for header in "${headers[@]}"; do
-    curl_cmd="$curl_cmd -H '$header'"
+    _curl_cmd="$_curl_cmd -H '$header'"
   done
 
   # Add cookies
   if [[ -n "$cookies" ]]; then
-    curl_cmd="$curl_cmd -H 'Cookie: $cookies'"
+    _curl_cmd="$_curl_cmd -H 'Cookie: $cookies'"
   fi
 
   # Add method
   if [[ "$method" != "GET" ]]; then
-    curl_cmd="$curl_cmd -X $method"
+    _curl_cmd="$_curl_cmd -X $method"
   fi
 
   # Add SSL verification
   if [[ "$ssl_verify" == "0" ]]; then
-    curl_cmd="$curl_cmd -k"
+    _curl_cmd="$_curl_cmd -k"
   fi
 
   # Add redirect handling
   if [[ "$follow_redirects" == "0" ]]; then
-    curl_cmd="$curl_cmd --max-redirs 0"
+    _curl_cmd="$_curl_cmd --max-redirs 0"
   else
-    curl_cmd="$curl_cmd --max-redirs $max_redirects"
+    _curl_cmd="$_curl_cmd --max-redirs $max_redirects"
   fi
 
   # Add output format
-  curl_cmd="$curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{size_download}|%{url_effective}'"
+  _curl_cmd="$_curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{size_download}|%{url_effective}'"
 
   # Execute curl command
-  local response
-  if ! response=$(eval "$curl_cmd '$url'" 2>/dev/null); then
+  local _response
+  if ! response=$(eval "$_curl_cmd '$url'" 2>/dev/null); then
     log_error "Failed to check URL: $url"
     return 1
   fi
@@ -142,7 +145,7 @@ check_url() {
   IFS='|' read -r response_code redirect_url time_total size_download url_effective <<<"$response"
 
   # Get status color
-  local color
+  local _color
   color=$(get_status_color "$response_code")
 
   # Output results based on format
@@ -156,23 +159,23 @@ check_url() {
   "redirect_url": "$redirect_url",
   "response_time": $time_total,
   "content_length": $size_download,
-  "redirect_count": $redirect_count
+  "redirect_count": $_redirect_count
 }
 EOF
     ;;
   "csv")
-    echo "$original_url,$url_effective,$response_code,$redirect_url,$time_total,$size_download,$redirect_count"
+    echo "$original_url,$url_effective,$response_code,$redirect_url,$time_total,$size_download,$_redirect_count"
     ;;
   *)
     # Text format
     printf "%-60s " "$url"
-    printf "[${color}%3s${FORMAT_RESET}] " "$response_code"
+    printf "[${color}%3s$(styler reset)] " "$response_code"
     if [[ -n "$redirect_url" ]]; then
       printf "→ %s " "$redirect_url"
     fi
-    printf "(${time_total}s, ${size_download} bytes)"
-    if [[ "$redirect_count" -gt 0 ]]; then
-      printf " [%d redirects]" "$redirect_count"
+    printf "(%ss, %s bytes)" "$time_total" "$size_download"
+    if [[ "$_redirect_count" -gt 0 ]]; then
+      printf " [%d redirects]" "$_redirect_count"
     fi
     echo
     ;;
@@ -180,26 +183,26 @@ EOF
 
   # Follow redirects if enabled and status is 3xx
   if [[ "$follow_redirects" == "1" && "$response_code" -ge 300 && "$response_code" -lt 400 && -n "$redirect_url" ]]; then
-    if [[ "$redirect_count" -ge "$max_redirects" ]]; then
+    if [[ "$_redirect_count" -ge "$max_redirects" ]]; then
       log_warning "Maximum redirects exceeded for $original_url"
       return 1
     fi
 
     # Recursively check redirect URL
-    check_url "$redirect_url" $((redirect_count + 1)) "$original_url"
+    check_url "$redirect_url" $((_redirect_count + 1)) "$original_url"
   fi
 }
 
 # Function to process URLs from file
 process_urls_from_file() {
-  local file="$1"
+  local _file="$1"
 
-  if [[ ! -f "$file" ]]; then
-    log_error "File not found: $file"
+  if [[ ! -f "$_file" ]]; then
+    log_error "File not found: $_file"
     return 1
   fi
 
-  log_info "Processing URLs from file: $file"
+  log_info "Processing URLs from file: $_file"
 
   # Add CSV header if output format is CSV
   if [[ "$output_format" == "csv" ]]; then
@@ -221,23 +224,23 @@ process_urls_from_file() {
     # Check URL
     check_url "$line"
 
-  done <"$file"
+  done <"$_file"
 }
 
 # Function to process URLs in parallel
 process_urls_parallel() {
-  local urls=("$@")
-  local pids=()
-  local results=()
+  local _urls=("$@")
+  local _pids=()
+  local _results=()
 
-  log_info "Processing ${#urls[@]} URLs in parallel (max: $max_parallel)"
+  log_info "Processing ${#_urls[@]} URLs in parallel (max: $max_parallel)"
 
-  for url in "${urls[@]}"; do
+  for url in "${_urls[@]}"; do
     # Wait if we've reached max parallel processes
-    while [[ ${#pids[@]} -ge $max_parallel ]]; do
-      for i in "${!pids[@]}"; do
-        if ! kill -0 "${pids[$i]}" 2>/dev/null; then
-          unset pids[$i]
+    while [[ ${#_pids[@]} -ge $max_parallel ]]; do
+      for i in "${!_pids[@]}"; do
+        if ! kill -0 "${_pids[$i]}" 2>/dev/null; then
+          unset "${_pids[$i]}"
         fi
       done
       sleep 0.1
@@ -245,11 +248,11 @@ process_urls_parallel() {
 
     # Start background process
     check_url "$url" &
-    pids+=($!)
+    _pids+=($!)
   done
 
   # Wait for all processes to complete
-  for pid in "${pids[@]}"; do
+  for pid in "${_pids[@]}"; do
     wait "$pid"
   done
 }
