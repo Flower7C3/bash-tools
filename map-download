@@ -29,7 +29,7 @@ show_usage() {
   echo ""
   echo "Download maps from GeoApify or OpenStreetMap"
   echo ""
-  log_header "Options"
+  log_header 'Options'
   log_usage_options_line "Map provider: geoapify, osm (default: $DEFAULT_PROVIDER)" "-p" "--provider PROVIDER"
   log_usage_options_line "Map zoom level (default: $DEFAULT_ZOOM)" "-z" "--zoom ZOOM"
   log_usage_options_line "Map type: standard, cycle (default: $DEFAULT_MAP_TYPE)" "-t" "--type TYPE"
@@ -44,7 +44,7 @@ show_usage() {
   log_usage_options_line "Debug output" "-d" "--debug"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo ""
-  log_header "Examples"
+  log_header 'Examples'
   echo " OSM map with bounding box"
   log_usage_example_line "$0 --provider osm --bounds \"20.2008,49.9817,20.4651,50.0836\" --zoom 15"
   echo " GeoApify map with center point"
@@ -88,17 +88,17 @@ validate_coordinates() {
   local _lng="$2"
 
   if ! [[ "$_lat" =~ ^-?[0-9]+\.?[0-9]*$ ]] || ! [[ "$_lng" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
-    log_error "Invalid coordinate format: $_lat, $_lng"
+    log_error 'Invalid coordinate format: %s, %s' "$_lat" "$_lng"
     return 1
   fi
 
   if (($(echo "$_lat < -90 || $_lat > 90" | bc -l))); then
-    log_error "Latitude must be between -90 and 90: $_lat"
+    log_error 'Latitude must be between -90 and 90: %s' "$_lat"
     return 1
   fi
 
   if (($(echo "$_lng < -180 || $_lng > 180" | bc -l))); then
-    log_error "Longitude must be between -180 and 180: $_lng"
+    log_error 'Longitude must be between -180 and 180: %s' "$_lng"
     return 1
   fi
 
@@ -117,12 +117,12 @@ validate_bounding_box() {
   fi
 
   if (($(echo "$_w >= $_e" | bc -l))); then
-    log_error "West coordinate must be less than East coordinate"
+    log_error 'West coordinate must be less than East coordinate'
     return 1
   fi
 
   if (($(echo "$_s >= $_n" | bc -l))); then
-    log_error "South coordinate must be less than North coordinate"
+    log_error 'South coordinate must be less than North coordinate'
     return 1
   fi
 
@@ -132,14 +132,14 @@ validate_bounding_box() {
 # Function to create output directory
 create_output_dir() {
   if [[ ! -d "$output_dir" ]]; then
-    log_info "Creating output directory: $output_dir"
+    log_info 'Creating output directory: <u>%s</u>' "$output_dir"
     mkdir -p "$output_dir"
   fi
 }
 
 # Function to download OSM map
 download_osm_map() {
-  log_info "Downloading OSM map..."
+  log_info 'Downloading OSM map...'
 
   # Convert coordinates to tile coordinates
   local _xtile_min _xtile_max _ytile_min _ytile_max
@@ -156,14 +156,14 @@ download_osm_map() {
   ytile_min=$(echo "scale=0; ((1 - log(tan($_geo_lat_n_bc * pi() / 180) + 1 / cos($_geo_lat_n_bc * pi() / 180)) / pi()) / 2 * 2^$zoom)" | bc -l)
   ytile_max=$(echo "scale=0; ((1 - log(tan($_geo_lat_s_bc * pi() / 180) + 1 / cos($_geo_lat_s_bc * pi() / 180)) / pi()) / 2 * 2^$zoom)" | bc -l)
 
-  log_debug "Tile coordinates: x=$xtile_min-$xtile_max, y=$ytile_min-$ytile_max"
+  log_debug 'Tile coordinates: x=%s-%s, y=%s-%s' "$xtile_min" "$xtile_max" "$ytile_min" "$ytile_max"
 
   # Calculate tile amounts
   local _xtile_amount=$((_xtile_max - _xtile_min + 1))
   local _ytile_amount=$((_ytile_max - _ytile_min + 1))
   local _tile_amount=$((_xtile_amount * _ytile_amount))
 
-  log_info "Downloading $_tile_amount tiles..."
+  log_info 'Downloading %s tiles...' "$_tile_amount"
 
   # Create temporary directory
   local _temp_dir="/tmp/map_download_$$"
@@ -184,20 +184,20 @@ download_osm_map() {
         _url="http://a.tile.opencyclemap.org/cycle/$zoom/$xtile/$ytile.png"
         ;;
       *)
-        log_error "Unsupported map type: $map_type"
+        log_error 'Unsupported map type: %s' "$map_type"
         return 1
         ;;
       esac
 
       local _progress=$((100 * _tile_index / _tile_amount))
       if [[ "$verbose" == "1" ]]; then
-        log_info "Downloading tile $((_tile_index + 1))/$_tile_amount ($_progress%) - $_url"
+        log_info 'Downloading tile %s/%s (%s%%) - %s' "$((_tile_index + 1))" "$_tile_amount" "$_progress" "$_url"
       else
-        printf "\rDownloading tiles: %d/%d (%d%%)" $((_tile_index + 1)) "$_tile_amount" "$_progress"
+        log_info -r 'Downloading tiles: %d/%d (%d%%)' $((_tile_index + 1)) "$_tile_amount" "$_progress"
       fi
 
       if ! curl -s "$_url" -o "$_tile_file"; then
-        log_warning "Failed to download tile: $_url"
+        log_warning 'Failed to download tile: %s' "$_url"
       fi
 
       ((_tile_index++))
@@ -211,7 +211,7 @@ download_osm_map() {
   # Create final map
   local output_file="$output_dir/osm_map_${zoom}_${geo_long_w//,/_}_${geo_lat_s//,/_}_${geo_long_e//,/_}_${geo_lat_n//,/_}_${map_type}.png"
 
-  log_info "Creating final map: $output_file"
+  log_info 'Creating final map: %s' "$output_file"
 
   # Combine tiles using ImageMagick
   local temp_files=()
@@ -234,9 +234,9 @@ download_osm_map() {
 
   if [[ ${#temp_files[@]} -gt 0 ]]; then
     convert "${temp_files[@]}" -append "$output_file"
-    log_success "OSM map saved: $output_file"
+    log_success -s "$output_file" "OSM map saved"
   else
-    log_error "No tiles were successfully downloaded"
+    log_error 'No tiles were successfully downloaded'
     return 1
   fi
 
@@ -246,15 +246,15 @@ download_osm_map() {
 
 # Function to download GeoApify map
 download_geoapify_map() {
-  log_info "Downloading GeoApify map..."
+  log_info 'Downloading GeoApify map...'
 
   if [[ -z "$api_key" ]]; then
-    log_error "API key is required for GeoApify"
+    log_error 'API key is required for GeoApify'
     return 1
   fi
 
   if [[ -z "$center_lat" || -z "$center_lng" ]]; then
-    log_error "Center coordinates are required for GeoApify"
+    log_error 'Center coordinates are required for GeoApify'
     return 1
   fi
 
@@ -272,17 +272,17 @@ download_geoapify_map() {
   # Build URL
   local url="https://maps.geoapify.com/v1/staticmap?style=osm-carto&center=lonlat:${center_lng},${center_lat}&zoom=${zoom}&width=${width}&height=${height}&apiKey=${api_key}${markers_param}"
 
-  log_debug "GeoApify URL: $url"
+  log_debug 'GeoApify URL: <u>%s</u>' "$url"
 
   # Create output filename
   local output_file="$output_dir/geoapify_map_${zoom}_${center_lat}_${center_lng}_${width}x${height}.jpg"
 
   # Download map
-  log_info "Downloading map from GeoApify..."
+  log_info 'Downloading map from GeoApify...'
   if curl -s -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) Gecko/20100101 Firefox/87.0' "$url" -o "$output_file"; then
-    log_success "GeoApify map saved: $output_file"
+    log_success 'GeoApify map saved: <u>%s</u>' "$output_file"
   else
-    log_error "Failed to download map from GeoApify"
+    log_error 'Failed to download map from GeoApify'
     return 1
   fi
 }
@@ -294,7 +294,7 @@ parse_arguments() {
     -p | --provider)
       provider="$2"
       if [[ "$provider" != "geoapify" && "$provider" != "osm" ]]; then
-        log_error "Invalid provider: $provider. Must be 'geoapify' or 'osm'"
+        log_error 'Invalid provider: %s. Must be <b>geoapify</b> or <b>osm</b>' "$provider"
         exit 1
       fi
       shift 2
@@ -302,7 +302,7 @@ parse_arguments() {
     -z | --zoom)
       zoom="$2"
       if ! [[ "$zoom" =~ ^[0-9]+$ ]] || [[ "$zoom" -lt 0 ]] || [[ "$zoom" -gt 20 ]]; then
-        log_error "Invalid zoom level: $zoom. Must be between 0 and 20"
+        log_error 'Invalid zoom level: %s. Must be between 0 and 20' "$zoom"
         exit 1
       fi
       shift 2
@@ -310,7 +310,7 @@ parse_arguments() {
     -t | --type)
       map_type="$2"
       if [[ "$map_type" != "standard" && "$map_type" != "cycle" ]]; then
-        log_error "Invalid map type: $map_type. Must be 'standard' or 'cycle'"
+        log_error 'Invalid map type: %s. Must be <b>standard</b> or <b>cycle</b>' "$map_type"
         exit 1
       fi
       shift 2
@@ -322,7 +322,7 @@ parse_arguments() {
     -w | --width)
       width="$2"
       if ! [[ "$width" =~ ^[0-9]+$ ]] || [[ "$width" -lt 1 ]]; then
-        log_error "Invalid width: $width. Must be a positive integer"
+        log_error 'Invalid width: %s. Must be a positive integer' "$width"
         exit 1
       fi
       shift 2
@@ -330,7 +330,7 @@ parse_arguments() {
     --height)
       height="$2"
       if ! [[ "$height" =~ ^[0-9]+$ ]] || [[ "$height" -lt 1 ]]; then
-        log_error "Invalid height: $height. Must be a positive integer"
+        log_error 'Invalid height: %s. Must be a positive integer' "$height"
         exit 1
       fi
       shift 2
@@ -363,11 +363,11 @@ parse_arguments() {
       show_usage
       ;;
     -*)
-      log_error "Unknown option: $1"
+      log_error 'Unknown option: %s' "$1"
       show_usage
       ;;
     *)
-      log_error "Unexpected argument: $1"
+      log_error 'Unexpected argument: %s' "$1"
       show_usage
       ;;
     esac
@@ -376,7 +376,7 @@ parse_arguments() {
 
 
 map_main() {
-  log_title "Map Downloader"
+  log_title 'Map Downloader'
 
   # Parse arguments
   parse_arguments "$@"
@@ -395,8 +395,7 @@ map_main() {
   # Validate inputs based on provider
   if [[ "$provider" == "osm" ]]; then
     if [[ -z "$geo_long_w" || -z "$geo_lat_s" || -z "$geo_long_e" || -z "$geo_lat_n" ]]; then
-      log_error "Bounding box coordinates are required for OSM provider"
-      log_error "Use --bounds W,S,E,N to specify coordinates"
+      log_error 'Bounding box coordinates are required for OSM provider. Use <code>--bounds W,S,E,N</code> to specify coordinates.'
       show_usage
     fi
 
@@ -407,14 +406,13 @@ map_main() {
     download_osm_map
   elif [[ "$provider" == "geoapify" ]]; then
     if [[ -z "$api_key" ]]; then
-      log_error "API key is required for GeoApify provider"
-      log_error "Use --api-key YOUR_KEY to specify API key"
+      log_error 'API key is required for GeoApify provider. Use <code>--api-key YOUR_KEY</code> to specify API key.'
       show_usage
     fi
 
     if [[ -z "$center_lat" || -z "$center_lng" ]]; then
-      log_error "Center coordinates are required for GeoApify provider"
-      log_error "Use --center LAT,LNG to specify coordinates"
+      log_error 'Center coordinates are required for GeoApify provider.'
+      log_error 'Use --center LAT,LNG to specify coordinates.'
       show_usage
     fi
 

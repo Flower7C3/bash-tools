@@ -303,7 +303,7 @@ function set_note_type() {
   local _icon_key="MUSIC_NOTE_${_note_length_name}"
   note_type_icon="$(echo -e "${!_icon_key}")"
   update_note_length
-  log_debug "\rSet note type as <b>%s</b> %s (%s ms)" "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
+  log_debug -r 'Set note type as <b>%s</b> %s (%s ms)' "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
 }
 function set_note_speed() {
   local _speed="$1"
@@ -315,7 +315,7 @@ function set_note_speed() {
   fi
   note_speed="$_speed"
   update_note_length
-  log_debug "\rSet speed as <b>%s</b>" "$note_speed"
+  log_debug -r 'Set speed as <b>%s</b>' "$note_speed"
 }
 function set_note_octave() {
   note_octave_no="$1"
@@ -325,7 +325,7 @@ function set_note_octave() {
   if [[ "$note_octave_no" -gt '9' ]]; then
     note_octave_no='9'
   fi
-  log_debug "\rSet octave as <b>%s</b> (%d)" "${OCTAVE_NAMES[$((note_octave_no-1))]}" "$note_octave_no"
+  log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no-1))]}" "$note_octave_no"
 }
 function set_note_tone() {
   local _tone_key="${1:0:1}"
@@ -498,20 +498,20 @@ function config_load() {
     time_mode='sec'
     command_name='play'
   else
-    log_error "Musical command not found! Please install beep (apt install beep) or play (brew install sox)."
+    log_error 'Musical command not found! Please install <b>beep</b> (<code>apt install beep</code>) or <b>play</b> (<code>brew install sox</code>).'
     exit 1
   fi
   local _note_type="4"
   local _note_speed="120"
   local _note_octave_no="4"
-  while [[ "${1:-}" != "" ]]; do
+  while [[ $# -gt 0 ]]; do
     case ${1} in
     -h | --help)
       show_usage
       exit 0
       ;;
     -u | --update)
-      log_info "Downloading new app version"
+      log_info 'Downloading new app version'
       curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper" >$0
       exit
       ;;
@@ -551,14 +551,14 @@ function finish() {
 trap finish EXIT
 
 beeper_main() {
-  log_title "Beeper"
+  log_title 'Beeper'
 
   if ! config_load "$@"; then
     # Help was shown, exit
     return 0
   fi
 
-  log_info "Press [CTRL+C] to stop.."
+  log_info 'Press <b>CTRL+C</b> to stop..'
   if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
     DEBUG=${DEBUG:-0}
     file_read

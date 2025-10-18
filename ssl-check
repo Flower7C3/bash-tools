@@ -33,7 +33,7 @@ show_usage() {
     echo
     echo "Check SSL/TLS certificates for domains"
     echo
-    log_header "Options"
+    log_header 'Options'
     log_usage_options_line "Port to check (default: $DEFAULT_PORT)" "-p" "--port <PORT>"
     log_usage_options_line "Connection timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
     log_usage_options_line "Batch mode for multiple domains" "-b" "--batch"
@@ -43,7 +43,7 @@ show_usage() {
     log_usage_options_line "Skip expiry date checking" "-e" "--no-expiry"
     log_usage_options_line "Show this help message" "-h" "--help"
     echo ""
-    log_header "Examples"
+    log_header 'Examples'
     log_usage_example_line "$0 example.com"
     log_usage_example_line "$0 -p 8443 example.com"
     log_usage_example_line "$0 -b -f json domains.txt"
@@ -75,7 +75,7 @@ get_certificate_info() {
     # Get certificate details
     local cert_info
     if ! cert_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\" | openssl x509 -noout -text 2>/dev/null')" 2>/dev/null); then
-        log_error "Failed to retrieve certificate for $domain:$port"
+        log_error 'Failed to retrieve certificate for %s:%d' "$domain" "$port"
         return 1
     fi
     
@@ -185,7 +185,7 @@ check_certificate_chain() {
     
     local chain_info
     if ! chain_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\"')" 2>/dev/null); then
-        log_error "Failed to retrieve certificate chain for $domain:$port"
+        log_error 'Failed to retrieve certificate chain for %s:%d'
         return 1
     fi
     
@@ -203,7 +203,7 @@ check_certificate_revocation() {
     # Get certificate
     local cert
     if ! cert=$(timeout "$timeout" openssl s_client -servername "$domain" -connect "$domain:$port" 2>/dev/null <<< "Q" | openssl x509 -outform PEM 2>/dev/null); then
-        log_error "Failed to retrieve certificate for revocation check"
+        log_error 'Failed to retrieve certificate for revocation check'
         return 1
     fi
     
@@ -223,14 +223,14 @@ check_certificate_revocation() {
 
 # Function to process batch file
 process_batch() {
-    local file="$1"
+    local _file="$1"
     
-    if [[ ! -f "$file" ]]; then
-        log_error "Batch file not found: $file"
+    if [[ ! -f "$_file" ]]; then
+        log_error 'Batch file not found: <u>%s</u>' "$_file"
         return 1
     fi
     
-    log_info "Processing batch file: $file"
+    log_info -s "$_file" 'Processing batch file'
     
     # Add CSV header if output format is CSV
     if [[ "$output_format" == "csv" ]]; then
@@ -258,7 +258,7 @@ process_batch() {
         
         # Check certificate
         if ! get_certificate_info "$domain" "$port" "$timeout"; then
-            log_warning "Failed to check certificate for $domain:$port"
+            log_warning 'Failed to check certificate for %s:%d' "$domain" "$port"
         fi
         
         # Add separator for text format
@@ -266,7 +266,7 @@ process_batch() {
             echo "----------------------------------------"
         fi
         
-    done < "$file"
+    done < "$_file"
 }
 
 # Parse command line arguments
@@ -276,15 +276,14 @@ parse_arguments() {
             -p|--port)
                 port="$2"
                 if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
-                    log_error "Invalid port number: $port"
-                    exit 1
+                    die 1 'Invalid port number: %d' "$port"
                 fi
                 shift 2
                 ;;
             -t|--timeout)
                 timeout="$2"
                 if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
-                    log_error "Invalid timeout value: $timeout"
+                    log_error 'Invalid timeout value: %s' "$timeout"
                     exit 1
                 fi
                 shift 2
@@ -296,7 +295,7 @@ parse_arguments() {
             -f|--format)
                 output_format="$2"
                 if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
-                    log_error "Invalid output format: $output_format"
+                    log_error 'Invalid output format: %s' "$output_format"
                     exit 1
                 fi
                 shift 2
@@ -313,14 +312,14 @@ parse_arguments() {
                 show_usage
                 ;;
             -*)
-                log_error "Unknown option: $1"
+                log_error 'Unknown option: %s' "$1"
                 show_usage
                 ;;
             *)
                 if [[ -z "$domain_name" ]]; then
                     domain_name="$1"
                 else
-                    log_error "Multiple domains specified. Use batch mode for multiple domains."
+                    log_error 'Multiple domains specified. Use batch mode for multiple domains.'
                     exit 1
                 fi
                 shift
@@ -331,7 +330,7 @@ parse_arguments() {
 
 # Main function
 ssl_main() {
-    log_title "SSL Certificate Checker"
+    log_title 'SSL Certificate Checker'
     
     # Check if OpenSSL is available
     check_dependencies openssl
@@ -341,14 +340,14 @@ ssl_main() {
     
     # Validate input
     if [[ -z "$domain_name" && "$batch_mode" -eq 0 ]]; then
-        log_error "No domain specified"
+        log_error 'No domain specified'
         show_usage
     fi
     
     # Process batch mode
     if [[ "$batch_mode" -eq 1 ]]; then
         if [[ -z "$domain_name" ]]; then
-            log_error "Batch mode requires a file path"
+            log_error 'Batch mode requires a file path'
             show_usage
         fi
         process_batch "$domain_name"

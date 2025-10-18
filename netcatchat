@@ -22,7 +22,7 @@ main() {
 }
 
 function show_usage() {
-  log_header "Commands"
+  log_header 'Commands'
   log_usage_options_line "write message to user, use <b>@all</b> to broadcast"\
     '@nickname message'
   log_usage_options_line 'setup app port' \
@@ -77,7 +77,7 @@ option=''
 
 ### CONFIG ###
 function config_load() {
-  log_title "NetCat Chat"
+  log_title 'NetCat Chat'
 
   # Check for help option
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -105,19 +105,19 @@ function config_load() {
   fi
   if [[ "${#chat_users[*]}" -eq "0" ]]; then
     # shellcheck disable=SC2059
-    log_info "You have no recipients on contact list, type <b>/create</b> to add new person"
+    log_info 'You have no recipients on contact list, type <b>/create</b> to add new person'
   fi
-  while [[ "${1:-}" != "" ]]; do
+  while [[ $# -gt 0 ]]; do
     case ${1} in
     -h | --help)
-      log_info "$0 [-p <port>] [-n <@nickname>]"
+      log_info '%s [-p <port>] [-n <@nickname>]' "$0"
       log_usage_options_line "sender port, default <b>$sender_port</b>" '-p <port>' '--port <port>'
       log_usage_options_line "sender @nickname, default <b>$sender_nickname</b>" '-n <@nickname>' '--nickname <@nickname>'
       log_usage_options_line "update app" '-u' '--update'
       exit 0
       ;;
     -u | --update)
-      log_info "Downloading new app version"
+      log_info 'Downloading new app version'
       curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/netcatchat" >"$0"
       exit 0
       ;;
@@ -126,7 +126,7 @@ function config_load() {
       local _sender_port_error
       _sender_port_error=$(validate_port "$1")
       if [[ -n "$_sender_port_error" ]]; then
-        log_error "Invalid sender port from argv"
+        log_error 'Invalid sender port from argv'
         exit 2
       else
         readonly sender_port=$1
@@ -137,7 +137,7 @@ function config_load() {
       local _sender_nickname_error
       _sender_nickname_error=$(validate_nickname "$1" "$NICKNAME_CHECK_MODE_IGNORE")
       if [[ -n "$_sender_nickname_error" ]]; then
-        log_error "Invalid sender nickname from argv"
+        log_error 'Invalid sender nickname from argv'
         exit 2
       else
         readonly sender_nickname=$1
@@ -184,16 +184,16 @@ function netcat_start() {
     log_success --status "$nc_pid" "Started netcat server on %d port" "$sender_port"
     message_from_system "<b>${sender_nickname}</b> in now connected to netcatchat from <u>${sender_hostname} ${sender_port}</u>"
   else
-    log_error "Sender port is not defined"
+    log_error 'Sender port is not defined'
     app_setup_port
   fi
 }
 function netcat_kill() {
   if [[ "$nc_pid" -gt "0" ]]; then
     message_from_system "<b>${sender_nickname}</b> has left the building!"
-    play_loading_animation_loop --message 'Closing netcat server'
+    loading_animation_loop --message 'Closing netcat server'
     kill ${nc_pid}
-    kill_loading_animation_loop --message 'Closed netcat server' --status "$nc_pid"
+    loading_animation_loop --message 'Closed netcat server' --status "$nc_pid"
   fi
 }
 
@@ -221,7 +221,7 @@ function history_save() {
   history -w "$history_file_path"
 }
 function history_clear() {
-  log_success "History removed"
+  log_success 'History removed'
   history -c
 }
 
@@ -240,16 +240,16 @@ function validate_nickname() {
   local _name
   _name=$(nickname_to_name "$_nickname")
   if [[ ! "$_nickname" == @* ]]; then
-    log_error "Nickname <b>$_nickname</b> is invalid, all nicknames starts with @ sign"
+    log_error 'Nickname <b>%s</b> is invalid, all nicknames starts with <b>@</b> sign' "$_nickname"
     #    return 1
   elif [[ "$_nickname" == "$NETCAT_CHAT_SYSTEM_NICKNAME" ]] || [[ "$_nickname" == "$NETCAT_CHAT_BROADCAST_NICKNAME" ]]; then
-    log_error "Values <b>$NETCAT_CHAT_SYSTEM_NICKNAME</b> and <b>$NETCAT_CHAT_BROADCAST_NICKNAME</b> are reserved nicknames"
+    log_error 'Values <b>%s</b> and <b>%s</b> are reserved nicknames' "$NETCAT_CHAT_SYSTEM_NICKNAME" "$NETCAT_CHAT_BROADCAST_NICKNAME"
     #    return 2
   elif [[ "${#chat_users}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS" ]]; then
-    log_error "Recipient <b>$_nickname</b> is already defined"
+    log_error 'Recipient <b>%s</b> is already defined' "$_nickname"
     #    return 3
   elif [[ "${#chat_users}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS" ]]; then
-    log_error "Recipient <b>$_nickname</b> is not defined"
+    log_error 'Recipient <b>%s</b> is not defined' "$_nickname"
     #    return 4
     #  else
     #    return 0
@@ -326,7 +326,7 @@ function recipients_list() {
   local _flag="${1:-}"
   if [[ "${#chat_users[*]}" -eq "0" ]]; then
     # shellcheck disable=SC2059
-    log_error "$(printf "No recipients found, use <b>/create</b> to define new recipient")"
+    log_error 'No recipients found, use <b>/create</b> to define new recipient'
   else
     for _recipient_name in "${!chat_users[@]}"; do
       # check status
@@ -776,7 +776,7 @@ netcatchat_main() {
       if [[ -n "$option_message_text" ]] && [[ "$option_message_text" != "@" ]] && [[ "$option_recipient_nickname" != "$option_message_text" ]]; then
         message_to_user "$sender_nickname" "$option_recipient_nickname" "$option_message_text"
       else
-        log_error "Empty message"
+        log_error 'Empty message'
       fi
       option_reset
       ;;
@@ -785,7 +785,7 @@ netcatchat_main() {
       ;;
     *)
       # shellcheck disable=SC2059
-      log_error "Command not found. Use <b>/help</b> to see available commands."
+      log_error 'Command not found. Use <code>/help</code> to see available commands.'
       option_reset
       ;;
     esac

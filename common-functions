@@ -88,8 +88,9 @@ log_message() {
   local _line_append="\n"
   local _text
   local _status=""
-  while [[ "${1:-}" != "" ]]; do
-    case ${1} in
+  local POSITIONAL_ARGS=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
     -c | --color)
       shift
       _color_value="$(styler text "$1")"
@@ -115,10 +116,11 @@ log_message() {
       shift
       _status="$1"
       ;;
-    *) break ;;
+    *) POSITIONAL_ARGS+=("$1") ;;
     esac
     shift
   done
+  set -- "${POSITIONAL_ARGS[@]}"
   # shellcheck disable=SC2059
   _text="$(_text_format "$_color_value" "$@")"
   if [[ -n "$_icon" ]]; then
@@ -142,8 +144,9 @@ prepare_log_message() {
   shift
   local _icon="$1"
   shift
-  while [[ "${1:-}" != "" ]]; do
-    case ${1} in
+  local POSITIONAL_ARGS=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
     -c | --color)
       shift
       _color="$1"
@@ -152,32 +155,33 @@ prepare_log_message() {
       shift
       _icon="$1"
       ;;
-    *) break ;;
+    *) POSITIONAL_ARGS+=("$1") ;;
     esac
     shift
   done
+  set -- "${POSITIONAL_ARGS[@]}"
   log_message --color "$_color" --icon "$_icon" "$@"
 }
 
 log_info() {
-  prepare_log_message "CYAN" "$ICON_INFO" "$@"
+  prepare_log_message 'CYAN' "$ICON_INFO" "$@"
 }
 
 log_success() {
-  prepare_log_message "GREEN" "$ICON_SUCCESS" "$@"
+  prepare_log_message 'GREEN' "$ICON_SUCCESS" "$@"
 }
 
 log_warning() {
-  prepare_log_message "BLUE" "$ICON_WARNING" "$@"
+  prepare_log_message 'BLUE' "$ICON_WARNING" "$@"
 }
 
 log_error() {
-  prepare_log_message "RED" "$ICON_ERROR" "$@"
+  prepare_log_message 'RED' "$ICON_ERROR" "$@"
 }
 
 log_debug() {
   if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
-    prepare_log_message "PURPLE" "$ICON_DEBUG" "$@"
+    prepare_log_message 'PURPLE' "$ICON_DEBUG" "$@"
   fi
 }
 
@@ -203,7 +207,7 @@ log_title() {
   local _padding=$(((_total_width - _title_length) / 2))
 
   log_message --color "WHITE" "<b>╔%s╗</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
-  log_message --color "WHITE" "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" $_padding "" "$_title_text" $_padding ""
+  log_message --color "WHITE" "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" "$_padding" " " "$_title_text" "$_padding" " "
   log_message --color "WHITE" "<b>╚%s╝</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
 }
 
@@ -216,104 +220,101 @@ log_usage_line() {
 }
 
 log_usage_options_line() {
-  local description="$1"
+  local _description="$1"
   shift
-  local parameters
-  parameters="$(printf "%s, " "$@")"
-  log_message "  <b>%-*s</b> %s" "30" "${parameters::-2}" "$description"
+  local _parameters
+  _parameters="$(printf "%s, " "$@")"
+  log_message '  <b>%-*s</b> %s' "30" "${_parameters::-2}" "$_description"
 }
 
 log_usage_example_line() {
-  log_message --color "CYAN" --icon " \$" "<code>%s</code>" "$@"
+  log_message --color 'CYAN' --icon ' $' '<code>%s</code>' "$@"
 }
 
 # Die with error message
 die() {
+  local _error_code="$1"
+  shift
   log_error "$@"
-  exit 1
+  exit "$_error_code"
 }
 
 ##----Loading animation------------------------------------------------------------------------------------------------------------
+loading_animation_pid=""
+loading_animation_message=""
 
-play_loading_animation_loop() {
-  while [ $# -gt 0 ]; do
+loading_animation_loop() {
+  local _exit_code=0
+  local _exit_trap=0
+  local _status=""
+  local POSITIONAL_ARGS=()
+  while [[ $# -gt 0 ]]; do
     case $1 in
-    -t | --time)
-      shift
-      loading_animation_timer="$1"
-      ;;
     -m | --message)
       shift
       loading_animation_message="$1"
       ;;
+    -t | --time)
+      shift
+      countdown="$1"
+      ;;
+    -c | --_exit_code)
+      shift
+      _exit_code="$1"
+      ;;
+    -s | --status)
+      shift
+      _status="$1"
+      ;;
+    -x) _exit_trap=1 ;;
+    *) POSITIONAL_ARGS+=("$1") ;;
     esac
     shift
   done
-  (
-    _step=0
-    while true; do
-      for _frame in "${LOADING_ANIMATION[@]}"; do
-        if [[ "$loading_animation_message" != "" ]]; then
-          log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
-          sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
-        else
-          log_message --color "CYAN" --one-line "waiting %s" "$(echo "$loading_animation_timer - $_step" | bc -z)"
-          sleep "1"
-        fi
-        _step="$((_step + 1))"
-        printf "\r"
-      done
-    done
-  ) &
-  loading_animation_pid=$!
-}
-
-kill_loading_animation_loop() {
-  if [[ -n "${loading_animation_pid:-}" ]]; then
+  set -- "${POSITIONAL_ARGS[@]}"
+  if [[ -n "$loading_animation_pid" ]]; then
     kill "$loading_animation_pid" &>/dev/null
     printf "\r%100s\r$(styler reset)" ""
-    code=0
-    status=""
-    while [ $# -gt 0 ]; do
-      case $1 in
-      -c | --code)
-        shift
-        code="$1"
-        ;;
-      -s | --status)
-        shift
-        status="$1"
-        ;;
-      -m | --message)
-        shift
-        loading_animation_message="$1"
-        ;;
-      esac
-      shift
-    done
     if [[ "$loading_animation_message" != "" ]]; then
-      if [[ "$code" -gt "0" ]]; then
-        log_error --status "$status" "$loading_animation_message"
-      elif [[ "$code" -lt "0" ]]; then
-        log_warning --status "$status" "$loading_animation_message"
+      if [[ "$_exit_code" -gt "0" ]]; then
+        log_error --status "$_status" "$loading_animation_message" "$@"
+      elif [[ "$_exit_code" -lt "0" ]]; then
+        log_warning --status "$_status" "$loading_animation_message" "$@"
       else
-        log_success --status "$status" "$loading_animation_message"
+        log_success --status "$_status" "$loading_animation_message" "$@"
       fi
+      loading_animation_pid=""
+      loading_animation_message=""
     fi
-    loading_animation_pid=""
-    loading_animation_message=""
-    loading_animation_timer=""
+  elif [[ "$_exit_trap" -eq "0" ]]; then
+    (
+      _step=0
+      while true; do
+        for _frame in "${LOADING_ANIMATION[@]}"; do
+          if [[ -n "$loading_animation_message" ]]; then
+            log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
+            sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
+          else
+            log_message --color "CYAN" --one-line "waiting %s" "$(echo "$countdown - $_step" | bc -z)"
+            sleep "1"
+          fi
+          _step="$((_step + 1))"
+          printf "\r"
+        done
+      done
+    ) &
+    loading_animation_pid=$!
   fi
 }
 
 wait_moment() {
-  play_loading_animation_loop --time "$RETRY_INTERVAL"
+  loading_animation_loop --time "$RETRY_INTERVAL"
   sleep "$RETRY_INTERVAL"
-  kill_loading_animation_loop --code 0
+  loading_animation_loop --code 0
 }
 
-trap "kill_loading_animation_loop;exit" SIGINT
-trap "kill_loading_animation_loop;exit" EXIT
+trap "loading_animation_loop -x;exit" SIGINT
+trap "loading_animation_loop -x;exit" EXIT
 
 ##----IO------------------------------------------------------------------------------------------------------------
 
@@ -354,6 +355,8 @@ confirm_or_exit() {
   while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
     prompt_input _response "$_message" "$_default_value" "Y" "y" "N" "n"
     [[ "$_response" =~ ^[Yy]?$ ]] && break
+    [[ "$_response" =~ ^[Nn]?$ ]] && exit 0
+    log_warning 'Invalid option selected'
   done
 }
 
@@ -365,26 +368,29 @@ command_exists() {
 }
 
 check_dependencies() {
-  local deps=("$@")
-  local missing_deps=()
+  local _deps=("$@")
+  local _missing_deps=()
+  local _missing_items
 
-  for dep in "${deps[@]}"; do
+  for dep in "${_deps[@]}"; do
     if ! command_exists "$dep"; then
-      missing_deps+=("$dep")
+      _missing_deps+=("$dep")
     fi
   done
 
-  if [[ ${#missing_deps[@]} -gt 0 ]]; then
-    missing_items="$(printf "<b>%s</b>, " "${missing_deps[@]}")"
-    die "Missing dependencies: %s. Please install them and try again." "${missing_items::-2}"
+  if [[ ${#_missing_deps[@]} -gt 0 ]]; then
+    _missing_items="$(printf "<b>%s</b>, " "${_missing_deps[@]}")"
+    die 13 "Missing dependencies: %s. Please install them and try again." "${_missing_items::-2}"
   fi
 }
 
+##----Validation------------------------------------------------------------------------------------------------------------
+
 # Validate URL format
 validate_url() {
-  local url="$1"
-  if [[ ! "$url" =~ ^https?:// ]]; then
-    log_error "Invalid URL format: $url (must start with http:// or https://)"
+  local _url="$1"
+  if [[ ! "$_url" =~ ^https?:// ]]; then
+    log_error 'Invalid URL format: <u>%s</u>. It must start with <b>http://</b> or <b>https://</b>' "$_url"
     return 1
   fi
   return 0
@@ -392,13 +398,13 @@ validate_url() {
 
 # Validate domain format
 validate_domain() {
-  local domain="$1"
-  if [[ -z "$domain" ]]; then
-    log_error "Domain cannot be empty"
+  local _domain="$1"
+  if [[ -z "$_domain" ]]; then
+    log_error 'Domain name cannot be empty'
     return 1
   fi
-  if [[ ! "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
-    log_error "Invalid domain format: $domain"
+  if [[ ! "$_domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+    log_error 'Invalid domain name format: <u>%s</u>' "$_domain"
     return 1
   fi
   return 0
@@ -406,13 +412,13 @@ validate_domain() {
 
 # Validate WordPress directory
 validate_wp_directory() {
-  local wp_dir="$1"
-  if [[ ! -d "$wp_dir" ]]; then
-    log_error "WordPress directory <u>$wp_dir</u> does not exist"
+  local _wp_dir="$1"
+  if [[ ! -d "$_wp_dir" ]]; then
+    log_error 'WordPress directory does not exist: <u>%s</u>' "$_wp_dir"
     return 1
   fi
-  if [[ ! -f "$wp_dir/wp-config.php" ]]; then
-    log_error "Given directory <u>$wp_dir</u> is not a valid WordPress installation (wp-config.php not found)"
+  if [[ ! -f "$_wp_dir/wp-config.php" ]]; then
+    log_error 'Given directory is not a valid WordPress installation: <u>%s</u>. It must contain <u>%s</u> file.' "$_wp_dir" "wp-config.php"
     return 1
   fi
   return 0
@@ -420,9 +426,9 @@ validate_wp_directory() {
 
 # Validate directory exists
 validate_directory() {
-  local dir="$1"
-  if [[ ! -d "$dir" ]]; then
-    log_error "Directory does not exist: $dir"
+  local _dir="$1"
+  if [[ ! -d "$_dir" ]]; then
+    log_error 'Directory does not exist: <u>%s</u>' "$_dir"
     return 1
   fi
   return 0
@@ -430,9 +436,9 @@ validate_directory() {
 
 # Validate file exists
 validate_file() {
-  local file="$1"
-  if [[ ! -f "$file" ]]; then
-    log_error "File does not exist: $file"
+  local _file="$1"
+  if [[ ! -f "$_file" ]]; then
+    log_error 'File does not exist: <u>%s</u>' "$_file"
     return 1
   fi
   return 0
@@ -440,11 +446,11 @@ validate_file() {
 
 # Validate positive number
 validate_positive_number() {
-  local num="$1"
-  local name="${2:-number}"
+  local _num="$1"
+  local _name="${2:-number}"
 
-  if ! [[ "$num" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (($(echo "$num <= 0" | bc -l))); then
-    log_error "$name must be a positive number"
+  if ! [[ "$_num" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (($(echo "$_num <= 0" | bc -l))); then
+    log_error '%s must be a positive number' "$_name"
     return 1
   fi
   return 0

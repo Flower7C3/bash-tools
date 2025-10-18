@@ -32,12 +32,12 @@ show_usage() {
   echo ""
   echo "This script creates wallpapers for vertical screens layout with aligned centers."
   echo ""
-  log_header "Options"
+  log_header 'Options'
   log_usage_options_line "Physical screen dimensions in inches (default: auto-detect)" "-i" "--inches <int external> <int builtin>"
   log_usage_options_line "Cropping position (default: center-top)" "-p" "--position <POSITION>"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo ""
-  log_header "Available cropping positions"
+  log_header 'Available cropping positions'
   log_usage_options_line "Left top" "lt" "left-top"
   log_usage_options_line "Center top" "ct" "center-top"
   log_usage_options_line "Right top" "rt" "right-top"
@@ -48,12 +48,12 @@ show_usage() {
   log_usage_options_line "Center bottom" "cb" "center-bottom"
   log_usage_options_line "Right bottom" "rb" "right-bottom"
   echo ""
-  log_header "Examples"
+  log_header 'Examples'
   log_usage_example_line "$0 wallpaper.jpg"
   log_usage_example_line "$0 --inches 27 16 wallpaper.jpg"
   log_usage_example_line "$0 --inches 27 16 --position left-top wallpaper.jpg"
   echo ""
-  log_info "If you don't specify physical dimensions, the script will try to detect them automatically."
+  log_info 'If you don'\''t specify physical dimensions, the script will try to detect them automatically.'
   exit 0
 }
 
@@ -68,9 +68,9 @@ parse_arguments() {
     case $1 in
     --inches | -i)
       if [[ $# -lt 3 ]]; then
-        log_error "--inches requires two arguments"
-        log_info "Usage: --inches <external> <builtin>"
-        log_info "Example: --inches 27 16"
+        log_error '<code>--inches</code> requires two arguments'
+        log_info 'Usage: --inches <external> <builtin>'
+        log_info 'Example: --inches 27 16'
         exit 1
       fi
       external_inches="$2"
@@ -79,9 +79,9 @@ parse_arguments() {
       ;;
     --position | -p)
       if [[ $# -lt 2 ]]; then
-        log_error "--position requires one argument"
-        log_info "Usage: --position <position>"
-        log_info "Valid positions: left-top, center-top, right-top, left-middle, center-middle, right-middle, left-bottom, center-bottom, right-bottom, all"
+        log_error '<code>--position</code> requires one argument'
+        log_info 'Usage: --position <position>'
+        log_info 'Valid positions: left-top, center-top, right-top, left-middle, center-middle, right-middle, left-bottom, center-bottom, right-bottom, all'
         exit 1
       fi
       crop_position="$2"
@@ -91,24 +91,24 @@ parse_arguments() {
       show_usage
       ;;
     -*)
-      log_error "Unknown option $1"
-      log_info "Use --help to show help"
+      log_error 'Unknown option: %s' "$1"
+      log_info 'Use <code>--help</code> to show help'
       exit 1
       ;;
     *)
       if [[ -z "$source_image" ]]; then
         # Check if argument looks like an option
         if [[ "$1" == -* ]]; then
-          log_error "'$1' looks like an option but is not recognized"
-          log_info "Use --help to see available options"
+          log_error 'The <code>%s</code> looks like an option but is not recognized' "$1"
+          log_info 'Use <code>--help</code> to see available options'
           exit 1
         fi
 
         source_image="$1"
       else
-        log_error "Too many arguments"
-        log_info "Expected: <source_image>"
-        log_info "Got: $source_image and $1"
+        log_error 'Too many arguments'
+        log_info 'Expected: <code><source_image></code>'
+        log_info 'Got: <b>%s</b> and <b>%s</b>' "$source_image" "$1"
         exit 1
       fi
       shift
@@ -119,7 +119,7 @@ parse_arguments() {
 
 # Main wallpaper crop function
 wallpaper_crop_main() {
-  log_title "WALLPAPER CROPPER"
+  log_title 'WALLPAPER CROPPER'
   parse_arguments "$@"
   # Validate system requirements
   if ! validate_system_requirements; then
@@ -138,45 +138,16 @@ function get_screen_dimensions() {
 
   if [ -n "$_display_info" ]; then
     # Extract all resolutions
-    local _all_resolutions
-    _all_resolutions=$(echo "$_display_info" | grep "Resolution:" | sed 's/.*Resolution: \([0-9]*\) x \([0-9]*\).*/\1 \2/')
-    local _res_array=($_all_resolutions)
-
-    # Check if we have at least 2 screens (4 values: width and height for each)
-    if [ ${#_res_array[@]} -ge 4 ]; then
-      # First screen is built-in, second is external
-      local _builtin_width=${_res_array[0]}
-      local _builtin_height=${_res_array[1]}
-      local _external_width=${_res_array[2]}
-      local _external_height=${_res_array[3]}
-
-      # Return in format: external_width external_height builtin_width builtin_height
-      echo "$_external_width $_external_height $_builtin_width $_builtin_height"
-      return
-    elif [ ${#_res_array[@]} -eq 2 ]; then
-      # Only one display detected - use it for both external and built-in
-      local _width=${_res_array[0]}
-      local _height=${_res_array[1]}
-
-      log_info "Single display detected, using same resolution for both external and built-in wallpapers"
-      # Return in format: external_width external_height builtin_width builtin_height
-      echo "$_width $_height $_width $_height"
-      return
-    fi
+    local _res_array
+    read -r -a _res_array <<<"$(echo "$_display_info" | grep "Resolution:" | sed 's/.*Resolution: \([0-9]*\) x \([0-9]*\).*/\1 \2/')"
+    printf "%s,%s,%s,%s" "${_res_array[0]:-}" "${_res_array[1]:-}" "${_res_array[2]:-}" "${_res_array[3]:-}"
+    return
   fi
 
-  # Fallback: try to get resolutions in another way
-  local _displays
-  _displays=$(system_profiler SPDisplaysDataType 2>/dev/null | grep "Resolution:" | sed 's/.*Resolution: \([0-9]*\) x \([0-9]*\).*/\1 \2/')
-
-  if [ -z "$_displays" ]; then
-    # Final fallback: use screen info command if available
-    if command -v screeninfo &>/dev/null; then
-      _displays=$(screeninfo | grep -E '[0-9]+x[0-9]+' | head -2 | sed 's/.*\([0-9]*\)x\([0-9]*\).*/\1 \2/')
-    fi
+  # Final fallback: use screen info command if available
+  if command -v screeninfo &>/dev/null; then
+    screeninfo | grep -E '[0-9]+x[0-9]+' | head -2 | sed 's/.*\([0-9]*\)x\([0-9]*\).*/\1 \2/'
   fi
-
-  echo "$_displays"
 }
 
 # Function automatically detects physical screen dimensions
@@ -335,7 +306,7 @@ function cropper() {
   # Create output filename
   local _output_filename="${_base_name}-${_position}-${_display_key}-${_width}x${_height}.jpg"
 
-  play_loading_animation_loop --message "Creating for <b>$_display_name</b> screen"
+  loading_animation_loop --message "Creating for <b>%s</b> screen" "$_display_name"
   # Crop image using ImageMagick
   if magick "$_source_image" -crop "${_width}x${_height}+${_x_start}+${_y_start}" "$_output_filename"; then
     # Verify output file was created and has content
@@ -343,12 +314,12 @@ function cropper() {
       # Check file size is reasonable (not too small)
       local _file_size
       _file_size=$(stat -f%z "$_output_filename" 2>/dev/null || stat -c%s "$_output_filename" 2>/dev/null || echo "0")
-      kill_loading_animation_loop --message "Created for <b>$_display_name</b> screen" --status "$_output_filename"
+      loading_animation_loop --message "Created for <b>%s</b> screen" "$_display_name" --status "$_output_filename"
     else
-      kill_loading_animation_loop --message "File for <b>$_display_name</b> screen not created or empty" -c 1
+      loading_animation_loop --message "File for <b>%s</b> screen not created or empty" "$_display_name" -c 1
     fi
   else
-    kill_loading_animation_loop "Failed to create wallpaper for <b>$_display_name</b> screen" -c 2
+    loading_animation_loop "Failed to create wallpaper for <b>%s</b> screen" "$_display_name" -c 2
   fi
 }
 
@@ -385,10 +356,10 @@ validate_arguments() {
 
   # Check if external screen is larger than built-in (reasonable assumption)
   if (($(echo "$_external <= $_builtin" | bc -l))); then
-    log_warning --icon "🖥" "External screen ($_external\") is not larger than built-in screen ($_builtin\")"
-    log_info "This might not be the intended configuration."
+    log_warning --icon "🖥" 'External screen (%s") is not larger than built-in screen (%s")' "$_external" "$_builtin"
+    log_info 'This might not be the intended configuration.'
     if ! confirm_or_exit "Continue anyway?" "n"; then
-      log_error "Operation cancelled by user"
+      log_error 'Operation cancelled by user'
       return 1
     fi
   fi
@@ -405,14 +376,14 @@ validate_arguments() {
   done
 
   if [[ "$_is_valid" == false ]]; then
-    log_error "Invalid cropping position '$_position'"
-    log_info "Valid positions: ${_valid_positions[*]}"
+    log_error 'Invalid cropping position %s' "$_position"
+    log_info 'Valid positions: %s' "${_valid_positions[*]}"
     return 1
   fi
 
   # Check if source image was provided
   if [[ -z "$_file_path" ]]; then
-    log_error "You must provide a source image"
+    log_error 'You must provide a source image'
     show_usage
   fi
 
@@ -423,20 +394,19 @@ validate_arguments() {
 
   # Check if file is readable
   if [[ ! -r "$_file_path" ]]; then
-    log_error "File '$_file_path' is not readable"
+    log_error 'File <u>%s</u> is not readable' "$_file_path"
     return 1
   fi
 
   # Check file size (must be > 0 bytes)
   if [[ ! -s "$_file_path" ]]; then
-    log_error "File '$_file_path' is empty"
+    log_error 'File <u>%s</u> is empty' "$_file_path"
     return 1
   fi
 
   # Check if ImageMagick can identify the file
   if ! magick identify -ping -format '%w' "$_file_path" >/dev/null 2>&1; then
-    log_error "File '$_file_path' is not a valid image format supported by ImageMagick"
-    log_info "Supported formats: JPG, PNG, GIF, BMP, TIFF, etc."
+    log_error 'File <u>%s</u> is not a valid image format supported by ImageMagick. Supported formats: JPG, PNG, GIF, BMP, TIFF, etc.' "$_file_path"
     return 1
   fi
 
@@ -450,26 +420,26 @@ validate_system_requirements() {
 
   # Check if output directory is writable
   if [[ ! -w "." ]]; then
-    log_error "Current directory is not writable"
+    log_error 'Current directory is not writable'
     return 1
   fi
 
   # Check available disk space (at least 100MB free)
   available_space=$(df . | awk 'NR==2 {print $4}')
   if ((available_space < 102400)); then
-    log_warning "Low disk space available (${available_space}KB)"
-    log_info "This might cause wallpaper creation to fail"
+    log_warning 'Low disk space available (%sKB)' "$available_space"
+    log_info 'This might cause wallpaper creation to fail'
   fi
 
   # Check if system_profiler is available (macOS specific)
   if ! command_exists system_profiler; then
-    log_warning "system_profiler not found, automatic screen detection may fail"
+    log_warning '<code>system_profiler</code> not found, automatic screen detection may fail'
   fi
 
   # Check if we're running on macOS
   if [[ "$OSTYPE" != "darwin"* ]]; then
-    log_warning "This script is designed for macOS"
-    log_info "Some features may not work correctly on other systems"
+    log_warning 'This script is designed for macOS'
+    log_info 'Some features may not work correctly on other systems'
   fi
 
   # Check if we have enough memory (at least 100MB free)
@@ -501,10 +471,10 @@ run_wallpaper_crop() {
   ######### SCREEN DIMENSIONS #########
   if [ -n "$external_inches" ] && [ -n "$builtin_inches" ]; then
     # User provided dimensions via --inches
-    log_info "Using user-provided dimensions"
+    log_info 'Using user-provided dimensions'
   else
     # Automatic screen detection
-    play_loading_animation_loop --message "Automatic screen detection..."
+    loading_animation_loop --message 'Automatic screen detection...'
 
     # Detect physical screen dimensions
     physical_dimensions=$(get_physical_dimensions)
@@ -512,12 +482,12 @@ run_wallpaper_crop() {
     detected_builtin=$(echo "$physical_dimensions" | cut -d' ' -f2)
     # Check if dimensions were detected successfully
     if [ -n "$detected_external" ] && [ -n "$detected_builtin" ]; then
-      kill_loading_animation_loop --message "Physical dimensions detected automatically!"
+      loading_animation_loop --message "Physical dimensions detected automatically!"
       external_inches="$detected_external"
       builtin_inches="$detected_builtin"
     else
       # Could not detect and user did not provide
-      kill_loading_animation_loop --message "Could not automatically detect physical dimensions." -c 1
+      loading_animation_loop --message "Could not automatically detect physical dimensions." -c 1
 
       prompt_input external_inches "Please provide physical dimensions in inches for external screen"
       prompt_input builtin_inches "Please provide physical dimensions in inches for built-in screen"
@@ -530,7 +500,7 @@ run_wallpaper_crop() {
   fi
 
   if [[ $crop_position == "all" ]]; then
-    log_info "Generating wallpapers for all cropping positions..."
+    log_info 'Generating wallpapers for all cropping positions...'
     $0 --inches "$external_inches" "$builtin_inches" --position "left-top" "$source_image"
     $0 --inches "$external_inches" "$builtin_inches" --position "center-top" "$source_image"
     $0 --inches "$external_inches" "$builtin_inches" --position "right-top" "$source_image"
@@ -540,7 +510,7 @@ run_wallpaper_crop() {
     $0 --inches "$external_inches" "$builtin_inches" --position "left-bottom" "$source_image"
     $0 --inches "$external_inches" "$builtin_inches" --position "center-bottom" "$source_image"
     $0 --inches "$external_inches" "$builtin_inches" --position "right-bottom" "$source_image"
-    log_success "All wallpapers generated successfully!"
+    log_success 'All wallpapers generated successfully!'
     exit 0
   fi
 
@@ -549,26 +519,23 @@ run_wallpaper_crop() {
   screen_dimensions=$(get_screen_dimensions)
 
   # Get screen dimensions from array
-  external_width=$(echo "$screen_dimensions" | cut -d' ' -f1)
-  external_height=$(echo "$screen_dimensions" | cut -d' ' -f2)
-  builtin_width=$(echo "$screen_dimensions" | cut -d' ' -f3)
-  builtin_height=$(echo "$screen_dimensions" | cut -d' ' -f4)
+  external_width=$(echo "$screen_dimensions" | cut -d',' -f1)
+  external_height=$(echo "$screen_dimensions" | cut -d',' -f2)
+  builtin_width=$(echo "$screen_dimensions" | cut -d',' -f3)
+  builtin_height=$(echo "$screen_dimensions" | cut -d',' -f4)
 
   # Validate screen dimensions
   if [[ -z "$external_width" ]] || [[ -z "$external_height" ]] || [[ -z "$builtin_width" ]] || [[ -z "$builtin_height" ]]; then
-    log_error "Failed to detect screen dimensions"
-    exit 1
+    die 1 "Failed to detect screen dimensions. Some values are empty.\n\t🖥️ External: %sx%s\n\t💻 Built-in: %sx%s" "$external_width" "$external_height" "$builtin_width" "$builtin_height"
   fi
 
   # Check if dimensions are reasonable (must be positive and not too large)
   if ((external_width <= 0)) || ((external_height <= 0)) || ((builtin_width <= 0)) || ((builtin_height <= 0)); then
-    log_error "Invalid screen dimensions detected"
-    exit 1
+    die 1 "Invalid screen dimensions detected. Some of them are below zero!\n\t🖥️ External: %sx%s\n\t💻 Built-in: %sx%s" "$external_width" "$external_height" "$builtin_width" "$builtin_height"
   fi
 
   if ((external_width > 10000)) || ((external_height > 10000)) || ((builtin_width > 10000)) || ((builtin_height > 10000)); then
-    log_error "Screen dimensions seem unreasonably large\n🖥️ External: ${external_width}x${external_height}\n💻 Built-in: ${builtin_width}x${builtin_height}"
-    exit 1
+    die 1 "Screen dimensions seem unreasonably large\n\t🖥️ External: %sx%s\n\t💻 Built-in: %sx%s" "$external_width" "$external_height" "$builtin_width" "$builtin_height"
   fi
 
   ######### SCREEN ASPECT RATIO #########
@@ -577,11 +544,11 @@ run_wallpaper_crop() {
   builtin_ratio=$(echo "scale=4; $builtin_width / $builtin_height" | bc -l)
 
   if (($(echo "$external_ratio < 0.5" | bc -l))) || (($(echo "$external_ratio > 3.0" | bc -l))); then
-    log_warning --icon "🖥" "External screen aspect ratio ($external_ratio) seems unusual"
+    log_warning --icon "🖥" "External screen aspect ratio (%s) seems unusual" "$external_ratio"
   fi
 
   if (($(echo "$builtin_ratio < 0.5" | bc -l))) || (($(echo "$builtin_ratio > 3.0" | bc -l))); then
-    log_warning --icon "💻" "Built-in screen aspect ratio ($builtin_ratio) seems unusual"
+    log_warning --icon "💻" "Built-in screen aspect ratio (%s) seems unusual" "$builtin_ratio"
   fi
 
   # Calculate screen diagonals (needed for DPI calculation)
@@ -594,7 +561,7 @@ run_wallpaper_crop() {
 
   # Validate DPI calculations
   if [[ "$external_dpi" == "0" ]] || [[ "$builtin_dpi" == "0" ]]; then
-    log_error "Failed to calculate DPI values"
+    log_error 'Failed to calculate DPI values'
     exit 1
   fi
 
@@ -607,8 +574,8 @@ run_wallpaper_crop() {
     log_warning --icon "💻" "Built-in screen DPI <b>%s</b> seems unusual (expected 72-300)" "$builtin_dpi"
   fi
 
-  log_info --icon "  🖥" --status "$external_inches\" ($external_ratio ratio)" "External screen parameters"
-  log_info --icon "  💻" --status "$builtin_inches\" ($builtin_ratio ratio)" "Built-in screen parameters"
+  log_info --icon "  🖥" --status "%s\" (%s ratio)" "External screen parameters" "$external_inches" "$external_ratio"
+  log_info --icon "  💻" --status "%s\" (%s ratio)" "Built-in screen parameters" "$builtin_inches" "$builtin_ratio"
 
   ######### ADJUST WALLPAPER SIZE DIMENSIONS #########
   external_info="$external_width x $external_height px ($external_dpi dpi)"
@@ -639,15 +606,15 @@ run_wallpaper_crop() {
     external_height=$external_height_fixed
     external_dpi=$external_dpi_fixed
   fi
-  log_info --icon "  🖥" --status "$external_info$changes_external" "External screen normalize"
-  log_info --icon "  💻" --status "$builtin_info$changes_builtin" "Built-in screen normalize"
+  log_info --icon "  🖥" "External screen normalize" --status "$external_info$changes_external"
+  log_info --icon "  💻" "Built-in screen normalize" --status "$builtin_info$changes_builtin"
 
   # Calculate total wallpapers height and max wallpapers width
   total_height=$(echo "scale=0; $external_height + $builtin_height" | bc -l)
-  log_info --icon "Σ" --status "$total_height px" "Total wallpapers height"
+  log_info --icon "Σ" "Total wallpapers height" --status "$total_height px"
 
   max_width=$((external_width > builtin_width ? external_width : builtin_width))
-  log_info --icon "📈" --status "$max_width px" "Max wallpapers width"
+  log_info --icon "📈" "Max wallpapers width" --status "$max_width px"
 
   ######### SOURCE IMAGE DIMENSIONS #########
   # Get source image dimensions
@@ -656,24 +623,24 @@ run_wallpaper_crop() {
 
   # Validate source image dimensions
   if [[ -z "$src_width" ]] || [[ -z "$src_height" ]]; then
-    log_error "Failed to get source image dimensions"
+    log_error 'Failed to get source image dimensions'
     exit 1
   fi
 
   if ((src_width <= 0)) || ((src_height <= 0)); then
-    log_error --status "${src_width}x${src_height} px" "Invalid source image dimensions"
+    log_error 'Invalid source image dimensions' --status "${src_width}x${src_height} px"
     exit 1
   fi
 
-  log_info --icon "🖼" --status "${src_width}x${src_height} px" "Source image dimensions"
+  log_info --icon '🖼' 'Source image dimensions' --status "${src_width}x${src_height} px"
 
   # Check if image dimensions are reasonable (not too small or too large)
   if ((src_width < 100)) || ((src_height < 100)); then
-    log_warning --status "${src_width}x${src_height}" "Source image dimensions seem very small. This might result in poor quality wallpapers."
+    log_warning 'Source image dimensions seem very small. This might result in poor quality wallpapers.' --status "${src_width}x${src_height}"
   fi
 
   if ((src_width > 10000)) || ((src_height > 10000)); then
-    log_warning --status "${src_width}x${src_height}" "Source image dimensions seem very large. Processing might take longer than expected."
+    log_warning 'Source image dimensions seem very large. Processing might take longer than expected.' --status "${src_width}x${src_height}"
   fi
 
   ######### SCALE FACTORS #########
@@ -683,39 +650,39 @@ run_wallpaper_crop() {
 
   # Check height
   if (($(echo "$src_height < $total_height" | bc -l))); then
-    log_warning "Total wallpapers height exceeds source image height"
+    log_warning 'Total wallpapers height exceeds source image height'
     # Calculate scaling factor (image height / total screen height)
     scale_factor_height=$(echo "scale=4; $src_height / $total_height" | bc -l)
-    log_info --icon "🔢" --status "$scale_factor_height" "Height scaling factor"
+    log_info --icon '🔢' 'Height scaling factor' --status "$scale_factor_height"
   fi
 
   # Check width
   if (($(echo "$src_width < $max_width" | bc -l))); then
-    log_warning "Maximum wallpapers width exceeds source image width"
+    log_warning 'Maximum wallpapers width exceeds source image width'
     # Calculate scaling factor (image width / maximum screen width)
     scale_factor_width=$(echo "scale=4; $src_width / $max_width" | bc -l)
-    log_info --icon "🔢" --status "$scale_factor_width" "Width scaling factor"
+    log_info --icon '🔢' 'Width scaling factor' --status "$scale_factor_width"
   fi
 
   # Apply scaling only if needed
   if (($(echo "$scale_factor_height < 1" | bc -l) || $(echo "$scale_factor_width < 1" | bc -l))); then
     # Validate scaling factors
     if (($(echo "$scale_factor_height <= 0" | bc -l))) || (($(echo "$scale_factor_width <= 0" | bc -l))); then
-      log_error "Invalid scaling factors calculated.\n\tHeight factor: $scale_factor_height\n\tWidth factor: $scale_factor_width"
+      log_error 'Invalid scaling factors calculated.\n\tHeight factor: %s\n\tWidth factor: %s' "$scale_factor_height" "$scale_factor_width"
       exit 1
     fi
 
     # Check if scaling factors are reasonable (not too small)
     if (($(echo "$scale_factor_height < 0.1" | bc -l))) || (($(echo "$scale_factor_width < 0.1" | bc -l))); then
-      log_warning "Scaling factors are very small, this might result in poor quality.\n\tHeight factor: %s\n\tWidth factor: %s" "$scale_factor_height" "$scale_factor_width"
+      log_warning 'Scaling factors are very small, this might result in poor quality.\n\tHeight factor: %s\n\tWidth factor: %s' "$scale_factor_height" "$scale_factor_width"
     fi
 
     if (($(echo "$scale_factor_height < $scale_factor_width" | bc -l))); then
       scale_factor=$scale_factor_height
-      log_info --icon "🔢" --status "$scale_factor" "Using height scaling factor (more restrictive)"
+      log_info --icon "🔢" "Using height scaling factor (more restrictive)" --status "$scale_factor"
     else
       scale_factor=$scale_factor_width
-      log_info --icon "🔢" --status "$scale_factor" "Using width scaling factor (more restrictive)"
+      log_info --icon "🔢" "Using width scaling factor (more restrictive)" --status "$scale_factor"
     fi
     # Scale screen dimensions proportionally
     external_width_scaled=$(echo "scale=0; $external_width * $scale_factor / 1" | bc -l)
@@ -731,7 +698,7 @@ run_wallpaper_crop() {
 
   ######### CROPPING POSITION #########
   crop_position="$(map_crop_position "$crop_position")"
-  log_info --icon "📐" --status "${crop_position/_/ }" "Cropping position"
+  log_info --icon "📐" "Cropping position" --status "${crop_position/_/ }"
 
   # Calculate cropping position for external screen
   external_pos=$(calculate_crop_position "$crop_position" "$src_width" "$src_height" "$external_width" "$(echo "scale=0; $external_height + $builtin_height" | bc -l)")
@@ -744,47 +711,41 @@ run_wallpaper_crop() {
 
   # Validate cropping coordinates
   if [[ -z "$external_x_start" ]] || [[ -z "$external_y_start" ]] || [[ -z "$builtin_x_start" ]] || [[ -z "$builtin_y_start" ]]; then
-    log_error "Failed to calculate cropping coordinates.\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s" "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
-    exit 1
+    die 1 'Failed to calculate cropping coordinates.\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s' "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
   fi
 
   # Check if coordinates are valid numbers
   if ! [[ "$external_x_start" =~ ^-?[0-9]+$ ]] || ! [[ "$external_y_start" =~ ^-?[0-9]+$ ]] || ! [[ "$builtin_x_start" =~ ^-?[0-9]+$ ]] || ! [[ "$builtin_y_start" =~ ^-?[0-9]+$ ]]; then
-    log_error "Invalid cropping coordinates (not integers).\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s" "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
-    exit 1
+    die 1 'Invalid cropping coordinates (not integers).\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s' "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
   fi
 
   # Check if coordinates are within image bounds
   if ((external_x_start < 0)) || ((external_y_start < 0)) || ((builtin_x_start < 0)) || ((builtin_y_start < 0)); then
-    log_error "Cropping coordinates cannot be negative.\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s" "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
-    exit 1
+    die 1 'Cropping coordinates cannot be negative.\n\t🖥️ External: x=%s, y=%s\n\t💻 Built-in: x=%s, y=%s' "$external_x_start" "$external_y_start" "$builtin_x_start" "$builtin_y_start"
   fi
 
   if ((external_x_start + external_width > src_width)) || ((external_y_start + external_height > src_height)); then
-    log_error --icon "🖥" "External screen crop area exceeds image boundaries.\n\tCrop area: %dx%d at (%d, %d)\n\tImage size: %dx%d" "$external_width" "$external_height" "$external_x_start" "$external_y_start" "$src_width" "$src_height"
-    exit 1
+    die 1 --icon '🖥' 'External screen crop area exceeds image boundaries.\n\tCrop area: %dx%d at (%d, %d)\n\tImage size: %dx%d' "$external_width" "$external_height" "$external_x_start" "$external_y_start" "$src_width" "$src_height"
   fi
 
   if ((builtin_x_start + builtin_width > src_width)) || ((builtin_y_start + builtin_height > src_height)); then
-    log_error --icon "💻" "Built-in screen crop area exceeds image boundaries.\n\tCrop area: $%dx$%d at (%d, %d)\n\tImage size: $%dx$%d" "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$src_width" "$src_height"
-    exit 1
+    die 1 --icon '💻' 'Built-in screen crop area exceeds image boundaries.\n\tCrop area: $%dx$%d at (%d, %d)\n\tImage size: $%dx$%d' "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$src_width" "$src_height"
   fi
 
   # Final validation before creating wallpapers
   if ((external_width <= 0)) || ((external_height <= 0)) || ((builtin_width <= 0)) || ((builtin_height <= 0)); then
-    log_error "Invalid final dimensions for cropping.\n\t🖥️ External: %dx%d\n\t💻 Built-in: %dx%d" "$external_width" "$external_height" "$builtin_width" "$builtin_height"
-    exit 1
+    die 1 'Invalid final dimensions for cropping.\n\t🖥️ External: %dx%d\n\t💻 Built-in: %dx%d' "$external_width" "$external_height" "$builtin_width" "$builtin_height"
   fi
 
-  log_info --icon "  🖥" --status "+${external_x_start}+${external_y_start}" "External wallpaper crop position"
-  log_info --icon "  💻" --status "+${builtin_x_start}+${builtin_y_start}" "Built-in wallpaper crop position"
+  log_info --icon '  🖥' 'External wallpaper crop position' --status "+${external_x_start}+${external_y_start}"
+  log_info --icon '  💻' 'Built-in wallpaper crop position' --status "+${builtin_x_start}+${builtin_y_start}"
 
   ######### CREATE WALLPAPERS #########
-  if ! cropper "$source_image" "1_external" "External" "$external_width" "$external_height" "$external_x_start" "$external_y_start" "$crop_position"; then
+  if ! cropper "$source_image" '1_external' 'External' "$external_width" "$external_height" "$external_x_start" "$external_y_start" "$crop_position"; then
     exit 1
   fi
 
-  if ! cropper "$source_image" "2_builtin" "Built-in" "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$crop_position"; then
+  if ! cropper "$source_image" '2_builtin' '"Built-in' "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$crop_position"; then
     exit 1
   fi
 

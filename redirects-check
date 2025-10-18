@@ -30,7 +30,7 @@ show_usage() {
   echo
   echo "Check URL redirects and status codes from a data file"
   echo
-  log_header "Options"
+  log_header 'Options'
   log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
   log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent <STRING>"
   log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects <NUM>"
@@ -38,7 +38,7 @@ show_usage() {
   log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
   log_usage_options_line "Show this help message" "-h" "--help"
   echo
-  log_header "Data file format"
+  log_header 'Data file format'
   echo "  Each line should contain three space-separated values:"
   echo -e "  $(styler text "YELLOW")OLD_URL EXPECTED_CODE NEW_URL$(styler reset)"
   echo
@@ -46,7 +46,7 @@ show_usage() {
   echo -e "  $(styler text "YELLOW")https://example.com/old 301 https://example.com/new$(styler reset)"
   echo -e "  $(styler text "YELLOW")https://test.com/page 302 https://test.com/redirect$(styler reset)"
   echo
-  log_header "Examples"
+  log_header 'Examples'
   log_usage_example_line "$0 redirects.txt"
   log_usage_example_line "$0 -t 30 -v redirects.txt"
   log_usage_example_line "$0 -F json -o results.json redirects.txt"
@@ -94,7 +94,7 @@ check_redirect() {
   # Execute curl command
   local _response
   if ! response=$(eval "$curl_cmd '$old_url'" 2>/dev/null); then
-    log_error "Failed to check URL: $old_url"
+    log_error 'Failed to check URL: <u>%s</u>' "$old_url"
     return 1
   fi
 
@@ -170,11 +170,11 @@ process_data_file() {
   local _file="$1"
 
   if [[ ! -f "$_file" ]]; then
-    log_error "Data file not found: $_file"
+    log_error 'Data file not found: <u>%s</u>' "$_file"
     return 1
   fi
 
-  log_info "Processing redirects from file: $_file"
+  log_info 'Processing redirects from file: <u>%s</u>' "$_file"
 
   # Create error log file
   rm -f "${_file}.error.log"
@@ -201,7 +201,7 @@ process_data_file() {
 
     # Validate inputs
     if [[ -z "$old_url" || -z "$expected_code" || -z "$expected_url" ]]; then
-      log_warning "Skipping malformed line $line_number: $line"
+      log_warning 'Skipping malformed line %s: $%s' "$line_number" "$line"
       continue
     fi
 
@@ -214,7 +214,7 @@ process_data_file() {
     fi
 
     if ! [[ "$expected_code" =~ ^[0-9]+$ ]]; then
-      log_warning "Invalid expected code on line $line_number: $expected_code"
+      log_warning 'Invalid expected code on line %s: %s' "$line_number" "$expected_code"
       continue
     fi
 
@@ -228,10 +228,10 @@ process_data_file() {
   done <"$_file"
 
   # Summary
-  log_info "Processed $total_count redirects: $correct_count correct, $((total_count - correct_count)) incorrect"
+  log_info 'Processed %s redirects: %s correct, %s incorrect' "$total_count" "$correct_count" "$((total_count - correct_count))"
 
   if [[ -s "${_file}.error.log" ]]; then
-    log_warning "Errors logged to: ${_file}.error.log"
+    log_warning 'Errors logged to: <u>%s</u>' "${_file}.error.log"
   fi
 }
 
@@ -242,7 +242,7 @@ parse_arguments() {
     -t | --timeout)
       timeout="$2"
       if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
-        log_error "Invalid timeout: $timeout"
+        log_error 'Invalid timeout: %s' "$timeout"
         exit 1
       fi
       shift 2
@@ -254,7 +254,7 @@ parse_arguments() {
     -r | --max-redirects)
       max_redirects="$2"
       if ! [[ "$max_redirects" =~ ^[0-9]+$ ]] || [[ "$max_redirects" -lt 0 ]]; then
-        log_error "Invalid max redirects: $max_redirects"
+        log_error 'Invalid max redirects: %d' "$max_redirects"
         exit 1
       fi
       shift 2
@@ -262,7 +262,7 @@ parse_arguments() {
     -F | --format)
       output_format="$2"
       if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
-        log_error "Invalid output format: $output_format"
+        log_error 'Invalid output format: %s' "$output_format"
         exit 1
       fi
       shift 2
@@ -275,14 +275,14 @@ parse_arguments() {
       show_usage
       ;;
     -*)
-      log_error "Unknown option: $1"
+      log_error 'Unknown option: %s' "$1"
       show_usage
       ;;
     *)
       if [[ -z "$data_file" ]]; then
         data_file="$1"
       else
-        log_error "Multiple data files specified"
+        log_error 'Multiple data files specified'
         exit 1
       fi
       shift
@@ -293,7 +293,7 @@ parse_arguments() {
 
 # Main function
 redirects_main() {
-  log_title "Redirects Checker"
+  log_title 'Redirects Checker'
 
   # Check if curl is available
   check_dependencies curl
@@ -303,7 +303,7 @@ redirects_main() {
 
   # Validate input
   if [[ -z "$data_file" ]]; then
-    log_error "No data file specified"
+    log_error 'No data file specified'
     show_usage
   fi
 
