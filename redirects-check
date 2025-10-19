@@ -25,32 +25,37 @@ main() {
 
 # Function to display usage
 show_usage() {
+  log_usage_title '[OPTIONS] <data_file>'
   echo
-  log_usage_line "$0 [OPTIONS] <data_file>"
-  echo
-  echo "Check URL redirects and status codes from a data file"
+  echo 'Check URL redirects and status codes from a data file'
   echo
   log_header 'Options'
-  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
-  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent <STRING>"
-  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects <NUM>"
-  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format <FORMAT>"
-  log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
-  log_usage_options_line "Show this help message" "-h" "--help"
+  log_usage_options_line '-t;--timeout <SECONDS>' \
+   'Request timeout (default: %s)' "$DEFAULT_TIMEOUT"
+  log_usage_options_line '-u;--user-agent <STRING>' \
+   'User agent string (default: Mozilla/5.0...)'
+  log_usage_options_line '-r;--max-redirects <NUM>' \
+   'Maximum number of redirects to follow (default: %s)' "$DEFAULT_MAX_REDIRECTS"
+  log_usage_options_line '-F;--format <FORMAT>' \
+   'Output format: text, json, csv (default: text)'
+  log_usage_options_line '-k;--insecure' \
+   'Disable SSL certificate verification'
+  log_usage_options_line '-h;--help' \
+   'Show this help message'
   echo
   log_header 'Data file format'
-  echo "  Each line should contain three space-separated values:"
-  echo -e "  $(styler text "YELLOW")OLD_URL EXPECTED_CODE NEW_URL$(styler reset)"
+  echo '  Each line should contain three space-separated values:'
+  echo -e "  $(styler text 'YELLOW')OLD_URL EXPECTED_CODE NEW_URL$(styler reset)"
   echo
   echo "  Example:"
-  echo -e "  $(styler text "YELLOW")https://example.com/old 301 https://example.com/new$(styler reset)"
-  echo -e "  $(styler text "YELLOW")https://test.com/page 302 https://test.com/redirect$(styler reset)"
+  echo -e "  $(styler text 'YELLOW')https://example.com/old 301 https://example.com/new$(styler reset)"
+  echo -e "  $(styler text 'YELLOW')https://test.com/page 302 https://test.com/redirect$(styler reset)"
   echo
   log_header 'Examples'
-  log_usage_example_line "$0 redirects.txt"
-  log_usage_example_line "$0 -t 30 -v redirects.txt"
-  log_usage_example_line "$0 -F json -o results.json redirects.txt"
-  log_usage_example_line "$0 -p -P 10 redirects.txt"
+  log_usage_example_line 'redirects.txt'
+  log_usage_example_line '-t 30 -v redirects.txt'
+  log_usage_example_line '-F json -o results.json redirects.txt'
+  log_usage_example_line '-p -P 10 redirects.txt'
   exit 0
 }
 
@@ -148,11 +153,11 @@ EOF
     # Text format
     printf "%-4d %-60s " "$line_number" "$old_url"
     if [[ $is_correct -eq 1 ]]; then
-      printf "$(styler text "GREEN")✓${NC} %s" "$status_message"
+      printf "$(styler text 'GREEN')✓${NC} %s" "$status_message"
     else
-      printf "$(styler text "RED")✗${NC} %s" "$status_message"
+      printf "$(styler text 'RED')✗${NC} %s" "$status_message"
     fi
-    printf " (%ss)" "$time_total"
+    printf ' (%ss)' "$time_total"
     echo
     ;;
   esac

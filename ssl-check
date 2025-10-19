@@ -10,45 +10,52 @@ export TERM=xterm-256color
 
 # Main function wrapper
 main() {
-    # Check if common-functions exists
-    if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
-        echo "Downloading common-functions from GitHub..."
-        if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
-            echo "Failed to download common-functions"
-            exit 1
-        fi
+  # Check if common-functions exists
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
     fi
+  fi
 
-    # Source common functions
-    source "$(dirname "$0")/common-functions"
+  # Source common functions
+  source "$(dirname "$0")/common-functions"
 
-    # Call the actual main function
-    ssl_main "$@"
+  # Call the actual main function
+  ssl_main "$@"
 }
 
 # Function to display usage
 show_usage() {
-    echo
-    log_usage_line "$0 [OPTIONS] <domain>"
-    echo
-    echo "Check SSL/TLS certificates for domains"
-    echo
-    log_header 'Options'
-    log_usage_options_line "Port to check (default: $DEFAULT_PORT)" "-p" "--port <PORT>"
-    log_usage_options_line "Connection timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
-    log_usage_options_line "Batch mode for multiple domains" "-b" "--batch"
-    log_usage_options_line "Output format: text, json, csv (default: text)" "-f" "--format <FORMAT>"
-    log_usage_options_line "Check certificate chain" "-c" "--chain"
-    log_usage_options_line "Check certificate revocation" "-r" "--revocation"
-    log_usage_options_line "Skip expiry date checking" "-e" "--no-expiry"
-    log_usage_options_line "Show this help message" "-h" "--help"
-    echo ""
-    log_header 'Examples'
-    log_usage_example_line "$0 example.com"
-    log_usage_example_line "$0 -p 8443 example.com"
-    log_usage_example_line "$0 -b -f json domains.txt"
-    log_usage_example_line "$0 -c -r example.com"
-    exit 0
+  log_usage_title '[OPTIONS] <domain>'
+  echo
+  echo 'Check SSL/TLS certificates for domains'
+  echo
+  log_header 'Options'
+  log_usage_options_line '-p;--port <PORT>' \
+    'Port to check (default: %s)' "$DEFAULT_PORT"
+  log_usage_options_line '-t;--timeout <SECONDS>' \
+    'Connection timeout (default: %s)' "$DEFAULT_TIMEOUT"
+  log_usage_options_line '-b;--batch' \
+    'Batch mode for multiple domains'
+  log_usage_options_line '-f;--format <FORMAT>' \
+    'Output format: text, json, csv (default: text)'
+  log_usage_options_line '-c;--chain' \
+    'Check certificate chain'
+  log_usage_options_line '-r;--revocation' \
+    'Check certificate revocation'
+  log_usage_options_line '-e;--no-expiry' \
+    'Skip expiry date checking'
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
+  echo
+  log_header 'Examples'
+  log_usage_example_line 'example.com'
+  log_usage_example_line '-p 8443 example.com'
+  log_usage_example_line '-b -f json domains.txt'
+  log_usage_example_line '-c -r example.com'
+  exit 0
 }
 
 # Default values
@@ -67,72 +74,71 @@ check_revocation=0
 
 # Function to get certificate information
 get_certificate_info() {
-    local _domain="$1"
-    local _port="$2"
-    local _timeout="$3"
-    
-    
-    # Get certificate details
-    local cert_info
-    if ! cert_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\" | openssl x509 -noout -text 2>/dev/null')" 2>/dev/null); then
-        log_error 'Failed to retrieve certificate for %s:%d' "$domain" "$port"
-        return 1
-    fi
-    
-    # Get basic certificate info
-    local subject
-    local issuer
-    local not_before
-    local not_after
-    local serial
-    local fingerprint
-    
-    subject=$(echo "$cert_info" | grep "Subject:" | sed 's/Subject: //')
-    issuer=$(echo "$cert_info" | grep "Issuer:" | sed 's/Issuer: //')
-    not_before=$(echo "$cert_info" | grep "Not Before:" | sed 's/Not Before: //')
-    not_after=$(echo "$cert_info" | grep "Not After:" | sed 's/Not After: //')
-    serial=$(echo "$cert_info" | grep "Serial Number:" | sed 's/Serial Number: //')
-    fingerprint=$(echo "$cert_info" | grep "SHA1 Fingerprint=" | sed 's/SHA1 Fingerprint=//')
-    
-    # Get certificate dates in a parseable format
-    local not_before_epoch
-    local not_after_epoch
-    local current_epoch
-    
-    not_before_epoch=$(date -d "$not_before" +%s 2>/dev/null || echo "0")
-    not_after_epoch=$(date -d "$not_after" +%s 2>/dev/null || echo "0")
-    current_epoch=$(date +%s)
-    
-    # Calculate days until expiry
-    local days_until_expiry
-    if [[ "$not_after_epoch" -gt 0 ]]; then
-        days_until_expiry=$(( (not_after_epoch - current_epoch) / 86400 ))
-    else
-        days_until_expiry="unknown"
-    fi
-    
-    # Check if certificate is expired
-    local is_expired=0
-    if [[ "$not_after_epoch" -gt 0 && "$current_epoch" -gt "$not_after_epoch" ]]; then
-        is_expired=1
-    fi
-    
-    # Check if certificate is not yet valid
-    local not_yet_valid=0
-    if [[ "$not_before_epoch" -gt 0 && "$current_epoch" -lt "$not_before_epoch" ]]; then
-        not_yet_valid=1
-    fi
-    
-    # Check if certificate expires soon (within 30 days)
-    local expires_soon=0
-    if [[ "$days_until_expiry" != "unknown" && "$days_until_expiry" -lt 30 && "$days_until_expiry" -gt 0 ]]; then
-        expires_soon=1
-    fi
-    
-    # Output results based on format
-    case "$output_format" in
-        "json")
-            cat << EOF
+  local _domain="$1"
+  local _port="$2"
+  local _timeout="$3"
+
+  # Get certificate details
+  local cert_info
+  if ! cert_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\" | openssl x509 -noout -text 2>/dev/null')" 2>/dev/null); then
+    log_error 'Failed to retrieve certificate for %s:%d' "$domain" "$port"
+    return 1
+  fi
+
+  # Get basic certificate info
+  local subject
+  local issuer
+  local not_before
+  local not_after
+  local serial
+  local fingerprint
+
+  subject=$(echo "$cert_info" | grep "Subject:" | sed 's/Subject: //')
+  issuer=$(echo "$cert_info" | grep "Issuer:" | sed 's/Issuer: //')
+  not_before=$(echo "$cert_info" | grep "Not Before:" | sed 's/Not Before: //')
+  not_after=$(echo "$cert_info" | grep "Not After:" | sed 's/Not After: //')
+  serial=$(echo "$cert_info" | grep "Serial Number:" | sed 's/Serial Number: //')
+  fingerprint=$(echo "$cert_info" | grep "SHA1 Fingerprint=" | sed 's/SHA1 Fingerprint=//')
+
+  # Get certificate dates in a parseable format
+  local not_before_epoch
+  local not_after_epoch
+  local current_epoch
+
+  not_before_epoch=$(date -d "$not_before" +%s 2>/dev/null || echo "0")
+  not_after_epoch=$(date -d "$not_after" +%s 2>/dev/null || echo "0")
+  current_epoch=$(date +%s)
+
+  # Calculate days until expiry
+  local days_until_expiry
+  if [[ "$not_after_epoch" -gt 0 ]]; then
+    days_until_expiry=$(((not_after_epoch - current_epoch) / 86400))
+  else
+    days_until_expiry="unknown"
+  fi
+
+  # Check if certificate is expired
+  local is_expired=0
+  if [[ "$not_after_epoch" -gt 0 && "$current_epoch" -gt "$not_after_epoch" ]]; then
+    is_expired=1
+  fi
+
+  # Check if certificate is not yet valid
+  local not_yet_valid=0
+  if [[ "$not_before_epoch" -gt 0 && "$current_epoch" -lt "$not_before_epoch" ]]; then
+    not_yet_valid=1
+  fi
+
+  # Check if certificate expires soon (within 30 days)
+  local expires_soon=0
+  if [[ "$days_until_expiry" != "unknown" && "$days_until_expiry" -lt 30 && "$days_until_expiry" -gt 0 ]]; then
+    expires_soon=1
+  fi
+
+  # Output results based on format
+  case "$output_format" in
+  "json")
+    cat <<EOF
 {
   "domain": "$domain",
   "port": $port,
@@ -149,232 +155,230 @@ get_certificate_info() {
   "status": "$(if [[ $is_expired -eq 1 ]]; then echo "expired"; elif [[ $not_yet_valid -eq 1 ]]; then echo "not_yet_valid"; elif [[ $expires_soon -eq 1 ]]; then echo "expires_soon"; else echo "valid"; fi)"
 }
 EOF
-            ;;
-        "csv")
-            echo "$domain,$port,$subject,$issuer,$not_before,$not_after,$days_until_expiry,$(if [[ $is_expired -eq 1 ]]; then echo "expired"; elif [[ $not_yet_valid -eq 1 ]]; then echo "not_yet_valid"; elif [[ $expires_soon -eq 1 ]]; then echo "expires_soon"; else echo "valid"; fi)"
-            ;;
-        *)
-            # Text format
-            echo -e "$(styler bold)Certificate Information for $domain:$port$(styler reset)"
-            echo "Subject: $subject"
-            echo "Issuer: $issuer"
-            echo "Valid From: $not_before"
-            echo "Valid Until: $not_after"
-            echo "Serial Number: $serial"
-            echo "SHA1 Fingerprint: $fingerprint"
-            
-            if [[ $is_expired -eq 1 ]]; then
-                echo -e "Status: $(styler text "RED")EXPIRED$(styler reset)"
-            elif [[ $not_yet_valid -eq 1 ]]; then
-                echo -e "Status: $(styler text "YELLOW")NOT YET VALID$(styler reset)"
-            elif [[ $expires_soon -eq 1 ]]; then
-                echo -e "Status: $(styler text "YELLOW")EXPIRES SOON ($days_until_expiry days)$(styler reset)"
-            else
-                echo -e "Status: $(styler text "GREEN")VALID ($days_until_expiry days remaining)$(styler reset)"
-            fi
-            ;;
-    esac
+    ;;
+  "csv")
+    echo "$domain,$port,$subject,$issuer,$not_before,$not_after,$days_until_expiry,$(if [[ $is_expired -eq 1 ]]; then echo "expired"; elif [[ $not_yet_valid -eq 1 ]]; then echo "not_yet_valid"; elif [[ $expires_soon -eq 1 ]]; then echo "expires_soon"; else echo "valid"; fi)"
+    ;;
+  *)
+    # Text format
+    echo -e "$(styler bold)Certificate Information for $domain:$port$(styler reset)"
+    echo "Subject: $subject"
+    echo "Issuer: $issuer"
+    echo "Valid From: $not_before"
+    echo "Valid Until: $not_after"
+    echo "Serial Number: $serial"
+    echo "SHA1 Fingerprint: $fingerprint"
+
+    if [[ $is_expired -eq 1 ]]; then
+      echo -e "Status: $(styler text 'RED')EXPIRED$(styler reset)"
+    elif [[ $not_yet_valid -eq 1 ]]; then
+      echo -e "Status: $(styler text 'YELLOW')NOT YET VALID$(styler reset)"
+    elif [[ $expires_soon -eq 1 ]]; then
+      echo -e "Status: $(styler text 'YELLOW')EXPIRES SOON ($days_until_expiry days)$(styler reset)"
+    else
+      echo -e "Status: $(styler text 'GREEN')VALID ($days_until_expiry days remaining)$(styler reset)"
+    fi
+    ;;
+  esac
 }
 
 # Function to check certificate chain
 check_certificate_chain() {
-    local domain="$1"
-    local port="$2"
-    local timeout="$3"
-    
-    
-    local chain_info
-    if ! chain_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\"')" 2>/dev/null); then
-        log_error 'Failed to retrieve certificate chain for %s:%d'
-        return 1
-    fi
-    
-    echo -e "$(styler bold)Certificate Chain for $domain:$port$(styler reset)"
-    echo "$chain_info" | grep -E "(Certificate chain|subject=|issuer=)"
+  local domain="$1"
+  local port="$2"
+  local timeout="$3"
+
+  local chain_info
+  if ! chain_info=$(perl -e "alarm($timeout); system('openssl s_client -servername \"$domain\" -connect \"$domain:$port\" -showcerts 2>/dev/null <<< \"Q\"')" 2>/dev/null); then
+    log_error 'Failed to retrieve certificate chain for %s:%d'
+    return 1
+  fi
+
+  echo -e "$(styler bold)Certificate Chain for $domain:$port$(styler reset)"
+  echo "$chain_info" | grep -E "(Certificate chain|subject=|issuer=)"
 }
 
 # Function to check certificate revocation
 check_certificate_revocation() {
-    local domain="$1"
-    local port="$2"
-    local timeout="$3"
-    
-    
-    # Get certificate
-    local cert
-    if ! cert=$(timeout "$timeout" openssl s_client -servername "$domain" -connect "$domain:$port" 2>/dev/null <<< "Q" | openssl x509 -outform PEM 2>/dev/null); then
-        log_error 'Failed to retrieve certificate for revocation check'
-        return 1
-    fi
-    
-    # Check OCSP responder
-    local ocsp_url
-    ocsp_url=$(echo "$cert" | openssl x509 -noout -ocsp_uri 2>/dev/null || echo "")
-    
-    if [[ -n "$ocsp_url" ]]; then
-        echo -e "$(styler bold)OCSP Information for $domain:$port$(styler reset)"
-        echo "OCSP URL: $ocsp_url"
-        # Note: Full OCSP checking would require additional tools
-        echo "Note: Full OCSP verification requires additional tools"
-    else
-        echo "No OCSP URL found in certificate"
-    fi
+  local domain="$1"
+  local port="$2"
+  local timeout="$3"
+
+  # Get certificate
+  local cert
+  if ! cert=$(timeout "$timeout" openssl s_client -servername "$domain" -connect "$domain:$port" 2>/dev/null <<<"Q" | openssl x509 -outform PEM 2>/dev/null); then
+    log_error 'Failed to retrieve certificate for revocation check'
+    return 1
+  fi
+
+  # Check OCSP responder
+  local ocsp_url
+  ocsp_url=$(echo "$cert" | openssl x509 -noout -ocsp_uri 2>/dev/null || echo "")
+
+  if [[ -n "$ocsp_url" ]]; then
+    echo -e "$(styler bold)OCSP Information for $domain:$port$(styler reset)"
+    echo "OCSP URL: $ocsp_url"
+    # Note: Full OCSP checking would require additional tools
+    echo "Note: Full OCSP verification requires additional tools"
+  else
+    echo "No OCSP URL found in certificate"
+  fi
 }
 
 # Function to process batch file
 process_batch() {
-    local _file="$1"
-    
-    if [[ ! -f "$_file" ]]; then
-        log_error 'Batch file not found: <u>%s</u>' "$_file"
-        return 1
+  local _file="$1"
+
+  if [[ ! -f "$_file" ]]; then
+    log_error 'Batch file not found: <u>%s</u>' "$_file"
+    return 1
+  fi
+
+  log_info -s "$_file" 'Processing batch file'
+
+  # Add CSV header if output format is CSV
+  if [[ "$output_format" == "csv" ]]; then
+    echo "Domain,Port,Subject,Issuer,Not Before,Not After,Days Until Expiry,Status"
+  fi
+
+  while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+    # Extract domain and optional port
+    local domain port
+    if [[ "$line" =~ ^([^:]+):([0-9]+)$ ]]; then
+      domain="${BASH_REMATCH[1]}"
+      port="${BASH_REMATCH[2]}"
+    else
+      domain="$line"
+      port="$DEFAULT_PORT"
     fi
-    
-    log_info -s "$_file" 'Processing batch file'
-    
-    # Add CSV header if output format is CSV
-    if [[ "$output_format" == "csv" ]]; then
-        echo "Domain,Port,Subject,Issuer,Not Before,Not After,Days Until Expiry,Status"
+
+    # Validate domain
+    if ! validate_domain "$domain"; then
+      continue
     fi
-    
-    while IFS= read -r line; do
-        # Skip empty lines and comments
-        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-        
-        # Extract domain and optional port
-        local domain port
-        if [[ "$line" =~ ^([^:]+):([0-9]+)$ ]]; then
-            domain="${BASH_REMATCH[1]}"
-            port="${BASH_REMATCH[2]}"
-        else
-            domain="$line"
-            port="$DEFAULT_PORT"
-        fi
-        
-        # Validate domain
-        if ! validate_domain "$domain"; then
-            continue
-        fi
-        
-        # Check certificate
-        if ! get_certificate_info "$domain" "$port" "$timeout"; then
-            log_warning 'Failed to check certificate for %s:%d' "$domain" "$port"
-        fi
-        
-        # Add separator for text format
-        if [[ "$output_format" == "text" ]]; then
-            echo "----------------------------------------"
-        fi
-        
-    done < "$_file"
+
+    # Check certificate
+    if ! get_certificate_info "$domain" "$port" "$timeout"; then
+      log_warning 'Failed to check certificate for %s:%d' "$domain" "$port"
+    fi
+
+    # Add separator for text format
+    if [[ "$output_format" == "text" ]]; then
+      echo "----------------------------------------"
+    fi
+
+  done <"$_file"
 }
 
 # Parse command line arguments
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -p|--port)
-                port="$2"
-                if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
-                    die 1 'Invalid port number: %d' "$port"
-                fi
-                shift 2
-                ;;
-            -t|--timeout)
-                timeout="$2"
-                if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
-                    log_error 'Invalid timeout value: %s' "$timeout"
-                    exit 1
-                fi
-                shift 2
-                ;;
-            -b|--batch)
-                batch_mode=1
-                shift
-                ;;
-            -f|--format)
-                output_format="$2"
-                if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
-                    log_error 'Invalid output format: %s' "$output_format"
-                    exit 1
-                fi
-                shift 2
-                ;;
-            -c|--chain)
-                check_chain=1
-                shift
-                ;;
-            -r|--revocation)
-                check_revocation=1
-                shift
-                ;;
-            -h|--help)
-                show_usage
-                ;;
-            -*)
-                log_error 'Unknown option: %s' "$1"
-                show_usage
-                ;;
-            *)
-                if [[ -z "$domain_name" ]]; then
-                    domain_name="$1"
-                else
-                    log_error 'Multiple domains specified. Use batch mode for multiple domains.'
-                    exit 1
-                fi
-                shift
-                ;;
-        esac
-    done
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -p | --port)
+      port="$2"
+      if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
+        die 1 'Invalid port number: %d' "$port"
+      fi
+      shift 2
+      ;;
+    -t | --timeout)
+      timeout="$2"
+      if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
+        log_error 'Invalid timeout value: %s' "$timeout"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -b | --batch)
+      batch_mode=1
+      shift
+      ;;
+    -f | --format)
+      output_format="$2"
+      if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
+        log_error 'Invalid output format: %s' "$output_format"
+        exit 1
+      fi
+      shift 2
+      ;;
+    -c | --chain)
+      check_chain=1
+      shift
+      ;;
+    -r | --revocation)
+      check_revocation=1
+      shift
+      ;;
+    -h | --help)
+      show_usage
+      ;;
+    -*)
+      log_error 'Unknown option: %s' "$1"
+      show_usage
+      ;;
+    *)
+      if [[ -z "$domain_name" ]]; then
+        domain_name="$1"
+      else
+        log_error 'Multiple domains specified. Use batch mode for multiple domains.'
+        exit 1
+      fi
+      shift
+      ;;
+    esac
+  done
 }
 
 # Main function
 ssl_main() {
-    log_title 'SSL Certificate Checker'
-    
-    # Check if OpenSSL is available
-    check_dependencies openssl
-    
-    # Parse arguments
-    parse_arguments "$@"
-    
-    # Validate input
-    if [[ -z "$domain_name" && "$batch_mode" -eq 0 ]]; then
-        log_error 'No domain specified'
-        show_usage
+  log_title 'SSL Certificate Checker'
+
+  # Check if OpenSSL is available
+  check_dependencies openssl
+
+  # Parse arguments
+  parse_arguments "$@"
+
+  # Validate input
+  if [[ -z "$domain_name" && "$batch_mode" -eq 0 ]]; then
+    log_error 'No domain specified'
+    show_usage
+  fi
+
+  # Process batch mode
+  if [[ "$batch_mode" -eq 1 ]]; then
+    if [[ -z "$domain_name" ]]; then
+      log_error 'Batch mode requires a file path'
+      show_usage
     fi
-    
-    # Process batch mode
-    if [[ "$batch_mode" -eq 1 ]]; then
-        if [[ -z "$domain_name" ]]; then
-            log_error 'Batch mode requires a file path'
-            show_usage
-        fi
-        process_batch "$domain_name"
-        return 0
-    fi
-    
-    # Validate domain
-    if ! validate_domain "$domain_name"; then
-        exit 1
-    fi
-    
-    # Check certificate
-    if ! get_certificate_info "$domain_name" "$port" "$timeout"; then
-        exit 1
-    fi
-    
-    # Check certificate chain if requested
-    if [[ "$check_chain" -eq 1 ]]; then
-        echo
-        check_certificate_chain "$domain_name" "$port" "$timeout"
-    fi
-    
-    # Check certificate revocation if requested
-    if [[ "$check_revocation" -eq 1 ]]; then
-        echo
-        check_certificate_revocation "$domain_name" "$port" "$timeout"
-    fi
+    process_batch "$domain_name"
+    return 0
+  fi
+
+  # Validate domain
+  if ! validate_domain "$domain_name"; then
+    exit 1
+  fi
+
+  # Check certificate
+  if ! get_certificate_info "$domain_name" "$port" "$timeout"; then
+    exit 1
+  fi
+
+  # Check certificate chain if requested
+  if [[ "$check_chain" -eq 1 ]]; then
+    echo
+    check_certificate_chain "$domain_name" "$port" "$timeout"
+  fi
+
+  # Check certificate revocation if requested
+  if [[ "$check_revocation" -eq 1 ]]; then
+    echo
+    check_certificate_revocation "$domain_name" "$port" "$timeout"
+  fi
 }
 
 # Run main function

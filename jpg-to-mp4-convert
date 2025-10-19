@@ -25,19 +25,22 @@ main() {
 
 # Function to display usage
 show_usage() {
-  log_usage_line "$0 [OPTIONS]"
-  echo ""
-  echo "Convert JPG images to MP4 video"
-  echo ""
+  log_usage_title '[OPTIONS]'
+  echo
+  echo 'Convert JPG images to MP4 video'
+  echo
   log_header 'Options'
-  log_usage_options_line "Source directory containing JPG images" "-s" "--source DIR"
-  log_usage_options_line "Frame rate for output video (default: $DEFAULT_FRAMERATE)" "-f" "--framerate FPS"
-  log_usage_options_line "Show this help message" "-h" "--help"
-  echo ""
+  log_usage_options_line '-s;--source <DIR>' \
+    'Source directory containing JPG images'
+  log_usage_options_line '-f;--framerate <FPS>' \
+    'Frame rate for output video (default: %s)' "$DEFAULT_FRAMERATE"
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
+  echo
   log_header 'Examples'
-  log_usage_example_line "$0 --source /path/to/images"
-  log_usage_example_line "$0 -s /path/to/images -f 30"
-  log_usage_example_line "$0 ${FORMAT_RESET}Will prompt for source directory"
+  log_usage_example_line '--source /path/to/images'
+  log_usage_example_line '-s /path/to/images -f 30'
+  log_usage_example_line "$(styler reset) Will prompt for source directory"
   exit 0
 }
 

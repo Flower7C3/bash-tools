@@ -28,31 +28,34 @@ main() {
 
 # Function displays help
 show_usage() {
-  log_usage_line "$0 [OPTIONS] <source_image>"
-  echo ""
-  echo "This script creates wallpapers for vertical screens layout with aligned centers."
-  echo ""
+  log_usage_title '[OPTIONS] <source_image>'
+  echo
+  echo 'This script creates wallpapers for vertical screens layout with aligned centers.'
+  echo
   log_header 'Options'
-  log_usage_options_line "Physical screen dimensions in inches (default: auto-detect)" "-i" "--inches <int external> <int builtin>"
-  log_usage_options_line "Cropping position (default: center-top)" "-p" "--position <POSITION>"
-  log_usage_options_line "Show this help message" "-h" "--help"
-  echo ""
+  log_usage_options_line '-i;--inches <int external> <int builtin>' \
+    'Physical screen dimensions in inches (default: auto-detect)'
+  log_usage_options_line '-p;--position <POSITION>' \
+    'Cropping position (default: center-top)'
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
+  echo
   log_header 'Available cropping positions'
-  log_usage_options_line "Left top" "lt" "left-top"
-  log_usage_options_line "Center top" "ct" "center-top"
-  log_usage_options_line "Right top" "rt" "right-top"
-  log_usage_options_line "Left middle" "lm" "left-middle"
-  log_usage_options_line "Center middle" "cm" "center-middle"
-  log_usage_options_line "Right middle" "rm" "right-middle"
-  log_usage_options_line "Left bottom" "lb" "left-bottom"
-  log_usage_options_line "Center bottom" "cb" "center-bottom"
-  log_usage_options_line "Right bottom" "rb" "right-bottom"
-  echo ""
+  log_usage_options_line 'lt;left-top' 'Left top'
+  log_usage_options_line 'ct;center-top' 'Center top'
+  log_usage_options_line 'rt;right-top' 'Right top'
+  log_usage_options_line 'lm;left-middle' 'Left middle'
+  log_usage_options_line 'cm;center-middle' 'Center middle'
+  log_usage_options_line 'rm;right-middle' 'Right middle'
+  log_usage_options_line 'lb;left-bottom' 'Left bottom'
+  log_usage_options_line 'cb;center-bottom' 'Center bottom'
+  log_usage_options_line 'rb;right-bottom' 'Right bottom'
+  echo
   log_header 'Examples'
-  log_usage_example_line "$0 wallpaper.jpg"
-  log_usage_example_line "$0 --inches 27 16 wallpaper.jpg"
-  log_usage_example_line "$0 --inches 27 16 --position left-top wallpaper.jpg"
-  echo ""
+  log_usage_example_line 'wallpaper.jpg'
+  log_usage_example_line '--inches 27 16 wallpaper.jpg'
+  log_usage_example_line '--inches 27 16 --position left-top wallpaper.jpg'
+  echo
   log_info 'If you don'\''t specify physical dimensions, the script will try to detect them automatically.'
   exit 0
 }

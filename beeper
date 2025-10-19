@@ -22,14 +22,23 @@ main() {
 }
 
 show_usage() {
-  log_usage_line "$0 [OPTIONS]"
-  log_usage_options_line "note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth" "-t" "--type <int>"
-  log_usage_options_line "note speed; integer; from 30 to 500" "-s" "--speed <int>"
-  log_usage_options_line "note octave; integer; from 1 to 9" "-o" "--octave <int>"
-  log_usage_options_line "filepath of tabs" "-f" "--file <path>"
-  log_usage_options_line "update app" "-u" "--update"
-  log_usage_options_line "verbose setters" "-v" "--verbose"
-  log_usage_options_line "show this help" "-h" "--help"
+  log_usage_title '[OPTIONS]'
+  echo
+  log_header 'Options'
+  log_usage_options_line '-t;--type <int>' \
+    'note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth'
+  log_usage_options_line '-s;--speed <int>' \
+    'note speed; integer; from 30 to 500'
+  log_usage_options_line '-o;--octave <int>' \
+    'note octave; integer; from 1 to 9'
+  log_usage_options_line '-f;--file <path>' \
+    'filepath of tabs'
+  log_usage_options_line '-u;--update' \
+    'update app'
+  log_usage_options_line '-v;--verbose' \
+    'verbose setters'
+  log_usage_options_line '-h;--help' \
+    'show this help'
 }
 
 ### NOTES ###
@@ -325,7 +334,7 @@ function set_note_octave() {
   if [[ "$note_octave_no" -gt '9' ]]; then
     note_octave_no='9'
   fi
-  log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no-1))]}" "$note_octave_no"
+  log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no - 1))]}" "$note_octave_no"
 }
 function set_note_tone() {
   local _tone_key="${1:0:1}"
@@ -343,7 +352,7 @@ function set_note_tone() {
     note_tone_name+="$(echo -e $MUSIC_SIGN_SHARP)"
     note_tone_key+="_SHARP"
   fi
-  note_tone_name+="${OCTAVE_SIGNS[$((note_octave_no-1))]}"
+  note_tone_name+="${OCTAVE_SIGNS[$((note_octave_no - 1))]}"
 
 }
 function play_value() {
@@ -366,7 +375,7 @@ function play_pause() {
   else
     sleep "$note_length_sec"
   fi
-  echo -e "$FORMAT_RESET"
+  echo -e "$(styler reset)"
 }
 function play_note() {
   local _time="0"
@@ -387,7 +396,7 @@ function play_note() {
     # shellcheck disable=SC2059
     eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
   fi
-  echo -e "$FORMAT_RESET"
+  echo -e "$(styler reset)"
 }
 function main_loop() {
   # FORMAT_RESET
@@ -505,7 +514,7 @@ function config_load() {
   local _note_speed="120"
   local _note_octave_no="4"
   while [[ $# -gt 0 ]]; do
-    case ${1} in
+    case $1 in
     -h | --help)
       show_usage
       exit 0

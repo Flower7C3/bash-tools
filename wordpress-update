@@ -22,44 +22,46 @@ main() {
   # Source common functions
   source "$(dirname "$0")/common-functions"
 
-  confirm_or_exit "Do you want to continue?"
-
-
-  echo "run"
-  exit
-
   # Call the actual main function
   wordpress_main "$@"
 }
 
 # Function to display usage
 show_usage() {
-  log_usage_line "$0 [OPTIONS]"
-  echo ""
-  echo "Update WordPress installations safely"
-  echo ""
+  log_usage_title '[OPTIONS]'
+  echo
+  echo 'Update WordPress installations safely'
+  echo
   log_header 'Options'
-  log_usage_options_line "WordPress version to install (default: $DEFAULT_WP_VERSION)" "-v" "--version <VERSION>"
-  log_usage_options_line "WordPress source directory path (default: current directory)" "-s" "--source <PATH>"
-  log_usage_options_line "Issue/ticket number for git commit" "-i" "--issue <ISSUE>"
-  log_usage_options_line "Skip creating backup before update" "-b" "--no-backup"
-  log_usage_options_line "Skip git operations" "-g" "--no-git"
-  log_usage_options_line "Show what would be done without making changes" "-n" "--dry-run"
-  log_usage_options_line "Force update even if version is the same" "-f" "--force"
-  log_usage_options_line "Show this help message" "-h" "--help"
-  echo ""
+  log_usage_options_line '-v;--version <VERSION>' \
+    'WordPress version to install (default: %s)' "$DEFAULT_WP_VERSION"
+  log_usage_options_line '-s;--source <PATH>' \
+    'WordPress source directory path (default: current directory)'
+  log_usage_options_line '-i;--issue <ISSUE>' \
+    'Issue/ticket number for git commit'
+  log_usage_options_line '-b;--no-backup' \
+    'Skip creating backup before update'
+  log_usage_options_line '-g;--no-git' \
+    'Skip git operations'
+  log_usage_options_line '-n;--dry-run' \
+    'Show what would be done without making changes'
+  log_usage_options_line '-f;--force' \
+    'Force update even if version is the same'
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
+  echo
   log_header 'Examples'
-  log_usage_example_line "$0 --version 6.4.2 --source /var/www/html"
-  log_usage_example_line "$0 --version latest --issue \"WP-123\""
-  log_usage_example_line "$0 --dry-run --version 6.4.1"
-  log_usage_example_line "$0 --no-backup --no-git --version 6.4.2"
-  echo ""
+  log_usage_example_line '--version 6.4.2 --source /var/www/html'
+  log_usage_example_line '--version latest --issue "WP-123"'
+  log_usage_example_line '--dry-run --version 6.4.1'
+  log_usage_example_line '--no-backup --no-git --version 6.4.2'
+  echo
   log_header 'Notes'
-  echo "  - Always backup your WordPress installation before updating"
-  echo "  - The script will update core WordPress files only"
-  echo "  - Plugins and themes are not affected"
-  echo "  - wp-config.php is preserved"
-  echo "  - Custom uploads and content are preserved"
+  echo '  - Always backup your WordPress installation before updating'
+  echo '  - The script will update core WordPress files only'
+  echo '  - Plugins and themes are not affected'
+  echo '  - wp-config.php is preserved'
+  echo '  - Custom uploads and content are preserved'
   exit 0
 }
 
@@ -154,7 +156,7 @@ download_wordpress() {
     return 1
   fi
 
-  log_success --status  "$_zip_file" "WordPress %s downloaded successfully" "$_version"
+  log_success --status "$_zip_file" "WordPress %s downloaded successfully" "$_version"
 }
 
 # Function to extract WordPress

@@ -25,34 +25,47 @@ main() {
 
 # Function to display usage
 show_usage() {
-  log_usage_line "$0 [OPTIONS]"
-  echo ""
-  echo "Download maps from GeoApify or OpenStreetMap"
-  echo ""
+  log_usage_title '[OPTIONS]'
+  echo
+  echo 'Download maps from GeoApify or OpenStreetMap'
+  echo
   log_header 'Options'
-  log_usage_options_line "Map provider: geoapify, osm (default: $DEFAULT_PROVIDER)" "-p" "--provider PROVIDER"
-  log_usage_options_line "Map zoom level (default: $DEFAULT_ZOOM)" "-z" "--zoom ZOOM"
-  log_usage_options_line "Map type: standard, cycle (default: $DEFAULT_MAP_TYPE)" "-t" "--type TYPE"
-  log_usage_options_line "Output directory (default: $DEFAULT_OUTPUT_DIR)" "-o" "--output DIR"
-  log_usage_options_line "Image width for GeoApify (default: $DEFAULT_WIDTH)" "-w" "--width WIDTH"
-  log_usage_options_line "Image height for GeoApify (default: $DEFAULT_HEIGHT)" "--height HEIGHT"
-  log_usage_options_line "API key for GeoApify" "-k" "--api-key KEY"
-  log_usage_options_line "Center coordinates (for GeoApify)" "-c" "--center LAT,LNG"
-  log_usage_options_line "Bounding box coordinates (for OSM)" "-b" "--bounds W,S,E,N"
-  log_usage_options_line "Marker definitions (for GeoApify)" "-m" "--markers MARKERS"
-  log_usage_options_line "Verbose output" "-v" "--verbose"
-  log_usage_options_line "Debug output" "-d" "--debug"
-  log_usage_options_line "Show this help message" "-h" "--help"
-  echo ""
+  log_usage_options_line '-p;--provider <PROVIDER>' \
+    'Map provider: geoapify, osm (default: %s)' "$DEFAULT_PROVIDER"
+  log_usage_options_line '-z;--zoom <ZOOM>' \
+    'Map zoom level (default: %s)' "$DEFAULT_ZOOM"
+  log_usage_options_line '-t;--type <TYPE>' \
+    'Map type: standard, cycle (default: %s)' "$DEFAULT_MAP_TYPE"
+  log_usage_options_line '-o;--output <DIR>' \
+    'Output directory (default: <u>%s</u>)' "$DEFAULT_OUTPUT_DIR"
+  log_usage_options_line '-w;--width <WIDTH>' \
+    'Image width for GeoApify (default: %s)' "$DEFAULT_WIDTH"
+  log_usage_options_line '--height <HEIGHT>' \
+    'Image height for GeoApify (default: %s)' "$DEFAULT_HEIGHT"
+  log_usage_options_line '-k;--api-key <KEY>' \
+    'API key for GeoApify'
+  log_usage_options_line '-c;--center <LAT>,<LNG>' \
+    'Center coordinates (for GeoApify)'
+  log_usage_options_line '-b;--bounds <W>,<S>,<E>,<N>' \
+    "Bounding box coordinates (for OSM)"
+  log_usage_options_line '-m;--markers <MARKERS>' \
+    'Marker definitions (for GeoApify)'
+  log_usage_options_line '-v;--verbose' \
+    'Verbose output'
+  log_usage_options_line '-d;--debug' \
+    'Debug output'
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
+  echo
   log_header 'Examples'
-  echo " OSM map with bounding box"
-  log_usage_example_line "$0 --provider osm --bounds \"20.2008,49.9817,20.4651,50.0836\" --zoom 15"
-  echo " GeoApify map with center point"
-  log_usage_example_line "$0 --provider geoapify --center \"50.0326,20.0000\" --zoom 15 --api-key YOUR_KEY"
-  echo " GeoApify map with markers"
-  log_usage_example_line "$0 --provider geoapify --center \"50.0326,20.0000\" --markers \"lonlat:20.0000,50.0326;type:circle;color:red\" --api-key YOUR_KEY"
-  echo " OSM cycle map"
-  log_usage_example_line "$0 --provider osm --type cycle --bounds \"20.2008,49.9817,20.4651,50.0836\""
+  echo ' OSM map with bounding box'
+  log_usage_example_line '--provider osm --bounds "20.2008,49.9817,20.4651,50.0836" --zoom 15'
+  echo ' GeoApify map with center point'
+  log_usage_example_line '--provider geoapify --center "50.0326,20.0000" --zoom 15 --api-key YOUR_KEY'
+  echo ' GeoApify map with markers'
+  log_usage_example_line '--provider geoapify --center "50.0326,20.0000" --markers "lonlat:20.0000,50.0326;type:circle;color:red" --api-key YOUR_KEY'
+  echo ' OSM cycle map'
+  log_usage_example_line '--provider osm --type cycle --bounds "20.2008,49.9817,20.4651,50.0836"'
   exit 0
 }
 
@@ -374,7 +387,6 @@ parse_arguments() {
   done
 }
 
-
 map_main() {
   log_title 'Map Downloader'
 
@@ -419,7 +431,6 @@ map_main() {
     download_geoapify_map
   fi
 }
-
 
 # Run main function
 main "$@"

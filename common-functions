@@ -78,7 +78,7 @@ log_message() {
     _text=${_text//<\/b>/$(styler reset)${_color_value}}
     _text=${_text//<u>/$(tput smul)${_color_value}}
     _text=${_text//<\/u>/$(tput rmul)${_color_value}}
-    _text=${_text//<code>/$(styler bg "CYAN")$(styler text "BLACK")}
+    _text=${_text//<code>/$(styler bg 'CYAN')$(styler text 'BLACK')}
     _text=${_text//<\/code>/$(styler reset)${_color_value}}
     echo -e "$_text"
   }
@@ -124,7 +124,7 @@ log_message() {
   # shellcheck disable=SC2059
   _text="$(_text_format "$_color_value" "$@")"
   if [[ -n "$_icon" ]]; then
-    _text="$(_text_format "$_color_value" " <b>%s</b> %s" "$_icon" "$_text")"
+    _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
   fi
   if [[ -n "$_status" ]]; then
     local _raw_bytes
@@ -134,7 +134,7 @@ log_message() {
     local _text_chars
     _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
     local _padding=$((64 + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-    _text="$(_text_format "$_color_value" "%-*s [<b>%s</b>]" "$_padding" "$_text" "$_status")"
+    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$_padding" "$_text" "$_status")"
   fi
   echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
@@ -206,29 +206,34 @@ log_title() {
   fi
   local _padding=$(((_total_width - _title_length) / 2))
 
-  log_message --color "WHITE" "<b>╔%s╗</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
-  log_message --color "WHITE" "<b>║%*s$(styler text "YELLOW")%s%*s$(styler text "WHITE")║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-  log_message --color "WHITE" "<b>╚%s╝</b>" "$(printf "═%.0s" $(seq 1 1 $_total_width))"
+  log_message --color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message --color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+  log_message --color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
 log_header() {
-  log_message --color "PURPLE" "<b>%s</b>" "$1"
+  log_message --color 'PURPLE' '<b>%s</b>' "$1"
 }
 
-log_usage_line() {
-  log_message --color "PURPLE" "<b>Usage</b> <code>$*</code>"
+log_usage_title() {
+  log_message --color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
 }
 
 log_usage_options_line() {
-  local _description="$1"
-  shift
   local _parameters
-  _parameters="$(printf "%s, " "$@")"
-  log_message '  <b>%-*s</b> %s' "30" "${_parameters::-2}" "$_description"
+  IFS=';' read -r -a _parameters <<<"$1"
+  shift
+  local _parameters_list
+  _parameters_list="$(printf '<b>%s</b>, ' "${_parameters[@]}")"
+  local _options
+  _options="$(printf '  %-*s' "$((30 + 7 * ${#_parameters[@]}))" "${_parameters_list::-2}")"
+  local _message="$1"
+  shift
+  log_message "${_options} ${_message}" "$@"
 }
 
 log_usage_example_line() {
-  log_message --color 'CYAN' --icon ' $' '<code>%s</code>' "$@"
+  log_message --color 'CYAN' --icon ' $' '<code>%s %s</code>' "$0" "$*"
 }
 
 # Die with error message
@@ -292,10 +297,10 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message --color "CYAN" --one-line --icon "$_frame" "$loading_animation_message"
+            log_message --color 'CYAN' --one-line --icon "$_frame" "$loading_animation_message"
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message --color "CYAN" --one-line "waiting %s" "$(echo "$countdown - $_step" | bc -z)"
+            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$countdown - $_step" | bc -z)"
             sleep "1"
           fi
           _step="$((_step + 1))"
@@ -379,8 +384,8 @@ check_dependencies() {
   done
 
   if [[ ${#_missing_deps[@]} -gt 0 ]]; then
-    _missing_items="$(printf "<b>%s</b>, " "${_missing_deps[@]}")"
-    die 13 "Missing dependencies: %s. Please install them and try again." "${_missing_items::-2}"
+    _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
+    die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
   fi
 }
 

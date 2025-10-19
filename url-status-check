@@ -28,31 +28,42 @@ main() {
 
 # Function to display usage
 show_usage() {
+  log_usage_title '[OPTIONS] <URLs...>'
   echo
-  log_usage_line "$0 [OPTIONS] <URLs...>"
-  echo
-  echo "Check HTTP status codes and redirects"
+  echo 'Check HTTP status codes and redirects'
   echo
   log_header 'Options'
-  log_usage_options_line "Maximum number of redirects to follow (default: $DEFAULT_MAX_REDIRECTS)" "-r" "--max-redirects <NUM>"
-  log_usage_options_line "Request timeout (default: $DEFAULT_TIMEOUT)" "-t" "--timeout <SECONDS>"
-  log_usage_options_line "User agent string (default: Mozilla/5.0...)" "-u" "--user-agent <STRING>"
-  log_usage_options_line "HTTP method (default: GET)" "-m" "--method <METHOD>"
-  log_usage_options_line "Add custom header (can be used multiple times)" "-H" "--header <HEADER>"
-  log_usage_options_line "Cookie string" "-c" "--cookies <STRING>"
-  log_usage_options_line "Disable SSL certificate verification" "-k" "--insecure"
-  log_usage_options_line "Don't follow redirects" "-f" "--no-follow"
-  log_usage_options_line "Enable parallel processing" "-p" "--parallel"
-  log_usage_options_line "Maximum parallel requests (default: 5)" "-P" "--max-parallel <NUM>"
-  log_usage_options_line "Output format: text, json, csv (default: text)" "-F" "--format <FORMAT>"
-  log_usage_options_line "Show this help message" "-h" "--help"
+  log_usage_options_line '-r;--max-redirects <NUM>' \
+    'Maximum number of redirects to follow (default: %s)' "$DEFAULT_MAX_REDIRECTS"
+  log_usage_options_line '-t;--timeout <SECONDS>' \
+    'Request timeout (default: %s)' "$DEFAULT_TIMEOUT"
+  log_usage_options_line '-u;--user-agent <STRING>' \
+    'User agent string (default: Mozilla/5.0...)'
+  log_usage_options_line '-m;--method <METHOD>' \
+    'HTTP method (default: GET)'
+  log_usage_options_line '-H;--header <HEADER>' \
+    'Add custom header (can be used multiple times)'
+  log_usage_options_line '-c;--cookies <STRING>' \
+    'Cookie string'
+  log_usage_options_line '-k;--insecure' \
+    'Disable SSL certificate verification'
+  log_usage_options_line '-f;--no-follow' \
+    'Don'\''t follow redirects'
+  log_usage_options_line '-p;--parallel' \
+    'Enable parallel processing'
+  log_usage_options_line '-P;--max-parallel <NUM>' \
+    'Maximum parallel requests (default: 5)'
+  log_usage_options_line '-F;--format <FORMAT>' \
+    'Output format: text, json, csv (default: text)'
+  log_usage_options_line '-h;--help' \
+    'Show this help message'
   echo
   log_header 'Examples'
-  log_usage_example_line "$0 https://example.com"
-  log_usage_example_line "$0 -r 10 -t 30 https://example.com"
-  log_usage_example_line "$0 -m POST -H \"Content-Type: application/json\" https://api.example.com"
-  log_usage_example_line "$0 -p -P 10 urls.txt"
-  log_usage_example_line "$0 -F json -o results.json https://example.com"
+  log_usage_example_line 'https://example.com'
+  log_usage_example_line '-r 10 -t 30 https://example.com'
+  log_usage_example_line '-m POST -H "Content-Type: application/json" https://api.example.com'
+  log_usage_example_line '-p -P 10 urls.txt'
+  log_usage_example_line '-F json -o results.json https://example.com'
   exit 0
 }
 
@@ -78,13 +89,13 @@ max_parallel=5
 get_status_color() {
   local _code="$1"
   if [[ "$_code" -lt 300 ]]; then
-    echo -e "$(styler text "GREEN")"
+    echo -e "$(styler text 'GREEN')"
   elif [[ "$_code" -lt 400 ]]; then
-    echo -e "$(styler text "YELLOW")"
+    echo -e "$(styler text 'YELLOW')"
   elif [[ "$_code" -lt 500 ]]; then
-    echo -e "$(styler text "RED")"
+    echo -e "$(styler text 'RED')"
   else
-    echo -e "$(styler text "PURPLE")"
+    echo -e "$(styler text 'PURPLE')"
   fi
 }
 
@@ -168,14 +179,14 @@ EOF
     ;;
   *)
     # Text format
-    printf "%-60s " "$url"
+    printf '%-60s ' "$url"
     printf "[${color}%3s$(styler reset)] " "$response_code"
     if [[ -n "$redirect_url" ]]; then
-      printf "→ %s " "$redirect_url"
+      printf '→ %s ' "$redirect_url"
     fi
-    printf "(%ss, %s bytes)" "$time_total" "$size_download"
+    printf '"(%ss, %s bytes)' "$time_total" "$size_download"
     if [[ "$_redirect_count" -gt 0 ]]; then
-      printf " [%d redirects]" "$_redirect_count"
+      printf ' [%d redirects]' "$_redirect_count"
     fi
     echo
     ;;
@@ -355,11 +366,11 @@ url_main() {
   # Check if curl is available
   check_dependencies curl
 
-    # If no arguments provided, show usage
-    if [[ $# -eq 0 ]]; then
-        log_error 'No URLs provided'
-        show_usage
-    fi
+  # If no arguments provided, show usage
+  if [[ $# -eq 0 ]]; then
+    log_error 'No URLs provided'
+    show_usage
+  fi
 
   # Parse arguments
   parse_arguments "$@"

@@ -23,32 +23,32 @@ main() {
 
 function show_usage() {
   log_header 'Commands'
-  log_usage_options_line "write message to user, use <b>@all</b> to broadcast"\
-    '@nickname message'
-  log_usage_options_line 'setup app port' \
-    '/p' '/port'
-  log_usage_options_line 'setup Your @nickname' \
-    '/n' '/nick'
-  log_usage_options_line 'list saved recipients' \
-    '/l [c|check]' '/list [c|check]'
-  log_usage_options_line 'create new recipient' \
-    '/c <@nickname> <ip/addr> <port>' '/create <@nickname> <ip/addr> <port>'
-  log_usage_options_line 'update saved recipient data' \
-    '/u <@nickname> <ip/addr> <port>' '/update <@nickname> <ip/addr> <port>'
-  log_usage_options_line 'change (rename) recipient <b>@nickname</b>' \
-    '/r <@nickname_old> <@nickname_new>' '/rename <@nickname_old> <@nickname_new>'
-  log_usage_options_line 'delete recipient' \
-    '/d <@nickname>' '/delete <@nickname>'
-  log_usage_options_line "scan local network for hosts with open <u>$NETCAT_CHAT_APP_PORT</u> port" \
-    '/s' '/scan'
-  log_usage_options_line 'send welcome message to all users from Your recipients list' \
-    '/w' '/welcome'
-  log_usage_options_line 'clear history' \
-    '/x' '/clear'
-  log_usage_options_line 'help screen' \
-    '/h' '/help'
-  log_usage_options_line 'exit app' \
-    '/q' '/exit' '/quit' '/bye' '<ctrl>+c'
+  log_usage_options_line '@nickname message' \
+    'write message to user, use <b>@all</b> to broadcast'
+  log_usage_options_line '/p;/port' \
+    'setup app port'
+  log_usage_options_line '/n;/nick' \
+    'setup Your @nickname'
+  log_usage_options_line '/l [c|check];/list [c|check]' \
+    'list saved recipients'
+  log_usage_options_line '/c <@nickname> <ip/addr> <port>;/create <@nickname> <ip/addr> <port>' \
+    'create new recipient'
+  log_usage_options_line '/u <@nickname> <ip/addr> <port>;/update <@nickname> <ip/addr> <port>' \
+    'update saved recipient data'
+  log_usage_options_line '/r <@nickname_old> <@nickname_new>;/rename <@nickname_old> <@nickname_new>' \
+    'change (rename) recipient <b>@nickname</b>'
+  log_usage_options_line '/d <@nickname>;/delete <@nickname>' \
+    'delete recipient'
+  log_usage_options_line '/s;/scan' \
+    'scan local network for hosts with open <u>%d</u> port' "$NETCAT_CHAT_APP_PORT"
+  log_usage_options_line '/w;/welcome' \
+    'send welcome message to all users from Your recipients list'
+  log_usage_options_line '/x;/clear' \
+    'clear history'
+  log_usage_options_line '/h;/help' \
+    'help screen'
+  log_usage_options_line '/q;/exit;/quit;/bye' '<ctrl>+c' \
+    'exit app'
 }
 
 ### VARIABLES ###
@@ -79,12 +79,6 @@ option=''
 function config_load() {
   log_title 'NetCat Chat'
 
-  # Check for help option
-  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    show_usage
-    exit 0
-  fi
-
   if [[ ! -f "$config_file_path" ]]; then
     log_info --status "$config_file_path" 'Create config file'
     mkdir -p "$(dirname "$config_file_path")"
@@ -108,12 +102,17 @@ function config_load() {
     log_info 'You have no recipients on contact list, type <b>/create</b> to add new person'
   fi
   while [[ $# -gt 0 ]]; do
-    case ${1} in
+    case $1 in
     -h | --help)
-      log_info '%s [-p <port>] [-n <@nickname>]' "$0"
-      log_usage_options_line "sender port, default <b>$sender_port</b>" '-p <port>' '--port <port>'
-      log_usage_options_line "sender @nickname, default <b>$sender_nickname</b>" '-n <@nickname>' '--nickname <@nickname>'
-      log_usage_options_line "update app" '-u' '--update'
+      log_usage_title '[-p <port>] [-n <@nickname>]'
+      echo
+      log_header 'Options'
+      log_usage_options_line '-p <port>;--port <port>' \
+        'sender port, default <b>%d</b>' "$sender_port"
+      log_usage_options_line '-n <@nickname>;--nickname <@nickname>' \
+        'sender @nickname, default <b>%s</b>' "$sender_nickname"
+      log_usage_options_line '-u;--update' \
+        'update app'
       exit 0
       ;;
     -u | --update)
