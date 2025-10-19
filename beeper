@@ -21,545 +21,606 @@ main() {
   beeper_main "$@"
 }
 
-show_usage() {
-  log_usage_title '[OPTIONS]'
-  echo
-  log_header 'Options'
-  log_usage_options_line '-t;--type <int>' \
-    'note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixtennth'
-  log_usage_options_line '-s;--speed <int>' \
-    'note speed; integer; from 30 to 500'
-  log_usage_options_line '-o;--octave <int>' \
-    'note octave; integer; from 1 to 9'
-  log_usage_options_line '-f;--file <path>' \
-    'filepath of tabs'
-  log_usage_options_line '-u;--update' \
-    'update app'
-  log_usage_options_line '-v;--verbose' \
-    'verbose setters'
-  log_usage_options_line '-h;--help' \
-    'show this help'
-}
+beeper_main() {
+  function show_usage() {
+    log_usage_title '[OPTIONS]'
+    echo
+    log_header 'Options'
+    log_usage_options_line '-t;--type <int>' \
+      'note type; integer; 16=whole, 8=half, 4=quarter, 2=eighth, 1=sixteenth'
+    log_usage_options_line '-s;--speed <int>' \
+      'note speed; integer; from 30 to 500'
+    log_usage_options_line '-o;--octave <int>' \
+      'note octave; integer; from 1 to 9'
+    log_usage_options_line '-f;--file <path>' \
+      'filepath of tabs'
+    log_usage_options_line '-v;--verbose' \
+      'verbose setters'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'show this help'
+  }
+  function show_commands() {
+    log_header 'Tempo'
+    log_usage_options_line -s 14 'arrow right' \
+      'Tempo speed up'
+    log_usage_options_line -s 14 'arrow left' \
+      'Tempo speed down'
+    log_header 'Octave'
+    log_usage_options_line -s 14 'arrow up' \
+      'Octave change up'
+    log_usage_options_line -s 14 'arrow down' \
+      'Octave change down'
+    log_header 'Note type'
+    log_usage_options_line -s 14 '1' "set sixteenth $MUSIC_NOTE_SIXTEENTH"
+    log_usage_options_line -s 14 '2' "set eighth $MUSIC_NOTE_EIGHTH"
+    log_usage_options_line -s 14 '3' "set quarter $MUSIC_NOTE_QUARTER"
+    log_usage_options_line -s 14 '4' "set half $MUSIC_NOTE_HALF"
+    log_usage_options_line -s 14 '5' "set whole $MUSIC_NOTE_WHOLE"
+    log_header 'Note play'
+    log_usage_options_line -s 14 '`' 'Play pause'
+    log_usage_options_line -s 14 '🅉' "Play note <b>c</b>"
+    log_usage_options_line -s 14 '🅂' "Play note <b>c$MUSIC_SIGN_SHARP</b> / <b>d$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -s 14 '🅇' "Play note <b>d</b>"
+    log_usage_options_line -s 14 '🄳' "Play note <b>d$MUSIC_SIGN_SHARP</b> / <b>e$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -s 14 '🄲' "Play note <b>e</b>"
+    log_usage_options_line -s 14 '🅅' "Play note <b>f</b>"
+    log_usage_options_line -s 14 '🄶' "Play note <b>f$MUSIC_SIGN_SHARP</b> / <b>g$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -s 14 '🄱' "Play note <b>g</b>"
+    log_usage_options_line -s 14 '🄷' "Play note <b>g$MUSIC_SIGN_SHARP</b> / <b>a$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -s 14 '🄽' "Play note <b>a</b>"
+    log_usage_options_line -s 14 '🄹' "Play note <b>a$MUSIC_SIGN_SHARP</b> / <b>b$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -s 14 '🄼' "Play note <b>b</b>"
+    log_usage_options_line -s 14 ',' "Play note <b>c</b>"
+    log_usage_options_line -s 14 'Shift + <note key>' 'Play note with Led.'
+  }
 
-### NOTES ###
-# notes, see https://en.wikipedia.org/wiki/Scientific_pitch_notation
-readonly NOTE_A_0=27.500
-readonly NOTE_A_SHARP_0=29.135
-readonly NOTE_B_FLAT_0=29.135
-readonly NOTE_B_0=30.868
-readonly NOTE_C_FLAT_1=30.868
-readonly NOTE_B_SHARP_0=32.703
-readonly NOTE_C_1=32.703
-readonly NOTE_C_SHARP_1=34.648
-readonly NOTE_D_FLAT_1=34.648
-readonly NOTE_D_1=36.708
-readonly NOTE_D_SHARP_1=38.891
-readonly NOTE_E_FLAT_1=38.891
-readonly NOTE_E_1=41.203
-readonly NOTE_E_SHARP_1=43.654
-readonly NOTE_F_FLAT_1=41.203
-readonly NOTE_F_1=43.654
-readonly NOTE_F_SHARP_1=46.249
-readonly NOTE_G_FLAT_1=46.249
-readonly NOTE_G_1=48.999
-readonly NOTE_G_SHARP_1=51.913
-readonly NOTE_A_FLAT_1=51.913
-readonly NOTE_A_1=55.000
-readonly NOTE_A_SHARP_1=58.270
-readonly NOTE_B_FLAT_1=58.270
-readonly NOTE_B_1=61.735
-readonly NOTE_C_FLAT_2=61.735
-readonly NOTE_B_SHARP_1=65.406
-readonly NOTE_C_2=65.406
-readonly NOTE_C_SHARP_2=69.296
-readonly NOTE_D_FLAT_2=69.296
-readonly NOTE_D_2=73.416
-readonly NOTE_D_SHARP_2=77.782
-readonly NOTE_E_FLAT_2=77.782
-readonly NOTE_E_2=82.407
-readonly NOTE_E_SHARP_2=87.307
-readonly NOTE_F_FLAT_2=82.407
-readonly NOTE_F_2=87.307
-readonly NOTE_F_SHARP_2=92.499
-readonly NOTE_G_FLAT_2=92.499
-readonly NOTE_G_2=97.999
-readonly NOTE_G_SHARP_2=103.826
-readonly NOTE_A_FLAT_2=103.826
-readonly NOTE_A_2=110.000
-readonly NOTE_A_SHARP_2=116.541
-readonly NOTE_B_FLAT_2=116.541
-readonly NOTE_B_2=123.471
-readonly NOTE_C_FLAT_3=123.471
-readonly NOTE_B_SHARP_2=130.813
-readonly NOTE_C_3=130.813
-readonly NOTE_C_SHARP_3=138.591
-readonly NOTE_D_FLAT_3=138.591
-readonly NOTE_D_3=146.832
-readonly NOTE_D_SHARP_3=155.564
-readonly NOTE_E_FLAT_3=155.564
-readonly NOTE_E_3=164.814
-readonly NOTE_E_SHARP_3=174.614
-readonly NOTE_F_FLAT_3=164.814
-readonly NOTE_F_3=174.614
-readonly NOTE_F_SHARP_3=184.997
-readonly NOTE_G_FLAT_3=184.997
-readonly NOTE_G_3=195.998
-readonly NOTE_G_SHARP_3=207.652
-readonly NOTE_A_FLAT_3=207.652
-readonly NOTE_A_3=220.000
-readonly NOTE_A_SHARP_3=233.082
-readonly NOTE_B_FLAT_3=233.082
-readonly NOTE_B_3=246.942
-readonly NOTE_C_FLAT_4=246.942
-readonly NOTE_B_SHARP_3=261.626
-readonly NOTE_C_4=261.626
-readonly NOTE_C_SHARP_4=277.183
-readonly NOTE_D_FLAT_4=277.183
-readonly NOTE_D_4=293.665
-readonly NOTE_D_SHARP_4=311.127
-readonly NOTE_E_FLAT_4=311.127
-readonly NOTE_E_4=329.628
-readonly NOTE_E_SHARP_4=349.228
-readonly NOTE_F_FLAT_4=329.628
-readonly NOTE_F_4=349.228
-readonly NOTE_F_SHARP_4=369.994
-readonly NOTE_G_FLAT_4=369.994
-readonly NOTE_G_4=391.995
-readonly NOTE_G_SHARP_4=415.305
-readonly NOTE_A_FLAT_4=415.305
-readonly NOTE_A_4=440.000
-readonly NOTE_A_SHARP_4=466.164
-readonly NOTE_B_FLAT_4=466.164
-readonly NOTE_B_4=493.883
-readonly NOTE_C_FLAT_5=493.883
-readonly NOTE_B_SHARP_4=523.251
-readonly NOTE_C_5=523.251
-readonly NOTE_C_SHARP_5=554.365
-readonly NOTE_D_FLAT_5=554.365
-readonly NOTE_D_5=587.330
-readonly NOTE_D_SHARP_5=622.254
-readonly NOTE_E_FLAT_5=622.254
-readonly NOTE_E_5=659.255
-readonly NOTE_E_SHARP_5=698.457
-readonly NOTE_F_FLAT_5=659.255
-readonly NOTE_F_5=698.457
-readonly NOTE_F_SHARP_5=739.989
-readonly NOTE_G_FLAT_5=739.989
-readonly NOTE_G_5=783.991
-readonly NOTE_G_SHARP_5=830.609
-readonly NOTE_A_FLAT_5=830.609
-readonly NOTE_A_5=880.000
-readonly NOTE_A_SHARP_5=932.328
-readonly NOTE_B_FLAT_5=932.328
-readonly NOTE_B_5=987.767
-readonly NOTE_C_FLAT_6=987.767
-readonly NOTE_B_SHARP_5=1046.502
-readonly NOTE_C_6=1046.502
-readonly NOTE_C_SHARP_6=1108.731
-readonly NOTE_D_FLAT_6=1108.731
-readonly NOTE_D_6=1174.659
-readonly NOTE_D_SHARP_6=1244.508
-readonly NOTE_E_FLAT_6=1244.508
-readonly NOTE_E_6=1318.510
-readonly NOTE_E_SHARP_6=1396.913
-readonly NOTE_F_FLAT_6=1318.510
-readonly NOTE_F_6=1396.913
-readonly NOTE_F_SHARP_6=1479.978
-readonly NOTE_G_FLAT_6=1479.978
-readonly NOTE_G_6=1567.982
-readonly NOTE_G_SHARP_6=1661.219
-readonly NOTE_A_FLAT_6=1661.219
-readonly NOTE_A_6=1760.000
-readonly NOTE_A_SHARP_6=1864.655
-readonly NOTE_B_FLAT_6=1864.655
-readonly NOTE_B_6=1975.533
-readonly NOTE_C_FLAT_7=1975.533
-readonly NOTE_B_SHARP_6=2093.005
-readonly NOTE_C_7=2093.005
-readonly NOTE_C_SHARP_7=2217.461
-readonly NOTE_D_FLAT_7=2217.461
-readonly NOTE_D_7=2349.318
-readonly NOTE_D_SHARP_7=2489.016
-readonly NOTE_E_FLAT_7=2489.016
-readonly NOTE_E_7=2637.021
-readonly NOTE_E_SHARP_7=2793.826
-readonly NOTE_F_FLAT_7=2637.021
-readonly NOTE_F_7=2793.826
-readonly NOTE_F_SHARP_7=2959.956
-readonly NOTE_G_FLAT_7=2959.956
-readonly NOTE_G_7=3135.964
-readonly NOTE_G_SHARP_7=3322.438
-readonly NOTE_A_FLAT_7=3322.438
-readonly NOTE_A_7=3520.000
-readonly NOTE_A_SHARP_7=3729.310
-readonly NOTE_B_FLAT_7=3729.310
-readonly NOTE_B_7=3951.066
-readonly NOTE_C_FLAT_8=3951.066
-readonly NOTE_B_SHARP_7=4186.009
-readonly NOTE_C_8=4186.009
-readonly NOTE_C_SHARP_8=4434.922
-readonly NOTE_D_FLAT_8=4434.922
-readonly NOTE_D_8=4698.637
-readonly NOTE_D_SHARP_8=4978.032
-readonly NOTE_E_FLAT_8=4978.032
-readonly NOTE_E_8=5274.042
-readonly NOTE_E_SHARP_8=5587.652
-readonly NOTE_F_FLAT_8=5274.042
-readonly NOTE_F_8=5587.652
-readonly NOTE_F_SHARP_8=5919.912
-readonly NOTE_G_FLAT_8=5919.912
-readonly NOTE_G_8=6271.928
-readonly NOTE_G_SHARP_8=6644.876
-readonly NOTE_A_FLAT_8=6644.876
-readonly NOTE_A_8=7040.000
-readonly NOTE_A_SHARP_8=7458.620
-readonly NOTE_B_FLAT_8=7458.620
-readonly NOTE_B_8=7902.133
-readonly NOTE_C_FLAT_9=7902.133
-readonly NOTE_B_SHARP_8=8372.019
-readonly NOTE_C_9=8372.019
-readonly NOTE_C_SHARP_9=8869.845
-readonly NOTE_D_FLAT_9=8869.845
-readonly NOTE_D_9=9397.273
-readonly NOTE_D_SHARP_9=9956.064
-readonly NOTE_E_FLAT_9=9956.064
-readonly NOTE_E_9=10548.083
-readonly NOTE_E_SHARP_9=11175.305
-readonly NOTE_F_FLAT_9=10548.083
-readonly NOTE_F_9=11175.305
-readonly NOTE_F_SHARP_9=11839.823
-readonly NOTE_G_FLAT_9=11839.823
-readonly NOTE_G_9=12543.855
-readonly NOTE_G_SHARP_9=13289.752
-readonly NOTE_A_FLAT_9=13289.752
-readonly NOTE_A_9=14080.00
-readonly NOTE_A_SHARP_9=14917.24
-readonly NOTE_B_FLAT_9=14917.24
-readonly NOTE_B_9=15804.27
-readonly NOTE_C_1FLAT_0=15804.27
-readonly NOTE_B_SHARP_9=16744.04
-readonly NOTE_C_10=16744.04
+  ### NOTES ###
+  # notes, see https://en.wikipedia.org/wiki/Scientific_pitch_notation
+  readonly NOTE_A_0=27.500
+  readonly NOTE_A_SHARP_0=29.135
+  readonly NOTE_B_FLAT_0=29.135
+  readonly NOTE_B_0=30.868
+  readonly NOTE_C_FLAT_1=30.868
+  readonly NOTE_B_SHARP_0=32.703
+  readonly NOTE_C_1=32.703
+  readonly NOTE_C_SHARP_1=34.648
+  readonly NOTE_D_FLAT_1=34.648
+  readonly NOTE_D_1=36.708
+  readonly NOTE_D_SHARP_1=38.891
+  readonly NOTE_E_FLAT_1=38.891
+  readonly NOTE_E_1=41.203
+  readonly NOTE_E_SHARP_1=43.654
+  readonly NOTE_F_FLAT_1=41.203
+  readonly NOTE_F_1=43.654
+  readonly NOTE_F_SHARP_1=46.249
+  readonly NOTE_G_FLAT_1=46.249
+  readonly NOTE_G_1=48.999
+  readonly NOTE_G_SHARP_1=51.913
+  readonly NOTE_A_FLAT_1=51.913
+  readonly NOTE_A_1=55.000
+  readonly NOTE_A_SHARP_1=58.270
+  readonly NOTE_B_FLAT_1=58.270
+  readonly NOTE_B_1=61.735
+  readonly NOTE_C_FLAT_2=61.735
+  readonly NOTE_B_SHARP_1=65.406
+  readonly NOTE_C_2=65.406
+  readonly NOTE_C_SHARP_2=69.296
+  readonly NOTE_D_FLAT_2=69.296
+  readonly NOTE_D_2=73.416
+  readonly NOTE_D_SHARP_2=77.782
+  readonly NOTE_E_FLAT_2=77.782
+  readonly NOTE_E_2=82.407
+  readonly NOTE_E_SHARP_2=87.307
+  readonly NOTE_F_FLAT_2=82.407
+  readonly NOTE_F_2=87.307
+  readonly NOTE_F_SHARP_2=92.499
+  readonly NOTE_G_FLAT_2=92.499
+  readonly NOTE_G_2=97.999
+  readonly NOTE_G_SHARP_2=103.826
+  readonly NOTE_A_FLAT_2=103.826
+  readonly NOTE_A_2=110.000
+  readonly NOTE_A_SHARP_2=116.541
+  readonly NOTE_B_FLAT_2=116.541
+  readonly NOTE_B_2=123.471
+  readonly NOTE_C_FLAT_3=123.471
+  readonly NOTE_B_SHARP_2=130.813
+  readonly NOTE_C_3=130.813
+  readonly NOTE_C_SHARP_3=138.591
+  readonly NOTE_D_FLAT_3=138.591
+  readonly NOTE_D_3=146.832
+  readonly NOTE_D_SHARP_3=155.564
+  readonly NOTE_E_FLAT_3=155.564
+  readonly NOTE_E_3=164.814
+  readonly NOTE_E_SHARP_3=174.614
+  readonly NOTE_F_FLAT_3=164.814
+  readonly NOTE_F_3=174.614
+  readonly NOTE_F_SHARP_3=184.997
+  readonly NOTE_G_FLAT_3=184.997
+  readonly NOTE_G_3=195.998
+  readonly NOTE_G_SHARP_3=207.652
+  readonly NOTE_A_FLAT_3=207.652
+  readonly NOTE_A_3=220.000
+  readonly NOTE_A_SHARP_3=233.082
+  readonly NOTE_B_FLAT_3=233.082
+  readonly NOTE_B_3=246.942
+  readonly NOTE_C_FLAT_4=246.942
+  readonly NOTE_B_SHARP_3=261.626
+  readonly NOTE_C_4=261.626
+  readonly NOTE_C_SHARP_4=277.183
+  readonly NOTE_D_FLAT_4=277.183
+  readonly NOTE_D_4=293.665
+  readonly NOTE_D_SHARP_4=311.127
+  readonly NOTE_E_FLAT_4=311.127
+  readonly NOTE_E_4=329.628
+  readonly NOTE_E_SHARP_4=349.228
+  readonly NOTE_F_FLAT_4=329.628
+  readonly NOTE_F_4=349.228
+  readonly NOTE_F_SHARP_4=369.994
+  readonly NOTE_G_FLAT_4=369.994
+  readonly NOTE_G_4=391.995
+  readonly NOTE_G_SHARP_4=415.305
+  readonly NOTE_A_FLAT_4=415.305
+  readonly NOTE_A_4=440.000
+  readonly NOTE_A_SHARP_4=466.164
+  readonly NOTE_B_FLAT_4=466.164
+  readonly NOTE_B_4=493.883
+  readonly NOTE_C_FLAT_5=493.883
+  readonly NOTE_B_SHARP_4=523.251
+  readonly NOTE_C_5=523.251
+  readonly NOTE_C_SHARP_5=554.365
+  readonly NOTE_D_FLAT_5=554.365
+  readonly NOTE_D_5=587.330
+  readonly NOTE_D_SHARP_5=622.254
+  readonly NOTE_E_FLAT_5=622.254
+  readonly NOTE_E_5=659.255
+  readonly NOTE_E_SHARP_5=698.457
+  readonly NOTE_F_FLAT_5=659.255
+  readonly NOTE_F_5=698.457
+  readonly NOTE_F_SHARP_5=739.989
+  readonly NOTE_G_FLAT_5=739.989
+  readonly NOTE_G_5=783.991
+  readonly NOTE_G_SHARP_5=830.609
+  readonly NOTE_A_FLAT_5=830.609
+  readonly NOTE_A_5=880.000
+  readonly NOTE_A_SHARP_5=932.328
+  readonly NOTE_B_FLAT_5=932.328
+  readonly NOTE_B_5=987.767
+  readonly NOTE_C_FLAT_6=987.767
+  readonly NOTE_B_SHARP_5=1046.502
+  readonly NOTE_C_6=1046.502
+  readonly NOTE_C_SHARP_6=1108.731
+  readonly NOTE_D_FLAT_6=1108.731
+  readonly NOTE_D_6=1174.659
+  readonly NOTE_D_SHARP_6=1244.508
+  readonly NOTE_E_FLAT_6=1244.508
+  readonly NOTE_E_6=1318.510
+  readonly NOTE_E_SHARP_6=1396.913
+  readonly NOTE_F_FLAT_6=1318.510
+  readonly NOTE_F_6=1396.913
+  readonly NOTE_F_SHARP_6=1479.978
+  readonly NOTE_G_FLAT_6=1479.978
+  readonly NOTE_G_6=1567.982
+  readonly NOTE_G_SHARP_6=1661.219
+  readonly NOTE_A_FLAT_6=1661.219
+  readonly NOTE_A_6=1760.000
+  readonly NOTE_A_SHARP_6=1864.655
+  readonly NOTE_B_FLAT_6=1864.655
+  readonly NOTE_B_6=1975.533
+  readonly NOTE_C_FLAT_7=1975.533
+  readonly NOTE_B_SHARP_6=2093.005
+  readonly NOTE_C_7=2093.005
+  readonly NOTE_C_SHARP_7=2217.461
+  readonly NOTE_D_FLAT_7=2217.461
+  readonly NOTE_D_7=2349.318
+  readonly NOTE_D_SHARP_7=2489.016
+  readonly NOTE_E_FLAT_7=2489.016
+  readonly NOTE_E_7=2637.021
+  readonly NOTE_E_SHARP_7=2793.826
+  readonly NOTE_F_FLAT_7=2637.021
+  readonly NOTE_F_7=2793.826
+  readonly NOTE_F_SHARP_7=2959.956
+  readonly NOTE_G_FLAT_7=2959.956
+  readonly NOTE_G_7=3135.964
+  readonly NOTE_G_SHARP_7=3322.438
+  readonly NOTE_A_FLAT_7=3322.438
+  readonly NOTE_A_7=3520.000
+  readonly NOTE_A_SHARP_7=3729.310
+  readonly NOTE_B_FLAT_7=3729.310
+  readonly NOTE_B_7=3951.066
+  readonly NOTE_C_FLAT_8=3951.066
+  readonly NOTE_B_SHARP_7=4186.009
+  readonly NOTE_C_8=4186.009
+  readonly NOTE_C_SHARP_8=4434.922
+  readonly NOTE_D_FLAT_8=4434.922
+  readonly NOTE_D_8=4698.637
+  readonly NOTE_D_SHARP_8=4978.032
+  readonly NOTE_E_FLAT_8=4978.032
+  readonly NOTE_E_8=5274.042
+  readonly NOTE_E_SHARP_8=5587.652
+  readonly NOTE_F_FLAT_8=5274.042
+  readonly NOTE_F_8=5587.652
+  readonly NOTE_F_SHARP_8=5919.912
+  readonly NOTE_G_FLAT_8=5919.912
+  readonly NOTE_G_8=6271.928
+  readonly NOTE_G_SHARP_8=6644.876
+  readonly NOTE_A_FLAT_8=6644.876
+  readonly NOTE_A_8=7040.000
+  readonly NOTE_A_SHARP_8=7458.620
+  readonly NOTE_B_FLAT_8=7458.620
+  readonly NOTE_B_8=7902.133
+  readonly NOTE_C_FLAT_9=7902.133
+  readonly NOTE_B_SHARP_8=8372.019
+  readonly NOTE_C_9=8372.019
+  readonly NOTE_C_SHARP_9=8869.845
+  readonly NOTE_D_FLAT_9=8869.845
+  readonly NOTE_D_9=9397.273
+  readonly NOTE_D_SHARP_9=9956.064
+  readonly NOTE_E_FLAT_9=9956.064
+  readonly NOTE_E_9=10548.083
+  readonly NOTE_E_SHARP_9=11175.305
+  readonly NOTE_F_FLAT_9=10548.083
+  readonly NOTE_F_9=11175.305
+  readonly NOTE_F_SHARP_9=11839.823
+  readonly NOTE_G_FLAT_9=11839.823
+  readonly NOTE_G_9=12543.855
+  readonly NOTE_G_SHARP_9=13289.752
+  readonly NOTE_A_FLAT_9=13289.752
+  readonly NOTE_A_9=14080.00
+  readonly NOTE_A_SHARP_9=14917.24
+  readonly NOTE_B_FLAT_9=14917.24
+  readonly NOTE_B_9=15804.27
+  readonly NOTE_C_1FLAT_0=15804.27
+  readonly NOTE_B_SHARP_9=16744.04
+  readonly NOTE_C_10=16744.04
 
-### SYMBOLS ###
-readonly MUSIC_NOTE_SIXTENNTH="\u266C "
-readonly MUSIC_NOTE_EIGHTH="\u266A "
-readonly MUSIC_NOTE_EIGHTH_EXTENDED="\u266A."
-readonly MUSIC_NOTE_QUARTER="\u2669 "
-readonly MUSIC_NOTE_QUARTER_EXTENDED="\u2669."
-readonly MUSIC_NOTE_HALF="\u2af0 "
-readonly MUSIC_NOTE_HALF_EXTENDED="\u2af0."
-readonly MUSIC_NOTE_WHOLE="\u26AC "
-readonly MUSIC_NOTE_WHOLE_EXTENDED="\u26AC."
+  ### SYMBOLS ###
+  readonly MUSIC_NOTE_SIXTEENTH="\u266C "
+  readonly MUSIC_NOTE_EIGHTH="\u266A "
+  readonly MUSIC_NOTE_EIGHTH_EXTENDED="\u266A."
+  readonly MUSIC_NOTE_QUARTER="\u2669 "
+  readonly MUSIC_NOTE_QUARTER_EXTENDED="\u2669."
+  readonly MUSIC_NOTE_HALF="\u2af0 "
+  readonly MUSIC_NOTE_HALF_EXTENDED="\u2af0."
+  readonly MUSIC_NOTE_WHOLE="\u26AC "
+  readonly MUSIC_NOTE_WHOLE_EXTENDED="\u26AC."
 
-readonly MUSIC_CLEF_G='𝄞'          # \xF0\x9D\x84\x9E
-readonly MUSIC_SIGN_FLAT="\u266D"  # \xe2\x99\xad
-readonly MUSIC_SIGN_NATURAL='♮'    # \xe2\x99\xae
-readonly MUSIC_SIGN_SHARP="\u266F" # \xe2\x99\xaf
+  readonly MUSIC_CLEF_G='𝄞'          # \xF0\x9D\x84\x9E
+  readonly MUSIC_SIGN_FLAT="\u266D"  # \xe2\x99\xad
+  readonly MUSIC_SIGN_NATURAL='♮'    # \xe2\x99\xae
+  readonly MUSIC_SIGN_SHARP="\u266F" # \xe2\x99\xaf
 
-readonly OCTAVE_SIGNS=(₂ ₁ "" ⁰ ¹ ² ³ ⁴ ⁵)
-readonly OCTAVE_NAMES=(subcontra contra major minor one-line two-line three-line four-line five-line)
+  readonly OCTAVE_SIGNS=(₂ ₁ "" ⁰ ¹ ² ³ ⁴ ⁵)
+  readonly OCTAVE_NAMES=(subcontra contra major minor one-line two-line three-line four-line five-line)
 
-### CONFIG ###
-command_pattern_normal=''
-command_pattern_sustain=''
-time_mode=''
-command_name=''
-notes_file_name=''
-note_sustain='n'
-note_tone_key=''
-note_tone_name=''
-note_tone_freq=''
-note_octave_no=''
-note_type_id='4'
-note_type_icon=''
-note_speed='60'
-note_length_ms=''
-note_length_sec=''
-force_stop='n'
-
-### BEEPER ###
-function reset_note() {
+  ### CONFIG ###
+  command_pattern_normal=''
+  command_pattern_sustain=''
+  time_mode=''
+  command_name=''
+  notes_file_name=''
   note_sustain='n'
   note_tone_key=''
-}
-function set_note_sustain() {
-  note_sustain='y'
-}
-function update_note_length() {
-  note_length_ms=$(echo "scale=3; $note_type_id/4 * 1000 * 60/$note_speed" | bc -l)
-  note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
-}
-function set_note_type() {
-  note_type_id="$1"
-  if (($(echo "$note_type_id <= 0" | bc -l))); then
-    note_type_id='1'
-  fi
-  if (($(echo "$note_type_id > 16" | bc -l))); then
-    note_type_id='16'
-  fi
-  local _note_length_name
-  case "$note_type_id" in
-  24) _note_length_name='WHOLE_EXTENDED' ;;
-  16) _note_length_name='WHOLE' ;;
-  12) _note_length_name='HALF_EXTENDED' ;;
-  8) _note_length_name='HALF' ;;
-  6) _note_length_name='QUARTER_EXTENDED' ;;
-  4 | "4/3") _note_length_name='QUARTER' ;;
-  3) _note_length_name='EIGHTH_EXTENDED' ;;
-  2 | "2/3") _note_length_name='EIGHTH' ;;
-  1) _note_length_name='SIXTENNTH' ;;
-  esac
-  local _icon_key="MUSIC_NOTE_${_note_length_name}"
-  note_type_icon="$(echo -e "${!_icon_key}")"
-  update_note_length
-  log_debug -r 'Set note type as <b>%s</b> %s (%s ms)' "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
-}
-function set_note_speed() {
-  local _speed="$1"
-  if [[ "$_speed" -lt '30' ]]; then
-    _speed='30'
-  fi
-  if [[ "$_speed" -gt '500' ]]; then
-    _speed='500'
-  fi
-  note_speed="$_speed"
-  update_note_length
-  log_debug -r 'Set speed as <b>%s</b>' "$note_speed"
-}
-function set_note_octave() {
-  note_octave_no="$1"
-  if [[ "$note_octave_no" -lt '1' ]]; then
-    note_octave_no='1'
-  fi
-  if [[ "$note_octave_no" -gt '9' ]]; then
-    note_octave_no='9'
-  fi
-  log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no - 1))]}" "$note_octave_no"
-}
-function set_note_tone() {
-  local _tone_key="${1:0:1}"
-  local _tone_mod="${1:0-1}"
-  if [[ "$note_octave_no" -lt "4" ]]; then
-    note_tone_name="${_tone_key^^}"
-  else
-    note_tone_name="${_tone_key,,}"
-  fi
-  note_tone_key="${_tone_key^^}"
-  if [[ "$_tone_mod" == "-" ]]; then
-    note_tone_name+="$(echo -e $MUSIC_SIGN_FLAT)"
-    note_tone_key+="_FLAT"
-  elif [[ "$_tone_mod" == "+" ]]; then
-    note_tone_name+="$(echo -e $MUSIC_SIGN_SHARP)"
-    note_tone_key+="_SHARP"
-  fi
-  note_tone_name+="${OCTAVE_SIGNS[$((note_octave_no - 1))]}"
+  note_tone_name=''
+  note_tone_freq=''
+  note_octave_no=''
+  note_type_id='4'
+  note_type_icon=''
+  note_speed='60'
+  note_length_ms=''
+  note_length_sec=''
+  force_stop='n'
 
-}
-function play_value() {
-  if [[ "$note_tone_key" == 'p' || "$note_tone_key" == 'P' ]]; then
-    play_pause
-  else
-    local _frequency_key="NOTE_${note_tone_key}_${note_octave_no}"
-    note_tone_freq="${!_frequency_key}"
-    play_note
-  fi
-}
-function play_pause() {
-  local _suffix=""
-  if [[ "$note_sustain" == 'y' ]]; then
-    _suffix="Led."
-  fi
-  printf "$(tput setaf 3)%6.3s ms %s %s" "${note_length_ms/./,}" "${note_type_icon}p" "$_suffix"
-  if [[ "$note_sustain" == 'y' ]]; then
-    sleep "$note_length_sec" &
-  else
-    sleep "$note_length_sec"
-  fi
-  echo -e "$(styler reset)"
-}
-function play_note() {
-  local _time="0"
-  if [[ "$time_mode" == "ms" ]]; then
-    _time="$note_length_ms"
-  elif [[ "$time_mode" == "sec" ]]; then
-    _time="$note_length_sec"
-  fi
-  local _suffix=""
-  if [[ "$note_sustain" == 'y' ]]; then
-    _suffix="Led."
-  fi
-  printf "$(tput setaf 3)%6.1fms %s %8.2fHz %s %s" "${note_length_ms/./,}" "$note_type_icon" "${note_tone_freq/./,}" "$note_tone_name" "$_suffix"
-  if [[ "$note_sustain" == 'y' ]]; then
-    # shellcheck disable=SC2059
-    eval "$(printf "$command_pattern_sustain" "$_time" "$note_tone_freq")"
-  else
-    # shellcheck disable=SC2059
-    eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
-  fi
-  echo -e "$(styler reset)"
-}
-function main_loop() {
-  # FORMAT_RESET
-  reset_note
-  local _octave_extra='n'
-  local _escape_char
-  _escape_char=$(printf "\u1b")
-  # READ
+  ### BEEPER ###
+  function reset_note() {
+    note_sustain='n'
+    note_tone_key=''
+  }
 
-  read -r -n 1 -p "$(tput setaf 7)$(tput bold)$MUSIC_CLEF_G $(tput setaf 0)" key
-  tput sgr0
-  if [[ $key == "$_escape_char" ]]; then
-    read -rsn2 key # read 2 more chars
-  fi
-  # octave extra
-  if [[ "$key" == ',' ]] || [[ "$key" == '<' ]]; then
-    _octave_extra='y'
-  fi
+  function set_note_sustain() {
+    note_sustain='y'
+  }
 
-  if [[ "$_octave_extra" == 'y' ]]; then
-    set_note_octave "$((note_octave_no + 1))"
-  fi
+  function update_note_length() {
+    note_length_ms=$(echo "scale=3; $note_type_id/4 * 1000 * 60/$note_speed" | bc -l)
+    note_length_sec=$(echo "scale=3; $note_length_ms/1000" | bc -l)
+  }
 
-  case "$key" in
-  # NOTE SPEED
-  '[C')
-    set_note_speed $((note_speed + 5))
-    ;;
-  '[D')
-    set_note_speed $((note_speed - 5))
-    ;;
-  # NOTE TYPE
-  1) set_note_type 1 ;;
-  2) set_note_type 2 ;;
-  3) set_note_type 4 ;;
-  4) set_note_type 8 ;;
-  5) set_note_type 16 ;;
-  '[A')
-    set_note_octave $((note_octave_no + 1))
-    ;;
-  '[B')
-    set_note_octave $((note_octave_no - 1))
-    ;;
-  # NOTE TONE
-  \`) set_note_tone 'p' ;;
-  z | Z) set_note_tone 'c' ;;
-  s | S) set_note_tone 'c+' ;;
-  x | X) set_note_tone 'd' ;;
-  d | D) set_note_tone 'd+' ;;
-  c | C) set_note_tone 'e' ;;
-  v | V) set_note_tone 'f' ;;
-  g | G) set_note_tone 'f+' ;;
-  b | B) set_note_tone 'g' ;;
-  h | H) set_note_tone 'g+' ;;
-  n | N) set_note_tone 'a' ;;
-  j | J) set_note_tone 'a+' ;;
-  m | M) set_note_tone 'b' ;;
-  , | \<) set_note_tone 'c' ;;
-  *) printf " \r" ;;
-  esac
-  # SUSTAIN
-  case "$key" in
-  Z | S | X | D | C | V | G | B | H | N | J | M | \<)
-    set_note_sustain
-    ;;
-  esac
-  # PLAY
-  if [[ "$note_tone_key" != '' ]]; then
-    play_value
-  fi
-  if [[ "$_octave_extra" == 'y' ]]; then
-    set_note_octave "$((note_octave_no - 1))"
-  fi
-}
-function file_read() {
-  local _notes_data=($(cat "$notes_file_name" | grep -v '#'))
-  local _total=${#_notes_data[@]}
-  local _index=0
-  while true; do
-    if [[ "$_index" -ge "$_total" ]] || [[ "$force_stop" == "y" ]]; then
-      break
+  function set_note_type() {
+    note_type_id="$1"
+    if (($(echo "$note_type_id <= 0" | bc -l))); then
+      note_type_id='1'
     fi
+    if (($(echo "$note_type_id > 16" | bc -l))); then
+      note_type_id='16'
+    fi
+    local _note_length_name
+    case "$note_type_id" in
+    24) _note_length_name='WHOLE_EXTENDED' ;;
+    16) _note_length_name='WHOLE' ;;
+    12) _note_length_name='HALF_EXTENDED' ;;
+    8) _note_length_name='HALF' ;;
+    6) _note_length_name='QUARTER_EXTENDED' ;;
+    4 | "4/3") _note_length_name='QUARTER' ;;
+    3) _note_length_name='EIGHTH_EXTENDED' ;;
+    2 | "2/3") _note_length_name='EIGHTH' ;;
+    1) _note_length_name='SIXTEENTH' ;;
+    esac
+    local _icon_key="MUSIC_NOTE_${_note_length_name}"
+    note_type_icon="$(echo -e "${!_icon_key}")"
+    update_note_length
+    log_debug -r 'Set note type as <b>%s</b> %s (%s ms)' "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
+  }
+
+  function set_note_speed() {
+    local _speed="$1"
+    if [[ "$_speed" -lt '30' ]]; then
+      _speed='30'
+    fi
+    if [[ "$_speed" -gt '500' ]]; then
+      _speed='500'
+    fi
+    note_speed="$_speed"
+    update_note_length
+    log_debug -r 'Set speed as <b>%s</b>' "$note_speed"
+  }
+
+  function set_note_octave() {
+    note_octave_no="$1"
+    if [[ "$note_octave_no" -lt '1' ]]; then
+      note_octave_no='1'
+    fi
+    if [[ "$note_octave_no" -gt '9' ]]; then
+      note_octave_no='9'
+    fi
+    log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no - 1))]}" "$note_octave_no"
+  }
+
+  function set_note_tone() {
+    local _tone_key="${1:0:1}"
+    local _tone_mod="${1:0-1}"
+    if [[ "$note_octave_no" -lt "4" ]]; then
+      note_tone_name="${_tone_key^^}"
+    else
+      note_tone_name="${_tone_key,,}"
+    fi
+    note_tone_key="${_tone_key^^}"
+    if [[ "$_tone_mod" == "-" ]]; then
+      note_tone_name+="$(echo -e $MUSIC_SIGN_FLAT)"
+      note_tone_key+="_FLAT"
+    elif [[ "$_tone_mod" == "+" ]]; then
+      note_tone_name+="$(echo -e $MUSIC_SIGN_SHARP)"
+      note_tone_key+="_SHARP"
+    fi
+    note_tone_name+="${OCTAVE_SIGNS[$((note_octave_no - 1))]}"
+
+  }
+
+  function play_value() {
+    if [[ "$note_tone_key" == 'p' || "$note_tone_key" == 'P' ]]; then
+      play_pause
+    else
+      local _frequency_key="NOTE_${note_tone_key}_${note_octave_no}"
+      note_tone_freq="${!_frequency_key}"
+      play_note
+    fi
+  }
+
+  function play_pause() {
+    local _suffix=""
+    if [[ "$note_sustain" == 'y' ]]; then
+      _suffix="Led."
+    fi
+    printf "$(tput setaf 3)%6.3s ms %s %s" "${note_length_ms/./,}" "${note_type_icon}p" "$_suffix"
+    if [[ "$note_sustain" == 'y' ]]; then
+      sleep "$note_length_sec" &
+    else
+      sleep "$note_length_sec"
+    fi
+    echo -e "$(styler reset)"
+  }
+
+  function play_note() {
+    local _time="0"
+    if [[ "$time_mode" == "ms" ]]; then
+      _time="$note_length_ms"
+    elif [[ "$time_mode" == "sec" ]]; then
+      _time="$note_length_sec"
+    fi
+    local _suffix=""
+    if [[ "$note_sustain" == 'y' ]]; then
+      _suffix="Led."
+    fi
+    printf "$(tput setaf 3)%6.1fms %s %8.2fHz %s %s" "${note_length_ms/./,}" "$note_type_icon" "${note_tone_freq/./,}" "$note_tone_name" "$_suffix"
+    if [[ "$note_sustain" == 'y' ]]; then
+      # shellcheck disable=SC2059
+      eval "$(printf "$command_pattern_sustain" "$_time" "$note_tone_freq")"
+    else
+      # shellcheck disable=SC2059
+      eval "$(printf "$command_pattern_normal" "$_time" "$note_tone_freq")"
+    fi
+    echo -e "$(styler reset)"
+  }
+
+  function main_loop() {
+    # FORMAT_RESET
     reset_note
-    local _note_data
-    _note_data="${_notes_data[$_index]}"
-    local _note_arr
-    read -r -a _note_arr <<<"${_note_data/,/ }"
-    set_note_type "${_note_arr[1]}"
-    set_note_octave "${_note_arr[0]:0-1}"
-    set_note_tone "${_note_arr[0]:0:-1}"
-    _index=$((_index + 1))
-    printf "%4d : " "$_index"
-    if [[ -n "${_note_arr[2]:-}" ]]; then
-      set_note_sustain
+    local _octave_extra='n'
+    local _escape_char
+    _escape_char=$(printf "\u1b")
+    # READ
+
+    read -r -n 1 -p "$(tput setaf 7)$(tput bold)$MUSIC_CLEF_G $(tput setaf 0)" key
+    tput sgr0
+    if [[ $key == "$_escape_char" ]]; then
+      read -rsn2 key # read 2 more chars
     fi
-    play_value
-  done
-}
-function config_load() {
-  if hash 'beep' 2>/dev/null; then
-    command_pattern_normal='beep -l %s -f %s'
-    command_pattern_sustain='beep -l %s -f %s &'
-    time_mode='ms'
-    command_name='beep'
-  elif hash 'play' 2>/dev/null; then
-    command_pattern_normal='play -q -n -c1 synth %s sine %s'
-    command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
-    time_mode='sec'
-    command_name='play'
-  else
-    log_error 'Musical command not found! Please install <b>beep</b> (<code>apt install beep</code>) or <b>play</b> (<code>brew install sox</code>).'
-    exit 1
-  fi
-  local _note_type="4"
-  local _note_speed="120"
-  local _note_octave_no="4"
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-    -h | --help)
-      show_usage
-      exit 0
+    # octave extra
+    if [[ "$key" == ',' ]] || [[ "$key" == '<' ]]; then
+      _octave_extra='y'
+    fi
+
+    if [[ "$_octave_extra" == 'y' ]]; then
+      set_note_octave "$((note_octave_no + 1))"
+    fi
+
+    case "$key" in
+    # NOTE SPEED
+    '[C')
+      set_note_speed $((note_speed + 5))
       ;;
-    -u | --update)
-      log_info 'Downloading new app version'
-      curl "https://raw.githubusercontent.com/Flower7C3/bash-tools/master/beeper" >$0
-      exit
+    '[D')
+      set_note_speed $((note_speed - 5))
       ;;
-    -v | --verbose)
-      DEBUG=1
+    # NOTE TYPE
+    1) set_note_type 1 ;;
+    2) set_note_type 2 ;;
+    3) set_note_type 4 ;;
+    4) set_note_type 8 ;;
+    5) set_note_type 16 ;;
+    '[A')
+      set_note_octave $((note_octave_no + 1))
       ;;
-    -t | --type)
-      shift
-      _note_type="$1"
+    '[B')
+      set_note_octave $((note_octave_no - 1))
       ;;
-    -s | --speed)
-      shift
-      _note_speed="$1"
+    # NOTE TONE
+    \`) set_note_tone 'p' ;;
+    z | Z) set_note_tone 'c' ;;
+    s | S) set_note_tone 'c+' ;;
+    x | X) set_note_tone 'd' ;;
+    d | D) set_note_tone 'd+' ;;
+    c | C) set_note_tone 'e' ;;
+    v | V) set_note_tone 'f' ;;
+    g | G) set_note_tone 'f+' ;;
+    b | B) set_note_tone 'g' ;;
+    h | H) set_note_tone 'g+' ;;
+    n | N) set_note_tone 'a' ;;
+    j | J) set_note_tone 'a+' ;;
+    m | M) set_note_tone 'b' ;;
+    , | \<) set_note_tone 'c' ;;
+    *) printf " \r" ;;
+    esac
+    # SUSTAIN
+    case "$key" in
+    Z | S | X | D | C | V | G | B | H | N | J | M | \<)
+      set_note_sustain
       ;;
-    -o | --octave)
-      shift
-      _note_octave_no="$1"
-      ;;
-    -f | --file)
-      shift
-      notes_file_name="$1"
+    \?)
+      show_commands
       ;;
     esac
-    shift
-  done
-  set_note_speed "$_note_speed"
-  set_note_type "$_note_type"
-  set_note_octave "$_note_octave_no"
-  return 0
-}
+    # PLAY
+    if [[ "$note_tone_key" != '' ]]; then
+      play_value
+    fi
+    if [[ "$_octave_extra" == 'y' ]]; then
+      set_note_octave "$((note_octave_no - 1))"
+    fi
+  }
 
-### TRAP ###
-function finish() {
-  force_stop='y'
-  killall $command_name
-}
-trap finish EXIT
+  function file_read() {
+    local _notes_data
+    read -r -a _notes_data <<<"$(grep -v '#' "$notes_file_name")"
+    local _total=${#_notes_data[@]}
+    local _index=0
+    while true; do
+      if [[ "$_index" -ge "$_total" ]] || [[ "$force_stop" == "y" ]]; then
+        break
+      fi
+      reset_note
+      local _note_data
+      _note_data="${_notes_data[$_index]}"
+      local _note_arr
+      read -r -a _note_arr <<<"${_note_data/,/ }"
+      set_note_type "${_note_arr[1]}"
+      set_note_octave "${_note_arr[0]:0-1}"
+      set_note_tone "${_note_arr[0]:0:-1}"
+      _index=$((_index + 1))
+      printf "%4d : " "$_index"
+      if [[ -n "${_note_arr[2]:-}" ]]; then
+        set_note_sustain
+      fi
+      play_value
+    done
+  }
 
-beeper_main() {
+  function config_load() {
+    if hash 'beep' 2>/dev/null; then
+      command_pattern_normal='beep -l %s -f %s'
+      command_pattern_sustain='beep -l %s -f %s &'
+      time_mode='ms'
+      command_name='beep'
+    elif hash 'play' 2>/dev/null; then
+      command_pattern_normal='play -q -n -c1 synth %s sine %s'
+      command_pattern_sustain='play -q -n -c1 synth %s sine %s &'
+      time_mode='sec'
+      command_name='play'
+    else
+      log_error 'Musical command not found! Please install <b>beep</b> (<code>apt install beep</code>) or <b>play</b> (<code>brew install sox</code>).'
+      exit 1
+    fi
+    local _note_type="4"
+    local _note_speed="120"
+    local _note_octave_no="4"
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+      -v | --verbose)
+        DEBUG=1
+        ;;
+      -t | --type)
+        shift
+        _note_type="$1"
+        ;;
+      -s | --speed)
+        shift
+        _note_speed="$1"
+        ;;
+      -o | --octave)
+        shift
+        _note_octave_no="$1"
+        ;;
+      -f | --file)
+        shift
+        notes_file_name="$1"
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        echo
+        show_usage
+        exit 1
+        ;;
+      *)
+        log_error 'Unexpected argument: <b>%s</b>' "$1"
+        echo
+        show_usage
+        exit 1
+        ;;
+      esac
+      shift
+    done
+    set_note_speed "$_note_speed"
+    set_note_type "$_note_type"
+    set_note_octave "$_note_octave_no"
+    return 0
+  }
+
+  ### TRAP ###
+  function finish() {
+    log_info -r "Bye!"
+    force_stop='y'
+    killall $command_name 2>/dev/null
+    exit 0
+  }
+  trap 'finish' EXIT
+
   log_title 'Beeper'
 
   if ! config_load "$@"; then

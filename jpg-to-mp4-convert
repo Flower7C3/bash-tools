@@ -23,99 +23,112 @@ main() {
   converter_main "$@"
 }
 
-# Function to display usage
-show_usage() {
-  log_usage_title '[OPTIONS]'
-  echo
-  echo 'Convert JPG images to MP4 video'
-  echo
-  log_header 'Options'
-  log_usage_options_line '-s;--source <DIR>' \
-    'Source directory containing JPG images'
-  log_usage_options_line '-f;--framerate <FPS>' \
-    'Frame rate for output video (default: %s)' "$DEFAULT_FRAMERATE"
-  log_usage_options_line '-h;--help' \
-    'Show this help message'
-  echo
-  log_header 'Examples'
-  log_usage_example_line '--source /path/to/images'
-  log_usage_example_line '-s /path/to/images -f 30'
-  log_usage_example_line "$(styler reset) Will prompt for source directory"
-  exit 0
-}
-
-# Default values
-readonly DEFAULT_FRAMERATE=15
-source_dir=""
-framerate=$DEFAULT_FRAMERATE
-
-# Function to parse command line arguments
-parse_arguments() {
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-    -s | --source)
-      source_dir="$2"
-      shift 2
-      ;;
-    -f | --framerate)
-      framerate="$2"
-      if ! validate_positive_number "$framerate" "Framerate"; then
-        exit 1
-      fi
-      shift 2
-      ;;
-    -h | --help)
-      show_usage
-      ;;
-    *)
-      log_error 'Unknown option: %s' "$1"
-      show_usage
-      ;;
-    esac
-  done
-}
-
-# Function to prompt for directory
-prompt_for_directory() {
-  while true; do
-    prompt_input '_source_dir' "Enter source directory path" ""
-    if [ -z "$_source_dir" ]; then
-      log_error 'Directory path cannot be empty'
-      continue
-    fi
-    if ! verify_directory "$_source_dir"; then
-      continue
-    fi
-    break
-  done
-}
-
-# Function to verify directory and JPG files
-verify_directory() {
-  local _source_dir="$1"
-
-  if [[ "$_source_dir" != */ ]]; then
-    _source_dir="${_source_dir}/"
-  fi
-
-  if ! validate_directory "$_source_dir"; then
-    return 1
-  fi
-
-  # Check if directory contains JPG files
-  local _jpg_count
-  _jpg_count=$(find "$_source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | wc -l | tr -d ' ')
-  if [ "$_jpg_count" -eq 0 ]; then
-    die 11 "No JPG files found in <u>%s</u> directory" "$_source_dir"
-  fi
-
-  log_info 'Found <b>%s</b> JPG files in <u>%s</u> directory' "$_jpg_count" "$_source_dir"
-  source_dir="$_source_dir"
-  return 0
-}
-
-# Main function
 converter_main() {
+  # Function to display usage
+  function show_usage() {
+    log_usage_title '[OPTIONS]'
+    echo
+    echo 'Convert JPG images to MP4 video'
+    echo
+    log_header 'Options'
+    log_usage_options_line '-s;--source <DIR>' \
+      'Source directory containing JPG images'
+    log_usage_options_line '-f;--framerate <FPS>' \
+      'Frame rate for output video (default: %s)' "$DEFAULT_FRAMERATE"
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    log_header 'Examples'
+    log_usage_example_line '--source /path/to/images'
+    log_usage_example_line '-s /path/to/images -f 30'
+    log_usage_example_line "$(styler reset) Will prompt for source directory"
+    exit 0
+  }
+
+  # Default values
+  readonly DEFAULT_FRAMERATE=15
+  source_dir=""
+  framerate=$DEFAULT_FRAMERATE
+
+  # Function to parse command line arguments
+  parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+
+      -s | --source)
+        source_dir="$2"
+        shift 2
+        ;;
+      -f | --framerate)
+        framerate="$2"
+        if ! validate_positive_number "$framerate" "Framerate"; then
+          exit 1
+        fi
+        shift 2
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        echo
+        show_usage
+        exit 1
+        ;;
+      *)
+        log_error 'Unexpected argument: <b>%s</b>' "$1"
+        echo
+        show_usage
+        exit 1
+        ;;
+      esac
+    done
+  }
+
+  # Function to prompt for directory
+  prompt_for_directory() {
+    while true; do
+      prompt_input '_source_dir' "Enter source directory path" ""
+      if [ -z "$_source_dir" ]; then
+        log_error 'Directory path cannot be empty'
+        continue
+      fi
+      if ! verify_directory "$_source_dir"; then
+        continue
+      fi
+      break
+    done
+  }
+
+  # Function to verify directory and JPG files
+  verify_directory() {
+    local _source_dir="$1"
+
+    if [[ "$_source_dir" != */ ]]; then
+      _source_dir="${_source_dir}/"
+    fi
+
+    if ! validate_directory "$_source_dir"; then
+      return 1
+    fi
+
+    # Check if directory contains JPG files
+    local _jpg_count
+    _jpg_count=$(find "$_source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | wc -l | tr -d ' ')
+    if [ "$_jpg_count" -eq 0 ]; then
+      die 11 "No JPG files found in <u>%s</u> directory" "$_source_dir"
+    fi
+
+    log_info 'Found <b>%s</b> JPG files in <u>%s</u> directory' "$_jpg_count" "$_source_dir"
+    source_dir="$_source_dir"
+    return 0
+  }
+
   log_title 'JPG to MP4 Converter'
 
   # Check dependencies

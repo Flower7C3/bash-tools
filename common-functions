@@ -127,14 +127,7 @@ log_message() {
     _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
   fi
   if [[ -n "$_status" ]]; then
-    local _raw_bytes
-    _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
-    local _text_bytes
-    _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
-    local _text_chars
-    _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
-    local _padding=$((64 + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$_padding" "$_text" "$_status")"
+    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding 64 "$_text")" "$_text" "$_status")"
   fi
   echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
@@ -220,16 +213,44 @@ log_usage_title() {
 }
 
 log_usage_options_line() {
+  local _space=30
+  local POSITIONAL_ARGS=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -s | --space)
+      shift
+      _space="$1"
+      ;;
+    *) POSITIONAL_ARGS+=("$1") ;;
+    esac
+    shift
+  done
+  set -- "${POSITIONAL_ARGS[@]}"
   local _parameters
   IFS=';' read -r -a _parameters <<<"$1"
   shift
-  local _parameters_list
-  _parameters_list="$(printf '<b>%s</b>, ' "${_parameters[@]}")"
+
+  local _padding
+  _padding=$(calculate_real_padding "$_space" "${_parameters[*]}")
+  _padding=$((_padding + 7 * ${#_parameters[@]}))
   local _options
-  _options="$(printf '  %-*s' "$((30 + 7 * ${#_parameters[@]}))" "${_parameters_list::-2}")"
+  _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>, ' "${_parameters[@]}")")"
   local _message="$1"
   shift
   log_message "${_options} ${_message}" "$@"
+}
+
+calculate_real_padding() {
+  local _space="$1"
+  local _text="$2"
+  local _raw_bytes
+  _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
+  local _text_bytes
+  _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
+  local _text_chars
+  _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
+  local _padding=$((_space + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
+  echo "$_padding"
 }
 
 log_usage_example_line() {
@@ -365,6 +386,16 @@ confirm_or_exit() {
   done
 }
 
+##----Convert------------------------------------------------------------------------------------------------------------
+
+array_to_string() {
+  local _pattern="$1"
+  shift
+  local _parameters_list
+  _parameters_list="$(printf "$_pattern" "$@")"
+  echo -n "${_parameters_list::-2}"
+}
+
 ##----Checking------------------------------------------------------------------------------------------------------------
 
 # Check if command exists
@@ -459,4 +490,15 @@ validate_positive_number() {
     return 1
   fi
   return 0
+}
+
+update_application() {
+  local _source_url
+  _source_url="https://raw.githubusercontent.com/Flower7C3/bash-tools/master/$(basename "$0")"
+  log_info 'Downloading new app version from <b>%s</b>' "$_source_url"
+  if curl "$_source_url" >"$0"; then
+    exit
+  else
+    exit 1
+  fi
 }

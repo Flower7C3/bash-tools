@@ -26,102 +26,105 @@ main() {
   wallpaper_crop_main "$@"
 }
 
-# Function displays help
-show_usage() {
-  log_usage_title '[OPTIONS] <source_image>'
-  echo
-  echo 'This script creates wallpapers for vertical screens layout with aligned centers.'
-  echo
-  log_header 'Options'
-  log_usage_options_line '-i;--inches <int external> <int builtin>' \
-    'Physical screen dimensions in inches (default: auto-detect)'
-  log_usage_options_line '-p;--position <POSITION>' \
-    'Cropping position (default: center-top)'
-  log_usage_options_line '-h;--help' \
-    'Show this help message'
-  echo
-  log_header 'Available cropping positions'
-  log_usage_options_line 'lt;left-top' 'Left top'
-  log_usage_options_line 'ct;center-top' 'Center top'
-  log_usage_options_line 'rt;right-top' 'Right top'
-  log_usage_options_line 'lm;left-middle' 'Left middle'
-  log_usage_options_line 'cm;center-middle' 'Center middle'
-  log_usage_options_line 'rm;right-middle' 'Right middle'
-  log_usage_options_line 'lb;left-bottom' 'Left bottom'
-  log_usage_options_line 'cb;center-bottom' 'Center bottom'
-  log_usage_options_line 'rb;right-bottom' 'Right bottom'
-  echo
-  log_header 'Examples'
-  log_usage_example_line 'wallpaper.jpg'
-  log_usage_example_line '--inches 27 16 wallpaper.jpg'
-  log_usage_example_line '--inches 27 16 --position left-top wallpaper.jpg'
-  echo
-  log_info 'If you don'\''t specify physical dimensions, the script will try to detect them automatically.'
-  exit 0
-}
+wallpaper_crop_main() {
+  # Function displays help
+  function show_usage() {
+    log_usage_title '[OPTIONS] <source_image>'
+    echo
+    echo 'This script creates wallpapers for vertical screens layout with aligned centers.'
+    echo
+    log_header 'Options'
+    log_usage_options_line '-i;--inches <int external> <int builtin>' \
+      'Physical screen dimensions in inches (default: auto-detect)'
+    log_usage_options_line '-p;--position <POSITION>' \
+      'Cropping position (default: center-top)'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    log_header 'Available cropping positions'
+    log_usage_options_line 'lt;left-top' 'Left top'
+    log_usage_options_line 'ct;center-top' 'Center top'
+    log_usage_options_line 'rt;right-top' 'Right top'
+    log_usage_options_line 'lm;left-middle' 'Left middle'
+    log_usage_options_line 'cm;center-middle' 'Center middle'
+    log_usage_options_line 'rm;right-middle' 'Right middle'
+    log_usage_options_line 'lb;left-bottom' 'Left bottom'
+    log_usage_options_line 'cb;center-bottom' 'Center bottom'
+    log_usage_options_line 'rb;right-bottom' 'Right bottom'
+    echo
+    log_header 'Examples'
+    log_usage_example_line 'wallpaper.jpg'
+    log_usage_example_line '--inches 27 16 wallpaper.jpg'
+    log_usage_example_line '--inches 27 16 --position left-top wallpaper.jpg'
+    echo
+    log_info 'If you don'\''t specify physical dimensions, the script will try to detect them automatically.'
+    exit 0
+  }
 
-# Initialize variables
-source_image=""
-external_inches=""
-builtin_inches=""
-crop_position="center-top"
+  # Initialize variables
+  source_image=""
+  external_inches=""
+  builtin_inches=""
+  crop_position="center-top"
 
-parse_arguments() {
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-    --inches | -i)
-      if [[ $# -lt 3 ]]; then
-        log_error '<code>--inches</code> requires two arguments'
-        log_info 'Usage: --inches <external> <builtin>'
-        log_info 'Example: --inches 27 16'
-        exit 1
-      fi
-      external_inches="$2"
-      builtin_inches="$3"
-      shift 3
-      ;;
-    --position | -p)
-      if [[ $# -lt 2 ]]; then
-        log_error '<code>--position</code> requires one argument'
-        log_info 'Usage: --position <position>'
-        log_info 'Valid positions: left-top, center-top, right-top, left-middle, center-middle, right-middle, left-bottom, center-bottom, right-bottom, all'
-        exit 1
-      fi
-      crop_position="$2"
-      shift 2
-      ;;
-    -h | --help)
-      show_usage
-      ;;
-    -*)
-      log_error 'Unknown option: %s' "$1"
-      log_info 'Use <code>--help</code> to show help'
-      exit 1
-      ;;
-    *)
-      if [[ -z "$source_image" ]]; then
-        # Check if argument looks like an option
-        if [[ "$1" == -* ]]; then
-          log_error 'The <code>%s</code> looks like an option but is not recognized' "$1"
-          log_info 'Use <code>--help</code> to see available options'
+  parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+      --inches | -i)
+        if [[ $# -lt 3 ]]; then
+          log_error '<code>--inches</code> requires two arguments'
+          log_info 'Usage: --inches <external> <builtin>'
+          log_info 'Example: --inches 27 16'
           exit 1
         fi
-
-        source_image="$1"
-      else
-        log_error 'Too many arguments'
-        log_info 'Expected: <code><source_image></code>'
-        log_info 'Got: <b>%s</b> and <b>%s</b>' "$source_image" "$1"
+        external_inches="$2"
+        builtin_inches="$3"
+        shift 3
+        ;;
+      --position | -p)
+        if [[ $# -lt 2 ]]; then
+          log_error '<code>--position</code> requires one argument'
+          log_info 'Usage: --position <position>'
+          log_info 'Valid positions: left-top, center-top, right-top, left-middle, center-middle, right-middle, left-bottom, center-bottom, right-bottom, all'
+          exit 1
+        fi
+        crop_position="$2"
+        shift 2
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        log_info 'Use <code>--help</code> to show help'
         exit 1
-      fi
-      shift
-      ;;
-    esac
-  done
-}
+        ;;
+      *)
+        if [[ -z "$source_image" ]]; then
+          # Check if argument looks like an option
+          if [[ "$1" == -* ]]; then
+            log_error 'The <code>%s</code> looks like an option but is not recognized' "$1"
+            log_info 'Use <code>--help</code> to see available options'
+            exit 1
+          fi
+          source_image="$1"
+        else
+          log_error 'Too many arguments'
+          log_info 'Expected: <code><source_image></code>'
+          log_info 'Got: <b>%s</b> and <b>%s</b>' "$source_image" "$1"
+          exit 1
+        fi
+        shift
+        ;;
+      esac
+    done
+  }
 
-# Main wallpaper crop function
-wallpaper_crop_main() {
   log_title 'WALLPAPER CROPPER'
   parse_arguments "$@"
   # Validate system requirements
