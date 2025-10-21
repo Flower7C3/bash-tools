@@ -180,8 +180,7 @@ wordpress_main() {
       return 1
     fi
 
-    log_success 'WordPress extracted successfully'
-    echo "$_extract_dir"
+    log_success 'WordPress extracted successfully' -s "$_extract_dir"
   }
 
   # Function to update WordPress files
@@ -195,6 +194,7 @@ wordpress_main() {
     for dir in "${WP_DIRECTORIES[@]}"; do
       if [[ -d "$_docroot/$dir" ]]; then
         if [[ "$dry_run" != "1" ]]; then
+          # shellcheck disable=SC2115
           rm -rf "$_docroot/$dir"
         fi
       fi
@@ -320,13 +320,11 @@ Issue: $_issue"
         log_error 'Unknown option: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       *)
         log_error 'Unexpected argument: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       esac
     done

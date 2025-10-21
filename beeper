@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Set strict mode
-set -euo pipefail
+#set -euo pipefail
 
 # Main function wrapper
 main() {
@@ -40,40 +40,41 @@ beeper_main() {
       'Update app'
     log_usage_options_line '-h;--help' \
       'show this help'
+    exit 0
   }
   function show_commands() {
     log_header 'Tempo'
-    log_usage_options_line -s 14 'arrow right' \
+    log_usage_options_line -w 14 'arrow right' \
       'Tempo speed up'
-    log_usage_options_line -s 14 'arrow left' \
+    log_usage_options_line -w 14 'arrow left' \
       'Tempo speed down'
     log_header 'Octave'
-    log_usage_options_line -s 14 'arrow up' \
+    log_usage_options_line -w 14 'arrow up' \
       'Octave change up'
-    log_usage_options_line -s 14 'arrow down' \
+    log_usage_options_line -w 14 'arrow down' \
       'Octave change down'
     log_header 'Note type'
-    log_usage_options_line -s 14 '1' "set sixteenth $MUSIC_NOTE_SIXTEENTH"
-    log_usage_options_line -s 14 '2' "set eighth $MUSIC_NOTE_EIGHTH"
-    log_usage_options_line -s 14 '3' "set quarter $MUSIC_NOTE_QUARTER"
-    log_usage_options_line -s 14 '4' "set half $MUSIC_NOTE_HALF"
-    log_usage_options_line -s 14 '5' "set whole $MUSIC_NOTE_WHOLE"
+    log_usage_options_line -w 14 '1' "set sixteenth $MUSIC_NOTE_SIXTEENTH"
+    log_usage_options_line -w 14 '2' "set eighth $MUSIC_NOTE_EIGHTH"
+    log_usage_options_line -w 14 '3' "set quarter $MUSIC_NOTE_QUARTER"
+    log_usage_options_line -w 14 '4' "set half $MUSIC_NOTE_HALF"
+    log_usage_options_line -w 14 '5' "set whole $MUSIC_NOTE_WHOLE"
     log_header 'Note play'
-    log_usage_options_line -s 14 '`' 'Play pause'
-    log_usage_options_line -s 14 '🅉' "Play note <b>c</b>"
-    log_usage_options_line -s 14 '🅂' "Play note <b>c$MUSIC_SIGN_SHARP</b> / <b>d$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -s 14 '🅇' "Play note <b>d</b>"
-    log_usage_options_line -s 14 '🄳' "Play note <b>d$MUSIC_SIGN_SHARP</b> / <b>e$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -s 14 '🄲' "Play note <b>e</b>"
-    log_usage_options_line -s 14 '🅅' "Play note <b>f</b>"
-    log_usage_options_line -s 14 '🄶' "Play note <b>f$MUSIC_SIGN_SHARP</b> / <b>g$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -s 14 '🄱' "Play note <b>g</b>"
-    log_usage_options_line -s 14 '🄷' "Play note <b>g$MUSIC_SIGN_SHARP</b> / <b>a$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -s 14 '🄽' "Play note <b>a</b>"
-    log_usage_options_line -s 14 '🄹' "Play note <b>a$MUSIC_SIGN_SHARP</b> / <b>b$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -s 14 '🄼' "Play note <b>b</b>"
-    log_usage_options_line -s 14 ',' "Play note <b>c</b>"
-    log_usage_options_line -s 14 'Shift + <note key>' 'Play note with Led.'
+    log_usage_options_line -w 14 '`' 'Play pause'
+    log_usage_options_line -w 14 '🅉' "Play note <b>c</b>"
+    log_usage_options_line -w 14 '🅂' "Play note <b>c$MUSIC_SIGN_SHARP</b> / <b>d$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -w 14 '🅇' "Play note <b>d</b>"
+    log_usage_options_line -w 14 '🄳' "Play note <b>d$MUSIC_SIGN_SHARP</b> / <b>e$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -w 14 '🄲' "Play note <b>e</b>"
+    log_usage_options_line -w 14 '🅅' "Play note <b>f</b>"
+    log_usage_options_line -w 14 '🄶' "Play note <b>f$MUSIC_SIGN_SHARP</b> / <b>g$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -w 14 '🄱' "Play note <b>g</b>"
+    log_usage_options_line -w 14 '🄷' "Play note <b>g$MUSIC_SIGN_SHARP</b> / <b>a$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -w 14 '🄽' "Play note <b>a</b>"
+    log_usage_options_line -w 14 '🄹' "Play note <b>a$MUSIC_SIGN_SHARP</b> / <b>b$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line -w 14 '🄼' "Play note <b>b</b>"
+    log_usage_options_line -w 14 ',' "Play note <b>c</b>"
+    log_usage_options_line -w 14 'Shift + <note key>' 'Play note with Led.'
   }
 
   ### NOTES ###
@@ -522,7 +523,7 @@ beeper_main() {
 
   function file_read() {
     local _notes_data
-    read -r -a _notes_data <<<"$(grep -v '#' "$notes_file_name")"
+    read -r -a _notes_data <<<"$(grep -v '#' "$notes_file_name" | tr "\n" " ")"
     local _total=${#_notes_data[@]}
     local _index=0
     while true; do
@@ -595,13 +596,11 @@ beeper_main() {
         log_error 'Unknown option: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       *)
         log_error 'Unexpected argument: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       esac
       shift

@@ -35,7 +35,6 @@ styler() {
     ;;
   bg | background | BG | BACKGROUND)
     case "$2" in
-    reset | REST) tput sgr0 ;;
     black | BLACK) tput setab 0 ;;
     red | RED) tput setab 1 ;;
     green | GREEN) tput setab 2 ;;
@@ -47,18 +46,17 @@ styler() {
     *) tput setab 9 ;;
     esac
     ;;
-  bold | BOLD) tput bold ;;
-  reset | REST) tput sgr0 ;;
+  reset | RESET) tput sgr0 ;;
   esac
 }
 
 # Icons
-readonly ICON_INFO='☞'
+readonly ICON_INFO='❡'
 readonly ICON_SUCCESS='✓'
-readonly ICON_WARNING='‼'
-readonly ICON_ERROR='✗'
-readonly ICON_DEBUG=''
-readonly ICON_PROMPT='↳'
+readonly ICON_WARNING='⚠'
+readonly ICON_ERROR='✗︎'
+readonly ICON_DEBUG='⌗'
+readonly ICON_PROMPT='✏︎'
 
 readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
 readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
@@ -74,16 +72,17 @@ log_message() {
     local _text
     # shellcheck disable=SC2059
     _text=$(printf -- "$_pattern" "$@")
-    _text=${_text//<b>/$(styler bold)${_color_value}}
+    _text=${_text//<b>/$(tput bold)${_color_value}}
     _text=${_text//<\/b>/$(styler reset)${_color_value}}
     _text=${_text//<u>/$(tput smul)${_color_value}}
     _text=${_text//<\/u>/$(tput rmul)${_color_value}}
-    _text=${_text//<code>/$(styler bg 'CYAN')$(styler text 'BLACK')}
+    _text=${_text//<code>/$(styler reset)$(styler bg 'CYAN')$(styler text 'BLACK')}
     _text=${_text//<\/code>/$(styler reset)${_color_value}}
     echo -e "$_text"
   }
   local _color_value=""
   local _icon=""
+  local _width=64
   local _line_prepend=""
   local _line_append="\n"
   local _text
@@ -98,6 +97,10 @@ log_message() {
     -i | --icon)
       shift
       _icon="$1"
+      ;;
+    -w | --width)
+      shift
+      _width="$1"
       ;;
     -p | --prepend)
       shift
@@ -127,7 +130,7 @@ log_message() {
     _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
   fi
   if [[ -n "$_status" ]]; then
-    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding 64 "$_text")" "$_text" "$_status")"
+    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding "$_width" "$_text")" "$_text" "$_status")"
   fi
   echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
@@ -205,7 +208,9 @@ log_title() {
 }
 
 log_header() {
-  log_message --color 'PURPLE' '<b>%s</b>' "$1"
+  local _message="$1"
+  shift
+  log_message --color 'PURPLE' "<b>$_message</b>" "$@"
 }
 
 log_usage_title() {
@@ -213,13 +218,13 @@ log_usage_title() {
 }
 
 log_usage_options_line() {
-  local _space=30
+  local _width=30
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
     case $1 in
-    -s | --space)
+    -w | --width)
       shift
-      _space="$1"
+      _width="$1"
       ;;
     *) POSITIONAL_ARGS+=("$1") ;;
     esac
@@ -231,17 +236,17 @@ log_usage_options_line() {
   shift
 
   local _padding
-  _padding=$(calculate_real_padding "$_space" "${_parameters[*]}")
+  _padding=$(calculate_real_padding "$_width" "${_parameters[*]}")
   _padding=$((_padding + 7 * ${#_parameters[@]}))
   local _options
-  _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>, ' "${_parameters[@]}")")"
+  _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>' ', ' "${_parameters[@]}")")"
   local _message="$1"
   shift
   log_message "${_options} ${_message}" "$@"
 }
 
 calculate_real_padding() {
-  local _space="$1"
+  local _width="$1"
   local _text="$2"
   local _raw_bytes
   _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
@@ -249,7 +254,7 @@ calculate_real_padding() {
   _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
   local _text_chars
   _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
-  local _padding=$((_space + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
+  local _padding=$((_width + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
   echo "$_padding"
 }
 
@@ -273,6 +278,7 @@ loading_animation_loop() {
   local _exit_code=0
   local _exit_trap=0
   local _status=""
+  local _countdown=""
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -282,7 +288,7 @@ loading_animation_loop() {
       ;;
     -t | --time)
       shift
-      countdown="$1"
+      _countdown="$1"
       ;;
     -c | --_exit_code)
       shift
@@ -321,7 +327,7 @@ loading_animation_loop() {
             log_message --color 'CYAN' --one-line --icon "$_frame" "$loading_animation_message"
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$countdown - $_step" | bc -z)"
+            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
             sleep "1"
           fi
           _step="$((_step + 1))"
@@ -352,12 +358,9 @@ prompt_input() {
   shift
   local _default_value="${1:-}"
   shift
-  # options
-  local _options
-  _options="$(printf "<b>%s</b>," "$@")"
   local _message
-  if [[ -n "$_options" ]]; then
-    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s [%s]: " "$_prompt_text" "${_options::-1}")"
+  if [[ "$#" -gt "0" ]]; then
+    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
   else
     _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s: " "$_prompt_text")"
   fi
@@ -391,9 +394,12 @@ confirm_or_exit() {
 array_to_string() {
   local _pattern="$1"
   shift
+  local _delimiter="$1"
+  shift
   local _parameters_list
-  _parameters_list="$(printf "$_pattern" "$@")"
-  echo -n "${_parameters_list::-2}"
+  # shellcheck disable=SC2059
+  _parameters_list="$(printf "${_pattern}${_delimiter}" "$@")"
+  echo -n "${_parameters_list::-${#_delimiter}}"
 }
 
 ##----Checking------------------------------------------------------------------------------------------------------------

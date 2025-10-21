@@ -78,13 +78,11 @@ converter_main() {
         log_error 'Unknown option: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       *)
         log_error 'Unexpected argument: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       esac
     done
@@ -151,7 +149,7 @@ converter_main() {
   confirm_or_exit "Convert those files to MP4 video with <b>$framerate</b> framerate?"
 
   temp_dir="/tmp/animate_jpg_$$"
-  jpg_files=($(find "$source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | sort))
+  read -r -a jpg_files <<<"$(find "$source_dir" -maxdepth 1 -name "*.JPG" -o -name "*.jpg" | sort)"
   first_file=$(basename "${jpg_files[0]}")
   extension="${first_file##*.}"
   output_file="video_$(date +%Y%m%d_%H%M%S).mp4"

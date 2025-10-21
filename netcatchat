@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Set strict mode
-set -euo pipefail
+#set -euo pipefail
 
 # Main function wrapper
 main() {
@@ -22,6 +22,11 @@ main() {
 }
 
 netcatchat_main() {
+
+  declare -A chat_users=()
+  declare -r config_file_path="${HOME}/.config/netcatchat/config.sh"
+  declare -r history_file_path="${HOME}/.config/netcatchat/history.txt"
+
   function show_usage() {
     log_usage_title '[-p <port>] [-n <@nickname>]'
     echo
@@ -33,7 +38,8 @@ netcatchat_main() {
     log_usage_options_line '-u;--update' \
       'Update app'
     log_usage_options_line '-h;--help' \
-      'Show this help message' exit 0
+      'Show this help message'
+    exit 0
   }
   function show_commands() {
     log_header 'Commands'
@@ -66,15 +72,12 @@ netcatchat_main() {
   }
 
   ### VARIABLES ###
-  declare -r NETCAT_CHAT_SYSTEM_NICKNAME='@system'
-  declare -r NETCAT_CHAT_BROADCAST_NICKNAME='@all'
-  declare -r NETCAT_CHAT_APP_PORT='2812'
-  declare -r NICKNAME_CHECK_MODE_IGNORE='nickname_validate_mode_ignore'
-  declare -r NICKNAME_CHECK_MODE_ERR_IF_EXISTS='nickname_validate_mode_err_if_exists'
-  declare -r NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS='nickname_validate_mode_err_if_not_exists'
-  declare -A chat_users=()
-  declare -r config_file_path="${HOME}/.config/netcatchat/config.sh"
-  declare -r history_file_path="${HOME}/.config/netcatchat/history.txt"
+  readonly NETCAT_CHAT_SYSTEM_NICKNAME='@system'
+  readonly NETCAT_CHAT_BROADCAST_NICKNAME='@all'
+  readonly NETCAT_CHAT_APP_PORT='2812'
+  readonly NICKNAME_CHECK_MODE_IGNORE='nickname_validate_mode_ignore'
+  readonly NICKNAME_CHECK_MODE_ERR_IF_EXISTS='nickname_validate_mode_err_if_exists'
+  readonly NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS='nickname_validate_mode_err_if_not_exists'
   if uname | grep -iq Darwin; then
     # shellcheck disable=SC2155
     declare -r sender_hostname="$(ipconfig getifaddr en0)"
@@ -145,19 +148,18 @@ netcatchat_main() {
         log_error 'Unknown option: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       *)
         log_error 'Unexpected argument: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       esac
       shift
     done
-    # shellcheck disable=SC2207
-    local _has_previous_process=($(ps -a | grep "nc -l -k ${sender_port}" | grep -v 'grep' | awk '{print $1;}'))
+    local _has_previous_process
+    # shellcheck disable=SC2009
+    read -r -a _has_previous_process <<<"$(ps -a | grep "nc -l -k ${sender_port}" | grep -v 'grep' | awk '{print $1;}')"
     if [[ "${#_has_previous_process[*]}" -gt "0" ]]; then
       for _pid in "${_has_previous_process[@]}"; do
         kill "$_pid"
@@ -208,17 +210,17 @@ netcatchat_main() {
   }
 
   ### TRAP ###
-  ctrlc_trap_active='n'
-  function ctrlc_trap_init() {
-    ctrlc_trap_active='n'
-    trap 'ctrlc_trap_active="y";return;' SIGINT
+  ctrl_c_trap_active='n'
+  function ctrl_c_trap_init() {
+    ctrl_c_trap_active='n'
+    trap 'ctrl_c_trap_active="y";return;' SIGINT
   }
-  function ctrlc_trap_remove() {
-    ctrlc_trap_active='n'
+  function ctrl_c_trap_remove() {
+    ctrl_c_trap_active='n'
     trap - SIGINT
   }
-  function ctrlc_trap_exec() {
-    if [[ "$ctrlc_trap_active" == "y" ]]; then
+  function ctrl_c_trap_exec() {
+    if [[ "$ctrl_c_trap_active" == "y" ]]; then
       echo
       return 0
     fi
@@ -249,17 +251,18 @@ netcatchat_main() {
     local _validate_exists_mode="$2"
     local _name
     _name=$(nickname_to_name "$_nickname")
+
     if [[ ! "$_nickname" == @* ]]; then
       log_error 'Nickname <b>%s</b> is invalid, all nicknames starts with <b>@</b> sign' "$_nickname"
       #    return 1
     elif [[ "$_nickname" == "$NETCAT_CHAT_SYSTEM_NICKNAME" ]] || [[ "$_nickname" == "$NETCAT_CHAT_BROADCAST_NICKNAME" ]]; then
       log_error 'Values <b>%s</b> and <b>%s</b> are reserved nicknames' "$NETCAT_CHAT_SYSTEM_NICKNAME" "$NETCAT_CHAT_BROADCAST_NICKNAME"
       #    return 2
-    elif [[ "${#chat_users}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS" ]]; then
-      log_error 'Recipient <b>%s</b> is already defined' "$_nickname"
+      #    elif [[ "${#chat_users[@]}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS" ]]; then
+      #      log_error 'Recipient <b>%s</b> is already defined' "$_nickname"
       #    return 3
-    elif [[ "${#chat_users}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS" ]]; then
-      log_error 'Recipient <b>%s</b> is not defined' "$_nickname"
+      #    elif [[ "${#chat_users[@]}" -gt "0" ]] && [[ -z "${chat_users[$_name]}" ]] && [[ "$_validate_exists_mode" == "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS" ]]; then
+      #      log_error 'Recipient <b>%s</b> is not defined' "$_nickname"
       #    return 4
       #  else
       #    return 0
@@ -293,7 +296,7 @@ netcatchat_main() {
     local _new_sender_port_error
     while true; do
       prompt_input '_new_sender_port' 'Setup sender port number' "$_new_sender_port"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_sender_port_error=$(validate_port "$_new_sender_port")
@@ -312,7 +315,7 @@ netcatchat_main() {
     local _new_sender_nickname_error
     while true; do
       prompt_input '_new_sender_nickname' 'Setup sender nickname' "$_new_sender_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_sender_nickname_error=$(validate_nickname "$_new_sender_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
@@ -375,7 +378,7 @@ netcatchat_main() {
     local _ip_range
     _ip_range=$(echo "$sender_hostname" | awk -F. '{print $(1)"."$(2)"."$(3)".1-254"}')
     local _hosts_info
-    _hosts_info=($(nmap ${_ip_range} -p ${NETCAT_CHAT_APP_PORT} | grep -e '/tcp\|report' | sed 's/Nmap scan report for //g'))
+    read -r -a _hosts_info <<<"$(nmap "$_ip_range" -p ${NETCAT_CHAT_APP_PORT} | grep -e '/tcp\|report' | sed 's/Nmap scan report for //g')"
     local _sums_total
     _sums_total=${#_hosts_info[@]}
     for _index in $(seq 1 4 "$_sums_total"); do
@@ -396,7 +399,7 @@ netcatchat_main() {
     local _new_recipient_nickname_error
     while true; do
       prompt_input '_new_recipient_nickname' "New recipient's nickname" "$_new_recipient_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
@@ -413,7 +416,7 @@ netcatchat_main() {
     local _new_recipient_hostname_error
     while true; do
       prompt_input '_new_recipient_hostname' "New recipient's hostname/IP address" "$_new_recipient_hostname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_hostname_error=$(validate_hostname "$_new_recipient_hostname")
@@ -428,7 +431,7 @@ netcatchat_main() {
     local _new_recipient_port_error
     while true; do
       prompt_input '_new_recipient_port' "New recipient's port number" "$_new_recipient_port"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_port_error=$(validate_port "$_new_recipient_port")
@@ -457,7 +460,7 @@ netcatchat_main() {
     local _old_recipient_nickname_error
     while true; do
       prompt_input 'old_recipient_nickname' "Recipient's old nickname" "$old_recipient_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _old_recipient_nickname_error=$(validate_nickname "$old_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_NOT_EXISTS")
@@ -474,7 +477,7 @@ netcatchat_main() {
     local _new_recipient_nickname_error
     while true; do
       prompt_input '_new_recipient_nickname' "Recipient's new nickname" "$_new_recipient_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_ERR_IF_EXISTS")
@@ -497,7 +500,7 @@ netcatchat_main() {
     local _new_recipient_nickname_error
     while true; do
       prompt_input '_new_recipient_nickname' 'Recipient name' "$_new_recipient_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_nickname_error=$(validate_nickname "$_new_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
@@ -517,7 +520,7 @@ netcatchat_main() {
     local _new_recipient_hostname_error
     while true; do
       prompt_input '_new_recipient_hostname' "Recipient's updated hostname/IP address" "$_new_recipient_hostname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_hostname_error=$(validate_hostname "$_new_recipient_hostname")
@@ -532,7 +535,7 @@ netcatchat_main() {
     local _new_recipient_port_error
     while true; do
       prompt_input '_new_recipient_port' "Recipient's updated port number" "$_new_recipient_port"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _new_recipient_port_error=$(validate_port "$_new_recipient_port")
@@ -561,7 +564,7 @@ netcatchat_main() {
     local _recipient_nickname_error
     while true; do
       prompt_input '_recipient_nickname' "Recipient's nickname to delete" "$_recipient_nickname"
-      if ctrlc_trap_exec; then
+      if ctrl_c_trap_exec; then
         return
       fi
       _recipient_nickname_error=$(validate_nickname "$_recipient_nickname" "$NICKNAME_CHECK_MODE_IGNORE")
@@ -669,15 +672,15 @@ netcatchat_main() {
   ### INIT ###
   log_title 'NetCat Chat'
   check_dependencies nc ping nmap grep
-  trap "echo '';netcat_kill;" EXIT
+  #  trap "echo '';netcat_kill;" EXIT
   config_load "$@"
   netcat_start
   option_reset
   while true; do
-    ctrlc_trap_remove
+    ctrl_c_trap_remove
     case $option in
     /p | /port | /p\ * | /port\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)
@@ -689,7 +692,7 @@ netcatchat_main() {
       option_reset
       ;;
     /n | /nick | /n\ * | /nick\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)
@@ -705,7 +708,7 @@ netcatchat_main() {
     /q | /exit | /quit | /bye)
       break
       ;;
-    /h | /help)
+    /h | /help | \?)
       show_commands
       history_save
       option_reset
@@ -725,7 +728,7 @@ netcatchat_main() {
       option_reset
       ;;
     /c | /create | /c\ * | /create\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)
@@ -737,7 +740,7 @@ netcatchat_main() {
       option_reset
       ;;
     /u | /update | /u\ * | /update\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)
@@ -749,7 +752,7 @@ netcatchat_main() {
       option_reset
       ;;
     /r | /rename | /r\ * | /rename\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)
@@ -760,7 +763,7 @@ netcatchat_main() {
       option_reset
       ;;
     /d | /delete | /d\ * | /delete\ *)
-      ctrlc_trap_init
+      ctrl_c_trap_init
       history_save
       # shellcheck disable=SC2206
       option_array=($option)

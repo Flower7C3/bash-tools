@@ -141,19 +141,21 @@ function get_screen_dimensions() {
   # Get screen information from macOS system
   local _display_info
   _display_info=$(system_profiler SPDisplaysDataType 2>/dev/null)
+  local _res_array
 
   if [ -n "$_display_info" ]; then
     # Extract all resolutions
-    local _res_array
-    read -r -a _res_array <<<"$(echo "$_display_info" | grep "Resolution:" | sed 's/.*Resolution: \([0-9]*\) x \([0-9]*\).*/\1 \2/')"
-    printf "%s,%s,%s,%s" "${_res_array[0]:-}" "${_res_array[1]:-}" "${_res_array[2]:-}" "${_res_array[3]:-}"
-    return
+    read -r -a _res_array <<<"$(echo "$_display_info" | grep "Resolution:" | sed 's/.*Resolution: \([0-9]*\) x \([0-9]*\).*/\1 \2/' | tr "\n" " ")"
   fi
 
   # Final fallback: use screen info command if available
-  if command -v screeninfo &>/dev/null; then
-    screeninfo | grep -E '[0-9]+x[0-9]+' | head -2 | sed 's/.*\([0-9]*\)x\([0-9]*\).*/\1 \2/'
+  if [[ "${#_res_array[@]}" -eq "0" ]] && command -v screeninfo &>/dev/null; then
+    read -r -a _res_array <<<"$(screeninfo | grep -E '[0-9]+x[0-9]+' | head -2 | sed 's/.*\([0-9]*\)x\([0-9]*\).*/\1,\2/' | tr "\n" " ")"
   fi
+  if [[ "${#_res_array[@]}" -eq "0" ]]; then
+    return
+  fi
+  printf "%s,%s,%s,%s" "${_res_array[2]:-}" "${_res_array[3]:-}" "${_res_array[0]:-}" "${_res_array[1]:-}"
 }
 
 # Function automatically detects physical screen dimensions
@@ -173,7 +175,7 @@ function get_physical_dimensions() {
       _external_size=$(echo "$_external_info" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
       if [ -n "$_external_size" ]; then
         external_inches="$_external_size"
-        log_info --status "${external_inches}\"" "Detected external screen"
+#        log_info --status "${external_inches}\"" "Detected external screen"
       fi
     fi
 
@@ -185,7 +187,7 @@ function get_physical_dimensions() {
       _builtin_size=$(echo "$_builtin_info" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
       if [ -n "$_builtin_size" ]; then
         builtin_inches="$_builtin_size"
-        log_info --status "${builtin_inches}\"" "Detected built-in screen"
+#        log_info --status "${builtin_inches}\"" "Detected built-in screen"
       fi
     fi
 
@@ -196,7 +198,7 @@ function get_physical_dimensions() {
       _external_res=$(echo "$_display_info" | grep "Resolution:" | grep -v "Built-in" | head -1)
       if echo "$_external_res" | grep -q "1920x1080\|2560x1440\|3840x2160"; then
         external_inches="27"
-        log_info --status "${external_inches}\"" "Detected external screen (based on resolution)"
+#        log_info --status "${external_inches}\"" "Detected external screen (based on resolution)"
       fi
     fi
 
@@ -206,7 +208,7 @@ function get_physical_dimensions() {
       _builtin_res=$(echo "$_display_info" | grep "Resolution:" | grep "Built-in" | head -1)
       if echo "$_builtin_res" | grep -q "2056x1329\|2560x1600\|3024x1964"; then
         builtin_inches="16"
-        log_info --status "${builtin_inches}\"" "Detected built-in screen (based on resolution)"
+#        log_info --status "${builtin_inches}\"" "Detected built-in screen (based on resolution)"
       fi
     fi
 
@@ -214,10 +216,10 @@ function get_physical_dimensions() {
     # use the same dimensions for both external and built-in
     if [ -z "$external_inches" ] && [ -n "$builtin_inches" ]; then
       external_inches="$builtin_inches"
-      log_info --status "${external_inches}\"" "Using same physical dimensions for both external and built-in screens"
+#      log_info --status "${external_inches}\"" "Using same physical dimensions for both external and built-in screens"
     elif [ -n "$external_inches" ] && [ -z "$builtin_inches" ]; then
       builtin_inches="$external_inches"
-      log_info --status "${builtin_inches}\"" "Using same physical dimensions for both external and built-in screens"
+#      log_info --status "${builtin_inches}\"" "Using same physical dimensions for both external and built-in screens"
     fi
   fi
 
@@ -493,10 +495,10 @@ run_wallpaper_crop() {
       builtin_inches="$detected_builtin"
     else
       # Could not detect and user did not provide
-      loading_animation_loop --message "Could not automatically detect physical dimensions." -c 1
+      loading_animation_loop --message 'Could not automatically detect physical dimensions.' -c 1
 
-      prompt_input external_inches "Please provide physical dimensions in inches for external screen"
-      prompt_input builtin_inches "Please provide physical dimensions in inches for built-in screen"
+      prompt_input external_inches 'Please provide physical dimensions in inches for external screen'
+      prompt_input builtin_inches 'Please provide physical dimensions in inches for built-in screen'
     fi
   fi
 
@@ -580,8 +582,8 @@ run_wallpaper_crop() {
     log_warning --icon "💻" "Built-in screen DPI <b>%s</b> seems unusual (expected 72-300)" "$builtin_dpi"
   fi
 
-  log_info --icon "  🖥" --status "%s\" (%s ratio)" "External screen parameters" "$external_inches" "$external_ratio"
-  log_info --icon "  💻" --status "%s\" (%s ratio)" "Built-in screen parameters" "$builtin_inches" "$builtin_ratio"
+  log_info --icon "  🖥" "External screen parameters" --status "$external_inches\" ($external_ratio ratio)"
+  log_info --icon "  💻" "Built-in screen parameters" --status "$builtin_inches\" ($builtin_ratio ratio)"
 
   ######### ADJUST WALLPAPER SIZE DIMENSIONS #########
   external_info="$external_width x $external_height px ($external_dpi dpi)"
@@ -751,7 +753,7 @@ run_wallpaper_crop() {
     exit 1
   fi
 
-  if ! cropper "$source_image" '2_builtin' '"Built-in' "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$crop_position"; then
+  if ! cropper "$source_image" '2_builtin' 'Built-in' "$builtin_width" "$builtin_height" "$builtin_x_start" "$builtin_y_start" "$crop_position"; then
     exit 1
   fi
 

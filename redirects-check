@@ -170,7 +170,7 @@ EOF
       echo "$old_url	$response_code	$redirect_url" >>"${data_file}.error.log"
     fi
 
-    return $is_correct
+    return "$is_correct"
   }
 
   # Function to process data file
@@ -289,7 +289,6 @@ EOF
         log_error 'Unknown option: <b>%s</b>' "$1"
         echo
         show_usage
-        exit 1
         ;;
       *)
         if [[ -z "$data_file" ]]; then
