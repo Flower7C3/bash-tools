@@ -138,7 +138,7 @@ wordpress_main() {
       fi
     done
 
-    log_success --status "$_backup_dir" "Backup created"
+    log_success ---status "$_backup_dir" "Backup created"
   }
 
   # Function to download WordPress
@@ -159,7 +159,7 @@ wordpress_main() {
       return 1
     fi
 
-    log_success --status "$_zip_file" "WordPress %s downloaded successfully" "$_version"
+    log_success ---status "$_zip_file" "WordPress %s downloaded successfully" "$_version"
   }
 
   # Function to extract WordPress
@@ -180,7 +180,7 @@ wordpress_main() {
       return 1
     fi
 
-    log_success 'WordPress extracted successfully' -s "$_extract_dir"
+    log_success 'WordPress extracted successfully' ---status "$_extract_dir"
   }
 
   # Function to update WordPress files
@@ -281,7 +281,7 @@ Issue: $_issue"
   # Function to parse command line arguments
   parse_arguments() {
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
       -v | --version)
         wp_version="$2"
         shift 2

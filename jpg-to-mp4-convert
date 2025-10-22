@@ -55,7 +55,7 @@ converter_main() {
   # Function to parse command line arguments
   parse_arguments() {
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
 
       -s | --source)
         source_dir="$2"
@@ -164,7 +164,7 @@ converter_main() {
 
   if ffmpeg -framerate "$framerate" -i "$temp_dir/img%05d.$extension" -vf format=yuv420p "$output_file"; then
     rm -rf "$temp_dir"
-    log_success --status "$source_dir$output_file" "Video created"
+    log_success ---status "$source_dir$output_file" "Video created"
   else
     rm -rf "$temp_dir"
     die 12 "Video conversion failed"

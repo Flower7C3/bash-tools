@@ -221,7 +221,7 @@ map_main() {
         if [[ "$VERBOSE" == "1" ]]; then
           log_info 'Downloading tile %s/%s (%s%%) - %s' "$((_tile_index + 1))" "$_tile_amount" "$_progress" "$_url"
         else
-          log_info -r 'Downloading tiles: %d/%d (%d%%)' $((_tile_index + 1)) "$_tile_amount" "$_progress"
+          log_info ---reset 'Downloading tiles: %d/%d (%d%%)' $((_tile_index + 1)) "$_tile_amount" "$_progress"
         fi
 
         if ! curl -s "$_url" -o "$_tile_file"; then
@@ -262,7 +262,7 @@ map_main() {
 
     if [[ ${#temp_files[@]} -gt 0 ]]; then
       magick "${temp_files[@]}" -append "$output_file"
-      log_success 'OSM map saved' -s "$output_file"
+      log_success 'OSM map saved' ---status "$output_file"
     else
       log_error 'No tiles were successfully downloaded'
       return 1
@@ -318,7 +318,7 @@ map_main() {
   # Function to parse command line arguments
   parse_arguments() {
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
       -p | --provider)
         PROVIDER="$2"
         if [[ "$PROVIDER" != "geoapify" && "$PROVIDER" != "osm" ]]; then

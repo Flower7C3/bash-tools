@@ -79,7 +79,7 @@ ssl_main() {
     # Get certificate details
     local _cert_info
     if ! _cert_info=$(perl -e "alarm($TIMEOUT); system('openssl s_client -servername \"$_domain\" -connect \"$_domain:$_port\" -showcerts 2>/dev/null <<< \"Q\" | openssl x509 -noout -text 2>/dev/null')" 2>/dev/null); then
-      loading_animation_loop -c 1 'Failed to retrieve certificate for %s:%d' "$_domain" "$_port"
+      loading_animation_loop ---exit-code 1 'Failed to retrieve certificate for %s:%d' "$_domain" "$_port"
       return 1
     fi
 
@@ -163,21 +163,21 @@ EOF
     *)
       # Text format
       log_header 'Certificate Information for %s:%s' "$_domain" "$_port"
-      log_info "Subject" --status "$_subject"
-      log_info "Issuer" --status "$_issuer"
-      log_info "Valid From" --status "$_not_before"
-      log_info "Valid Until" --status "$_not_after"
-      log_info "Serial Number" --status "$_serial"
-      log_info "SHA1 Fingerprint" --status "$_fingerprint"
+      log_info "Subject" ---status "$_subject"
+      log_info "Issuer" ---status "$_issuer"
+      log_info "Valid From" ---status "$_not_before"
+      log_info "Valid Until" ---status "$_not_after"
+      log_info "Serial Number" ---status "$_serial"
+      log_info "SHA1 Fingerprint" ---status "$_fingerprint"
 
       if [[ $_is_expired -eq 1 ]]; then
-        log_error 'Status' -s 'EXPIRED'
+        log_error 'Status' ---status 'EXPIRED'
       elif [[ $_not_yet_valid -eq 1 ]]; then
-        log_warning 'Status' -s 'NOT YET VALID'
+        log_warning 'Status' ---status 'NOT YET VALID'
       elif [[ $_expires_soon -eq 1 ]]; then
-        log_warning 'Status' -s "EXPIRES SOON ($_days_until_expiry days)"
+        log_warning 'Status' ---status "EXPIRES SOON ($_days_until_expiry days)"
       else
-        log_success 'Status' -s "VALID ($_days_until_expiry days remaining)"
+        log_success 'Status' ---status "VALID ($_days_until_expiry days remaining)"
       fi
       ;;
     esac
@@ -216,7 +216,7 @@ EOF
       die 1 'Batch file not found: <u>%s</u>' "$_file"
     fi
 
-    log_info -s "$_file" 'Processing batch file'
+    log_info ---status "$_file" 'Processing batch file'
 
     # Add CSV header if output format is CSV
     if [[ "$OUTPUT_FORMAT" == "csv" ]]; then
@@ -258,7 +258,7 @@ EOF
   # Parse command line arguments
   parse_arguments() {
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
       -p | --port)
         PORT="$2"
         if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [[ "$PORT" -lt 1 ]] || [[ "$PORT" -gt 65535 ]]; then

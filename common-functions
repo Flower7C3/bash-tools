@@ -89,33 +89,33 @@ log_message() {
   local _status=""
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -c | --color)
+    case "$1" in
+    ---color)
       shift
       _color_value="$(styler text "$1")"
       ;;
-    -i | --icon)
+    ---icon)
       shift
       _icon="$1"
       ;;
-    -w | --width)
+    ---width)
       shift
       _width="$1"
       ;;
-    -p | --prepend)
+    ---prepend)
       shift
       _line_prepend="$_line_prepend$1"
       ;;
-    -b | --bell)
+    ---bell)
       _line_prepend="$_line_prepend\a"
       ;;
-    -r | --reset)
+    ---reset)
       _line_prepend="\r$_line_prepend"
       ;;
-    -o | --one-line)
+    ---one-line)
       _line_append=""
       ;;
-    -s | --status)
+    ---status)
       shift
       _status="$1"
       ;;
@@ -142,12 +142,12 @@ prepare_log_message() {
   shift
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -c | --color)
+    case "$1" in
+    ---color)
       shift
       _color="$1"
       ;;
-    -i | --icon)
+    ---icon)
       shift
       _icon="$1"
       ;;
@@ -156,7 +156,7 @@ prepare_log_message() {
     shift
   done
   set -- "${POSITIONAL_ARGS[@]}"
-  log_message --color "$_color" --icon "$_icon" "$@"
+  log_message ---color "$_color" ---icon "$_icon" "$@"
 }
 
 log_info() {
@@ -202,27 +202,27 @@ log_title() {
   fi
   local _padding=$(((_total_width - _title_length) / 2))
 
-  log_message --color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
-  log_message --color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-  log_message --color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+  log_message ---color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+  log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
 log_header() {
   local _message="$1"
   shift
-  log_message --color 'PURPLE' "<b>$_message</b>" "$@"
+  log_message ---color 'PURPLE' "<b>$_message</b>" "$@"
 }
 
 log_usage_title() {
-  log_message --color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
+  log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$0" "$*"
 }
 
 log_usage_options_line() {
   local _width=30
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -w | --width)
+    case "$1" in
+    ---width)
       shift
       _width="$1"
       ;;
@@ -259,7 +259,7 @@ calculate_real_padding() {
 }
 
 log_usage_example_line() {
-  log_message --color 'CYAN' --icon ' $' '<code>%s %s</code>' "$0" "$*"
+  log_message ---color 'CYAN' ---icon ' $' '<code>%s %s</code>' "$0" "$*"
 }
 
 # Die with error message
@@ -281,24 +281,24 @@ loading_animation_loop() {
   local _countdown=""
   local POSITIONAL_ARGS=()
   while [[ $# -gt 0 ]]; do
-    case $1 in
-    -m | --message)
+    case "$1" in
+    ---message)
       shift
       loading_animation_message="$1"
       ;;
-    -t | --time)
+    ---time)
       shift
       _countdown="$1"
       ;;
-    -c | --_exit_code)
+    ---exit-code)
       shift
       _exit_code="$1"
       ;;
-    -s | --status)
+    ---status)
       shift
       _status="$1"
       ;;
-    -x) _exit_trap=1 ;;
+    ---trap) _exit_trap=1 ;;
     *) POSITIONAL_ARGS+=("$1") ;;
     esac
     shift
@@ -309,11 +309,11 @@ loading_animation_loop() {
     printf "\r%100s\r$(styler reset)" ""
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$_exit_code" -gt "0" ]]; then
-        log_error --status "$_status" "$loading_animation_message" "$@"
+        log_error ---status "$_status" "$loading_animation_message" "$@"
       elif [[ "$_exit_code" -lt "0" ]]; then
-        log_warning --status "$_status" "$loading_animation_message" "$@"
+        log_warning ---status "$_status" "$loading_animation_message" "$@"
       else
-        log_success --status "$_status" "$loading_animation_message" "$@"
+        log_success ---status "$_status" "$loading_animation_message" "$@"
       fi
       loading_animation_pid=""
       loading_animation_message=""
@@ -324,10 +324,10 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message --color 'CYAN' --one-line --icon "$_frame" "$loading_animation_message"
+            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message"
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message --color 'CYAN' --one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
+            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
             sleep "1"
           fi
           _step="$((_step + 1))"
@@ -340,13 +340,13 @@ loading_animation_loop() {
 }
 
 wait_moment() {
-  loading_animation_loop --time "$RETRY_INTERVAL"
+  loading_animation_loop ---time "$RETRY_INTERVAL"
   sleep "$RETRY_INTERVAL"
-  loading_animation_loop --code 0
+  loading_animation_loop ---code 0
 }
 
-trap "loading_animation_loop -x;exit" SIGINT
-trap "loading_animation_loop -x;exit" EXIT
+trap "loading_animation_loop ---trap;exit" SIGINT
+trap "loading_animation_loop ---trap;exit" EXIT
 
 ##----IO------------------------------------------------------------------------------------------------------------
 
@@ -360,9 +360,9 @@ prompt_input() {
   shift
   local _message
   if [[ "$#" -gt "0" ]]; then
-    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
+    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
   else
-    _message="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "%s: " "$_prompt_text")"
+    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s: " "$_prompt_text")"
   fi
 
   # get

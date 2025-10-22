@@ -93,12 +93,12 @@ netcatchat_main() {
   ### CONFIG ###
   function config_load() {
     if [[ ! -f "$config_file_path" ]]; then
-      log_info --status "$config_file_path" 'Create config file'
+      log_info ---status "$config_file_path" 'Create config file'
       mkdir -p "$(dirname "$config_file_path")"
       touch "$config_file_path"
       chmod 400 "$config_file_path"
     else
-      log_info --status "$config_file_path" 'Read config file'
+      log_info ---status "$config_file_path" 'Read config file'
       # shellcheck disable=SC1090
       source "$config_file_path"
     fi
@@ -115,7 +115,7 @@ netcatchat_main() {
       log_info 'You have no recipients on contact list, type <b>/create</b> to add new person'
     fi
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
       -p | --port)
         shift
         local _sender_port_error
@@ -190,10 +190,10 @@ netcatchat_main() {
   ### NETCAT ###
   function netcat_start() {
     if [[ -n "$sender_port" ]]; then
-      log_success --status "$BASHPID" "Started netcat chat"
+      log_success ---status "$BASHPID" "Started netcat chat"
       nc -l -k "$sender_port" 2>/dev/null &
       nc_pid=$!
-      log_success --status "$nc_pid" "Started netcat server on %d port" "$sender_port"
+      log_success ---status "$nc_pid" "Started netcat server on %d port" "$sender_port"
       message_from_system "<b>${sender_nickname}</b> in now connected to netcatchat from <u>${sender_hostname} ${sender_port}</u>"
     else
       log_error 'Sender port is not defined'
@@ -203,9 +203,9 @@ netcatchat_main() {
   function netcat_kill() {
     if [[ "$nc_pid" -gt "0" ]]; then
       message_from_system "<b>${sender_nickname}</b> has left the building!"
-      loading_animation_loop --message 'Closing netcat server'
+      loading_animation_loop ---message 'Closing netcat server'
       kill ${nc_pid}
-      loading_animation_loop --message 'Closed netcat server' --status "$nc_pid"
+      loading_animation_loop ---message 'Closed netcat server' ---status "$nc_pid"
     fi
   }
 
@@ -308,7 +308,7 @@ netcatchat_main() {
       fi
     done
     config_create 'sender_port' "$_new_sender_port"
-    log_success --status "$_new_sender_port" 'Sender port saved'
+    log_success 'Sender port saved' ---status "$_new_sender_port"
   }
   function app_setup_nickname() {
     local _new_sender_nickname="${1:-}"
@@ -639,8 +639,8 @@ netcatchat_main() {
       if [[ "$_recipient_online_status" -gt "0" ]]; then
         # send message
         local _formatted_message
-        _formatted_message="$(log_message --color "YELLOW" --icon "$ICON_MESSAGE" --bell "$_message")"
-        _formatted_message+="$(log_message --color "YELLOW" --icon "$ICON_PROMPT" --one-line "Chat: ")"
+        _formatted_message="$(log_message ---color "YELLOW" ---icon "$ICON_MESSAGE" ---bell "$_message")"
+        _formatted_message+="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "Chat: ")"
         # shellcheck disable=SC2086
         echo -n "${_formatted_message}" | nc -c "${_recipient_address[*]}"
         local _message_send_response=$?

@@ -44,37 +44,37 @@ beeper_main() {
   }
   function show_commands() {
     log_header 'Tempo'
-    log_usage_options_line -w 14 'arrow right' \
+    log_usage_options_line ---width 14 'arrow right' \
       'Tempo speed up'
-    log_usage_options_line -w 14 'arrow left' \
+    log_usage_options_line ---width 14 'arrow left' \
       'Tempo speed down'
     log_header 'Octave'
-    log_usage_options_line -w 14 'arrow up' \
+    log_usage_options_line ---width 14 'arrow up' \
       'Octave change up'
-    log_usage_options_line -w 14 'arrow down' \
+    log_usage_options_line ---width 14 'arrow down' \
       'Octave change down'
     log_header 'Note type'
-    log_usage_options_line -w 14 '1' "set sixteenth $MUSIC_NOTE_SIXTEENTH"
-    log_usage_options_line -w 14 '2' "set eighth $MUSIC_NOTE_EIGHTH"
-    log_usage_options_line -w 14 '3' "set quarter $MUSIC_NOTE_QUARTER"
-    log_usage_options_line -w 14 '4' "set half $MUSIC_NOTE_HALF"
-    log_usage_options_line -w 14 '5' "set whole $MUSIC_NOTE_WHOLE"
+    log_usage_options_line ---width 14 '1' "set sixteenth $MUSIC_NOTE_SIXTEENTH"
+    log_usage_options_line ---width 14 '2' "set eighth $MUSIC_NOTE_EIGHTH"
+    log_usage_options_line ---width 14 '3' "set quarter $MUSIC_NOTE_QUARTER"
+    log_usage_options_line ---width 14 '4' "set half $MUSIC_NOTE_HALF"
+    log_usage_options_line ---width 14 '5' "set whole $MUSIC_NOTE_WHOLE"
     log_header 'Note play'
-    log_usage_options_line -w 14 '`' 'Play pause'
-    log_usage_options_line -w 14 '🅉' "Play note <b>c</b>"
-    log_usage_options_line -w 14 '🅂' "Play note <b>c$MUSIC_SIGN_SHARP</b> / <b>d$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -w 14 '🅇' "Play note <b>d</b>"
-    log_usage_options_line -w 14 '🄳' "Play note <b>d$MUSIC_SIGN_SHARP</b> / <b>e$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -w 14 '🄲' "Play note <b>e</b>"
-    log_usage_options_line -w 14 '🅅' "Play note <b>f</b>"
-    log_usage_options_line -w 14 '🄶' "Play note <b>f$MUSIC_SIGN_SHARP</b> / <b>g$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -w 14 '🄱' "Play note <b>g</b>"
-    log_usage_options_line -w 14 '🄷' "Play note <b>g$MUSIC_SIGN_SHARP</b> / <b>a$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -w 14 '🄽' "Play note <b>a</b>"
-    log_usage_options_line -w 14 '🄹' "Play note <b>a$MUSIC_SIGN_SHARP</b> / <b>b$MUSIC_SIGN_FLAT</b>"
-    log_usage_options_line -w 14 '🄼' "Play note <b>b</b>"
-    log_usage_options_line -w 14 ',' "Play note <b>c</b>"
-    log_usage_options_line -w 14 'Shift + <note key>' 'Play note with Led.'
+    log_usage_options_line ---width 14 '`' 'Play pause'
+    log_usage_options_line ---width 14 '🅉' "Play note <b>c</b>"
+    log_usage_options_line ---width 14 '🅂' "Play note <b>c$MUSIC_SIGN_SHARP</b> / <b>d$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line ---width 14 '🅇' "Play note <b>d</b>"
+    log_usage_options_line ---width 14 '🄳' "Play note <b>d$MUSIC_SIGN_SHARP</b> / <b>e$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line ---width 14 '🄲' "Play note <b>e</b>"
+    log_usage_options_line ---width 14 '🅅' "Play note <b>f</b>"
+    log_usage_options_line ---width 14 '🄶' "Play note <b>f$MUSIC_SIGN_SHARP</b> / <b>g$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line ---width 14 '🄱' "Play note <b>g</b>"
+    log_usage_options_line ---width 14 '🄷' "Play note <b>g$MUSIC_SIGN_SHARP</b> / <b>a$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line ---width 14 '🄽' "Play note <b>a</b>"
+    log_usage_options_line ---width 14 '🄹' "Play note <b>a$MUSIC_SIGN_SHARP</b> / <b>b$MUSIC_SIGN_FLAT</b>"
+    log_usage_options_line ---width 14 '🄼' "Play note <b>b</b>"
+    log_usage_options_line ---width 14 ',' "Play note <b>c</b>"
+    log_usage_options_line ---width 14 'Shift + <note key>' 'Play note with Led.'
   }
 
   ### NOTES ###
@@ -351,7 +351,7 @@ beeper_main() {
     local _icon_key="MUSIC_NOTE_${_note_length_name}"
     note_type_icon="$(echo -e "${!_icon_key}")"
     update_note_length
-    log_debug -r 'Set note type as <b>%s</b> %s (%s ms)' "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
+    log_debug ---reset 'Set note type as <b>%s</b> %s (%s ms)' "${_note_length_name,,}" "$note_type_icon" "$note_length_ms"
   }
 
   function set_note_speed() {
@@ -364,7 +364,7 @@ beeper_main() {
     fi
     note_speed="$_speed"
     update_note_length
-    log_debug -r 'Set speed as <b>%s</b>' "$note_speed"
+    log_debug ---reset 'Set speed as <b>%s</b>' "$note_speed"
   }
 
   function set_note_octave() {
@@ -375,7 +375,7 @@ beeper_main() {
     if [[ "$note_octave_no" -gt '9' ]]; then
       note_octave_no='9'
     fi
-    log_debug -r 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no - 1))]}" "$note_octave_no"
+    log_debug ---reset 'Set octave as <b>%s</b> (%d)' "${OCTAVE_NAMES[$((note_octave_no - 1))]}" "$note_octave_no"
   }
 
   function set_note_tone() {
@@ -566,7 +566,7 @@ beeper_main() {
     local _note_speed="120"
     local _note_octave_no="4"
     while [[ $# -gt 0 ]]; do
-      case $1 in
+      case "$1" in
       -v | --verbose)
         DEBUG=1
         ;;
@@ -613,7 +613,7 @@ beeper_main() {
 
   ### TRAP ###
   function finish() {
-    log_info -r "Bye!"
+    log_info ---reset "Bye!"
     force_stop='y'
     killall $command_name 2>/dev/null
     exit 0
