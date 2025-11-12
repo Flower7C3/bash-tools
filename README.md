@@ -13,7 +13,7 @@ Collection of useful bash scripts for development and system administration.
 
 - `ssl-check` - Check SSL/TLS certificates
 - `url-status-check` - Check HTTP status codes and redirects
-- `redirects-check` - Validate URL redirects from file
+- `redirects-check` - Validate URL redirects from the file
 - `netcatchat` - Chat via netcat with shortcuts
 
 ### System Tools

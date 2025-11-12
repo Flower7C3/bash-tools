@@ -384,6 +384,8 @@ map_main() {
         shift
         ;;
       -d | --debug)
+        # shellcheck disable=SC2034
+        # used in `common-functions`
         DEBUG=1
         shift
         ;;

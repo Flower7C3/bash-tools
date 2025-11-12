@@ -249,11 +249,11 @@ calculate_real_padding() {
   local _width="$1"
   local _text="$2"
   local _raw_bytes
-  _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | wc -c | tr -d ' ')"
+  _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
   local _text_bytes
-  _text_bytes="$(echo -n "$_text" | wc -c | tr -d ' ')"
+  _text_bytes="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
   local _text_chars
-  _text_chars="$(echo -n "$_text" | wc -m | tr -d ' ')"
+  _text_chars="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -m | tr -d ' ')"
   local _padding=$((_width + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
   echo "$_padding"
 }

@@ -68,12 +68,12 @@ redirects_main() {
   DEFAULT_MAX_REDIRECTS=5
 
   # Global variables
-  timeout=$DEFAULT_TIMEOUT
-  user_agent="$DEFAULT_USER_AGENT"
-  max_redirects=$DEFAULT_MAX_REDIRECTS
-  output_format="text"
-  ssl_verify=1
-  data_file=""
+  TIMEOUT=$DEFAULT_TIMEOUT
+  USER_AGENT="$DEFAULT_USER_AGENT"
+  MAX_REDIRECTS=$DEFAULT_MAX_REDIRECTS
+  OUTPUT_FORMAT="text"
+  SSL_VERIFY=1
+  DATA_FILE=""
 
   # Function to check redirect
   check_redirect() {
@@ -83,94 +83,95 @@ redirects_main() {
     local _line_number="$4"
 
     # Build curl command
-    local _curl_cmd="curl -s -i -k --max-time $timeout"
+    local _curl_cmd="curl -s -i -k --max-time $TIMEOUT"
 
     # Add user agent
-    curl_cmd="$curl_cmd -H 'User-Agent: $user_agent'"
+    _curl_cmd="$_curl_cmd -H 'User-Agent: $USER_AGENT'"
 
     # Add SSL verification
-    if [[ "$ssl_verify" == "0" ]]; then
-      curl_cmd="$curl_cmd -k"
+    if [[ "$SSL_VERIFY" == "0" ]]; then
+      _curl_cmd="$_curl_cmd -k"
     fi
 
     # Add redirect handling
-    curl_cmd="$curl_cmd --max-redirs $max_redirects"
+    _curl_cmd="$_curl_cmd --max-redirs $MAX_REDIRECTS"
 
     # Add output format
-    curl_cmd="$curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{url_effective}'"
+    _curl_cmd="$_curl_cmd -o /dev/null --write-out '%{http_code}|%{redirect_url}|%{time_total}|%{url_effective}'"
 
     # Execute curl command
     local _response
-    if ! response=$(eval "$curl_cmd '$old_url'" 2>/dev/null); then
-      log_error 'Failed to check URL: <u>%s</u>' "$old_url"
+    if ! response=$(eval "$_curl_cmd '$_old_url'" 2>/dev/null); then
+      log_error 'Failed to check URL: <u>%s</u>' "$_old_url"
       return 1
     fi
 
     # Parse response
-    IFS='|' read -r response_code redirect_url time_total url_effective <<<"$response"
+    IFS='|' read -r _response_code _redirect_url _time_total _url_effective <<<"$response"
 
     # Check if redirect is correct
     local _is_correct=0
     local _status_message=""
 
-    if [[ "$response_code" == "$expected_code" ]]; then
-      if [[ "$expected_code" -ge 300 && "$expected_code" -lt 400 ]]; then
+    if [[ "$_response_code" == "$_expected_code" ]]; then
+      if [[ "$_expected_code" -ge 300 && "$_expected_code" -lt 400 ]]; then
         # For redirect codes, check if the redirect URL matches
-        if [[ "$redirect_url" == "$expected_url" ]]; then
-          is_correct=1
-          status_message="✓ Redirect correct"
+        if [[ "$_redirect_url" == "$_expected_url" ]]; then
+          _is_correct=1
+          _status_message="Redirect correct"
         else
-          status_message="✗ Redirect URL mismatch: got '$redirect_url', expected '$expected_url'"
+          _status_message="Redirect URL mismatch: got '$_redirect_url', expected '$_expected_url'"
         fi
       else
         # For non-redirect codes, just check the code
-        is_correct=1
-        status_message="✓ Status code correct"
+        _is_correct=1
+        _status_message="Status code correct"
       fi
     else
-      status_message="✗ Status code mismatch: got '$response_code', expected '$expected_code'"
+      _status_message="Status code mismatch: got '$_response_code', expected '$_expected_code'"
     fi
 
     # Output results based on format
-    case "$output_format" in
+    case "$OUTPUT_FORMAT" in
     "json")
       cat <<EOF
 {
-  "line_number": $line_number,
-  "old_url": "$old_url",
-  "expected_code": $expected_code,
-  "expected_url": "$expected_url",
-  "actual_code": $response_code,
-  "actual_url": "$redirect_url",
-  "final_url": "$url_effective",
-  "response_time": $time_total,
-  "is_correct": $is_correct,
-  "status": "$status_message"
+  "line_number": $_line_number,
+  "old_url": "$_old_url",
+  "expected_code": $_expected_code,
+  "expected_url": "$_expected_url",
+  "actual_code": $_response_code,
+  "actual_url": "$_redirect_url",
+  "final_url": "$_url_effective",
+  "response_time": $_time_total,
+  "is_correct": $_is_correct,
+  "status": "$_status_message"
 }
 EOF
       ;;
     "csv")
-      echo "$line_number,$old_url,$expected_code,$expected_url,$response_code,$redirect_url,$url_effective,$time_total,$is_correct,\"$status_message\""
+      echo "$_line_number,$_old_url,$_expected_code,$_expected_url,$_response_code,$_redirect_url,$_url_effective,$_time_total,$_is_correct,\"$_status_message\""
       ;;
     *)
       # Text format
-      printf "%-4d %-60s " "$line_number" "$old_url"
-      if [[ $is_correct -eq 1 ]]; then
-        printf "$(styler text 'GREEN')✓${NC} %s" "$status_message"
+      printf "%-4d %-60s " "$_line_number" "$_old_url"
+      if [[ $_is_correct -eq 1 ]]; then
+        printf "$(styler text 'GREEN')✓ %s" "$_status_message"
       else
-        printf "$(styler text 'RED')✗${NC} %s" "$status_message"
+        printf "$(styler text 'RED')✗ %s" "$_status_message"
       fi
-      printf ' (%ss)' "$time_total"
+      printf "$(styler reset) (%ss)" "$_time_total"
       echo
       ;;
     esac
 
     # Log error to file if incorrect
-    if [[ $is_correct -eq 0 ]]; then
-      echo "$old_url	$response_code	$redirect_url" >>"${data_file}.error.log"
+    if [[ $_is_correct -eq 0 ]]; then
+      echo "$_old_url	$_response_code	$_redirect_url" >>"${DATA_FILE}.error.log"
+      return 1
     fi
 
-    return "$is_correct"
+    return 0
   }
 
   # Function to process data file
@@ -189,7 +190,7 @@ EOF
     touch "${_file}.error.log"
 
     # Add CSV header if output format is CSV
-    if [[ "$output_format" == "csv" ]]; then
+    if [[ "$OUTPUT_FORMAT" == "csv" ]]; then
       echo "Line,Old URL,Expected Code,Expected URL,Actual Code,Actual URL,Final URL,Response Time,Correct,Status"
     fi
 
@@ -197,46 +198,46 @@ EOF
     local _correct_count=0
     local _total_count=0
 
-    while IFS= read -r line; do
-      ((line_number++))
+    while read -r _line; do
+      _line_number=$((_line_number + 1))
 
       # Skip empty lines and comments
-      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ -z "$_line" || "$_line" =~ ^[[:space:]]*# ]] && continue
 
       # Parse line: OLD_URL EXPECTED_CODE NEW_URL
       local _old_url _expected_code _expected_url
-      read -r old_url expected_code expected_url <<<"$line"
+      read -r _old_url _expected_code _expected_url <<<"$_line"
 
       # Validate inputs
-      if [[ -z "$old_url" || -z "$expected_code" || -z "$expected_url" ]]; then
-        log_warning 'Skipping malformed line %s: $%s' "$line_number" "$line"
+      if [[ -z "$_old_url" || -z "$_expected_code" || -z "$_expected_url" ]]; then
+        log_warning 'Skipping malformed line %s: $%s' "$_line_number" "$_line"
         continue
       fi
 
-      if ! validate_url "$old_url"; then
+      if ! validate_url "$_old_url"; then
         continue
       fi
 
-      if ! validate_url "$expected_url"; then
+      if ! validate_url "$_expected_url"; then
         continue
       fi
 
-      if ! [[ "$expected_code" =~ ^[0-9]+$ ]]; then
-        log_warning 'Invalid expected code on line %s: %s' "$line_number" "$expected_code"
+      if ! [[ "$_expected_code" =~ ^[0-9]+$ ]]; then
+        log_warning 'Invalid expected code on line %s: %s' "$_line_number" "$_expected_code"
         continue
       fi
 
       # Check redirect
-      if check_redirect "$old_url" "$expected_code" "$expected_url" "$line_number"; then
-        ((correct_count++))
+      if check_redirect "$_old_url" "$_expected_code" "$_expected_url" "$_line_number"; then
+        _correct_count=$((_correct_count + 1))
       fi
 
-      ((total_count++))
+      _total_count=$((_total_count + 1))
 
     done <"$_file"
 
     # Summary
-    log_info 'Processed %s redirects: %s correct, %s incorrect' "$total_count" "$correct_count" "$((total_count - correct_count))"
+    log_info 'Processed %s redirects: %s correct, %s incorrect' "$_total_count" "$_correct_count" "$((_total_count - _correct_count))"
 
     if [[ -s "${_file}.error.log" ]]; then
       log_warning 'Errors logged to: <u>%s</u>' "${_file}.error.log"
@@ -248,35 +249,35 @@ EOF
     while [[ $# -gt 0 ]]; do
       case "$1" in
       -t | --timeout)
-        timeout="$2"
-        if ! [[ "$timeout" =~ ^[0-9]+$ ]] || [[ "$timeout" -lt 1 ]]; then
-          log_error 'Invalid timeout: %s' "$timeout"
+        TIMEOUT="$2"
+        if ! [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || [[ "$TIMEOUT" -lt 1 ]]; then
+          log_error 'Invalid timeout: %s' "$TIMEOUT"
           exit 1
         fi
         shift 2
         ;;
       -a | --user-agent)
-        user_agent="$2"
+        USER_AGENT="$2"
         shift 2
         ;;
       -r | --max-redirects)
-        max_redirects="$2"
-        if ! [[ "$max_redirects" =~ ^[0-9]+$ ]] || [[ "$max_redirects" -lt 0 ]]; then
-          log_error 'Invalid max redirects: %d' "$max_redirects"
+        MAX_REDIRECTS="$2"
+        if ! [[ "$MAX_REDIRECTS" =~ ^[0-9]+$ ]] || [[ "$MAX_REDIRECTS" -lt 0 ]]; then
+          log_error 'Invalid max redirects: %d' "$MAX_REDIRECTS"
           exit 1
         fi
         shift 2
         ;;
       -F | --format)
-        output_format="$2"
-        if [[ "$output_format" != "text" && "$output_format" != "json" && "$output_format" != "csv" ]]; then
-          log_error 'Invalid output format: %s' "$output_format"
+        OUTPUT_FORMAT="$2"
+        if [[ "$OUTPUT_FORMAT" != "text" && "$OUTPUT_FORMAT" != "json" && "$OUTPUT_FORMAT" != "csv" ]]; then
+          log_error 'Invalid output format: %s' "$OUTPUT_FORMAT"
           exit 1
         fi
         shift 2
         ;;
       -k | --insecure)
-        ssl_verify=0
+        SSL_VERIFY=0
         shift
         ;;
       -h | --help)
@@ -291,8 +292,8 @@ EOF
         show_usage
         ;;
       *)
-        if [[ -z "$data_file" ]]; then
-          data_file="$1"
+        if [[ -z "$DATA_FILE" ]]; then
+          DATA_FILE="$1"
         else
           log_error 'Multiple data files specified'
           exit 1
@@ -312,13 +313,13 @@ EOF
   parse_arguments "$@"
 
   # Validate input
-  if [[ -z "$data_file" ]]; then
+  if [[ -z "$DATA_FILE" ]]; then
     log_error 'No data file specified'
     show_usage
   fi
 
   # Process data file
-  process_data_file "$data_file"
+  process_data_file "$DATA_FILE"
 }
 
 # Run main function
