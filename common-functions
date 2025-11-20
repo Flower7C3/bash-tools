@@ -60,6 +60,7 @@ readonly ICON_PROMPT='✏︎'
 
 readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
 readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
+readonly LOADING_ANIMATION_RETRY_INTERVAL=5
 
 ##----Display line------------------------------------------------------------------------------------------------------------
 
@@ -305,7 +306,8 @@ loading_animation_loop() {
   done
   set -- "${POSITIONAL_ARGS[@]}"
   if [[ -n "$loading_animation_pid" ]]; then
-    kill "$loading_animation_pid" &>/dev/null
+    kill "$loading_animation_pid" 2>/dev/null || true
+    wait "$loading_animation_pid" 2>/dev/null || true
     printf "\r%100s\r$(styler reset)" ""
     if [[ "$loading_animation_message" != "" ]]; then
       if [[ "$_exit_code" -gt "0" ]]; then
@@ -324,14 +326,14 @@ loading_animation_loop() {
       while true; do
         for _frame in "${LOADING_ANIMATION[@]}"; do
           if [[ -n "$loading_animation_message" ]]; then
-            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message"
+            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message" 2>/dev/null || break
             sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
           else
-            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" | bc -z)"
+            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" 2>/dev/null | bc -z 2>/dev/null || echo "$_countdown")" 2>/dev/null || break
             sleep "1"
           fi
           _step="$((_step + 1))"
-          printf "\r"
+          printf "\r" 2>/dev/null || break
         done
       done
     ) &
@@ -340,9 +342,9 @@ loading_animation_loop() {
 }
 
 wait_moment() {
-  loading_animation_loop ---time "$RETRY_INTERVAL"
-  sleep "$RETRY_INTERVAL"
-  loading_animation_loop ---code 0
+  loading_animation_loop ---time "$LOADING_ANIMATION_RETRY_INTERVAL"
+  sleep "$LOADING_ANIMATION_RETRY_INTERVAL"
+  loading_animation_loop ---exit-code 0
 }
 
 trap "loading_animation_loop ---trap;exit" SIGINT
@@ -358,6 +360,8 @@ prompt_input() {
   shift
   local _default_value="${1:-}"
   shift
+  local _prompt_length="${1:-}"
+  shift
   local _message
   if [[ "$#" -gt "0" ]]; then
     _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
@@ -367,7 +371,11 @@ prompt_input() {
 
   # get
   local _value
-  read -r -p "$_message" -e -i "$_default_value" _value
+  if [[ "$_prompt_length" -gt "0" ]]; then
+    read -r -n "$_prompt_length" -p "$_message" -e -i "$_default_value" _value
+  else
+    read -r -p "$_message" -e -i "$_default_value" _value
+  fi
   if [[ -z "$_value" ]]; then
     _value="$_default_value"
   fi
@@ -382,7 +390,7 @@ confirm_or_exit() {
   local _response="z"
 
   while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
-    prompt_input _response "$_message" "$_default_value" "Y" "y" "N" "n"
+    prompt_input _response "$_message" "$_default_value" 1 "Y" "y" "N" "n"
     [[ "$_response" =~ ^[Yy]?$ ]] && break
     [[ "$_response" =~ ^[Nn]?$ ]] && exit 0
     log_warning 'Invalid option selected'
