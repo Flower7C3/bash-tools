@@ -209,8 +209,8 @@ EOF
       read -r _old_url _expected_code _expected_url <<<"$_line"
 
       # Validate inputs
-      if [[ -z "$_old_url" || -z "$_expected_code" || -z "$_expected_url" ]]; then
-        log_warning 'Skipping malformed line %s: $%s' "$_line_number" "$_line"
+      if [[ -z "$_old_url" || -z "$_expected_code" || ("$_expected_code" =~ ^[345][0-9]+$ && -z "$_expected_url") ]]; then
+        log_warning 'Skipping malformed line %s: %s' "$_line_number" "$_line"
         continue
       fi
 
@@ -218,7 +218,7 @@ EOF
         continue
       fi
 
-      if ! validate_url "$_expected_url"; then
+      if [[ "$_expected_code" =~ ^[345][0-9]+$ ]] && ! validate_url "$_expected_url"; then
         continue
       fi
 
