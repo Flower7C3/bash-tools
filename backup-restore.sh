@@ -1,0 +1,1316 @@
+#!/usr/bin/env bash
+
+# Backup and restore tool
+# Usage: ./backup-restore.sh [OPTIONS]
+
+set -euo pipefail
+
+# Main function wrapper
+main() {
+    # Check if common-functions exists
+    if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+        echo "Downloading common-functions from GitHub..."
+        if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+            echo "Failed to download common-functions"
+            exit 1
+        fi
+    fi
+
+    # Source common functions
+    source "$(dirname "$0")/common-functions"
+
+    # Call the actual main function
+    backup_restore_main "$@"
+}
+
+backup_restore_main() {
+    log_title 'Backup and Restore Tool'
+
+    #-------------------------- Settings --------------------------------
+    # Change to script directory and initialize configuration paths
+    cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+    config_file="backup-restore.yaml"
+    # shellcheck disable=SC2155
+    declare -r LOG_FILE_PATH="logs/$(date +%Y/%m/)short.log"
+
+    #-------------------------- Helper Functions --------------------------------
+    # Utility functions for configuration reading, logging, and string manipulation
+
+    function display_help() {
+        # Display usage information and available command-line options
+        log_usage_title '[OPTIONS]'
+        echo
+        echo 'Narzędzie do wykonywania kopii zapasowych i przywracania danych'
+        echo
+        log_header 'Options'
+        log_usage_options_line '-s;--server <SERVER>' 'Określa serwer z konfiguracji'
+        log_usage_options_line '-i;--install' 'Instalacja narzędzia'
+        log_usage_options_line '-c;--cleanup' 'Czyści stare kopie zapasowe'
+        log_usage_options_line '-te;--test-email' 'Testuje konfigurację powiadomień email'
+        log_usage_options_line '-ls;--list-scopes' 'Pokazuje listę zakresów'
+        log_usage_options_line '-bfs;--backup-files-scope <ZAKRES>' 'Określa zakres danych do archiwizacji plików'
+        log_usage_options_line '-rfs;--restore-files-scope <ZAKRES>' 'Określa zakres danych do przywracania plików'
+        log_usage_options_line '-bds;--backup-database-scope <ZAKRES>' 'Określa zakres danych do archiwizacji bazy danych'
+        log_usage_options_line '-rds;--restore-database-scope <ZAKRES>' 'Określa zakres danych do przywracania bazy danych'
+        log_usage_options_line '-cs;--configure-scope <ZAKRES>' 'Określa zakres danych do aktualizacji konfiguracji'
+        log_usage_options_line '-n;--dry-run' 'Symulacja operacji bez wykonywania rzeczywistych zmian'
+        log_usage_options_line '-f;--force' 'Wymusza wykonanie kopii zapasowej nawet bez zmian'
+        log_usage_options_line '-d;--debug' 'Włącza tryb debugowania (pokazuje dodatkowe informacje)'
+        log_usage_options_line '-a;--skip-archive' 'Pomija archiwizację plików po wykonaniu kopii zapasowej'
+        log_usage_options_line '-h;--help' 'Wyświetla tę pomoc'
+        echo
+        log_header 'Examples'
+        echo ' Backup plików'
+        log_usage_example_line '--server produkcja --backup-files-scope aplikacja'
+        echo ' Restore bazy danych'
+        log_usage_example_line '--server dev --restore-database-scope baza_danych'
+        echo ' Cleanup z dry-run'
+        log_usage_example_line '--cleanup --dry-run'
+        echo ' Test email'
+        log_usage_example_line '--test-email'
+        exit 0
+    }
+
+    function read_config() {
+        # Read configuration values from YAML file using yq tool
+        # Tries system yq first, falls back to local yq_linux_386 binary
+        local _path="$1"
+        shift
+        if hash yq 2>/dev/null; then
+            # shellcheck disable=SC2068
+            yq "$_path" "$config_file" $@
+        else
+            # shellcheck disable=SC2068
+            ./yq_linux_386 "$_path" "$config_file" $@
+        fi
+    }
+
+    function join_by() {
+        # Join array elements with a delimiter into a single string
+        local _delimiter=$1
+        shift
+        printf "%s" "$1"
+        shift
+        printf "%s" "${@/#/$_delimiter}"
+    }
+
+    function save_log_start() {
+        # Write log entry start (timestamp and initial parameters) to log file
+        # Skips logging in dry-run mode
+        if [[ "$dry_run" == "yes" ]]; then
+            return 0
+        fi
+        {
+            printf "%s" "$(date +"%Y-%m-%d %H:%M:%S")"
+            printf "\t%s" "$@"
+        } >>"$LOG_FILE_PATH"
+    }
+
+    function save_log_end() {
+        # Write log entry end (additional parameters and newline) to log file
+        # Skips logging in dry-run mode
+        if [[ "$dry_run" == "yes" ]]; then
+            return 0
+        fi
+        {
+            if [[ "$#" -gt "0" ]]; then
+                printf "\t%s" "$@"
+            fi
+            printf "\n"
+        } >>"$LOG_FILE_PATH"
+    }
+
+    #-------------------------- Email Functions --------------------------------
+    # Functions for testing and sending email notifications via SMTP
+
+    function test_email_configuration() {
+        # Test email configuration by sending a test message
+        # Validates SMTP settings and available email tools
+        log_header 'Testing email configuration...'
+
+        # Load email configuration from YAML
+        eval "$(read_config ".notifications" -o=shell 2>/dev/null)"
+
+        # Validate basic configuration
+        if [[ "$enabled" != "yes" ]]; then
+            log_error 'Email notifications are disabled in configuration (enabled: <b>%s</b>)' "$enabled"
+            return 1
+        fi
+
+        if [[ -z "$smtp_host" ]]; then
+            log_error 'SMTP host is not configured'
+            return 1
+        fi
+
+        if [[ -z "$smtp_to" ]]; then
+            log_error 'Email recipient (smtp_to) is not configured'
+            return 1
+        fi
+
+        log_info 'SMTP Host: <b>%s</b>' "$smtp_host"
+        log_info 'SMTP Port: <b>%s</b>' "${smtp_port:-587}"
+        log_info 'SMTP User: <b>%s</b>' "${smtp_user:-not set}"
+        log_info 'From: <b>%s</b>' "${smtp_from:-backup@localhost}"
+        log_info 'To: <b>%s</b>' "$smtp_to"
+        log_info 'Use TLS: <b>%s</b>' "${smtp_use_tls:-no}"
+
+        # Check for available email tools (sendmail, mail, or curl)
+        local _email_tool=""
+        if command -v sendmail &>/dev/null; then
+            _email_tool="sendmail"
+        elif command -v mail &>/dev/null; then
+            _email_tool="mail"
+        elif command -v curl &>/dev/null; then
+            _email_tool="curl"
+        else
+            log_error 'No email client available (sendmail/mail/curl)'
+            return 1
+        fi
+
+        log_info 'Email tool: <b>%s</b>' "$_email_tool"
+
+        # Send test email with configuration details
+        local _test_subject="[BACKUP TEST] Email configuration test"
+        local _test_message="This is a test email from the backup system.
+
+If you received this email, the email configuration is working correctly.
+
+Test details:
+- Time: $(date +"%Y-%m-%d %H:%M:%S")
+- Host: $(hostname 2>/dev/null || echo "unknown")
+- SMTP Host: $smtp_host
+- SMTP Port: ${smtp_port:-587}
+- Email Tool: $_email_tool
+
+This is an automated test message."
+
+        log_info 'Sending test email to <b>%s</b>...' "$smtp_to"
+
+        if send_email_notification "$_test_subject" "$_test_message" "TEST"; then
+            log_success 'Test email sent successfully!'
+            log_info 'Please check your inbox at <b>%s</b>' "$smtp_to"
+            return 0
+        else
+            log_error 'Failed to send test email'
+            return 1
+        fi
+    }
+
+    function send_email_notification() {
+        # Send email notification using available email tool (sendmail, mail, or curl)
+        # Supports both local sendmail/mail and SMTP via curl
+        local _subject="$1"
+        local _message="$2"
+        local _error_level="${3:-ERROR}"
+
+        # Load email configuration from YAML
+        eval "$(read_config ".notifications" -o=shell 2>/dev/null)"
+
+        # Check if notifications are enabled (skip check for test emails)
+        if [[ "$_error_level" != "TEST" ]] && [[ "${enabled}" != "yes" ]]; then
+            return 0
+        fi
+
+        if [[ -z "$smtp_host" || -z "$smtp_to" ]]; then
+            if [[ "$debug" == "yes" ]]; then
+                log_debug 'Email notifications not configured, skipping...'
+            fi
+            return 1
+        fi
+
+        # Prepare email headers with proper date format (RFC 2822)
+        local _date_header
+        if date -R &>/dev/null 2>&1; then
+            _date_header=$(date -R)
+        else
+            _date_header=$(date +"%a, %d %b %Y %H:%M:%S %z" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
+        fi
+
+        local _email_body
+        _email_body=$(
+            cat <<EOF
+Subject: $_subject
+From: ${smtp_from:-backup@localhost}
+To: $smtp_to
+Date: $_date_header
+Content-Type: text/plain; charset=UTF-8
+
+$_message
+EOF
+        )
+
+        # Send email using available tool: sendmail (preferred), mail, or curl SMTP
+        if command -v sendmail &>/dev/null; then
+            if echo "$_email_body" | sendmail -t 2>&1; then
+                return 0
+            else
+                if [[ "$debug" == "yes" || "$_error_level" == "TEST" ]]; then
+                    log_error 'Failed to send email via sendmail'
+                fi
+                return 1
+            fi
+        elif command -v mail &>/dev/null; then
+            if echo "$_message" | mail -s "$_subject" "$smtp_to" 2>&1; then
+                return 0
+            else
+                if [[ "$debug" == "yes" || "$_error_level" == "TEST" ]]; then
+                    log_error 'Failed to send email via mail'
+                fi
+                return 1
+            fi
+        elif command -v curl &>/dev/null && [[ -n "$smtp_host" ]]; then
+            _send_email_via_curl "$_subject" "$_message" "$_error_level"
+        else
+            if [[ "$debug" == "yes" ]]; then
+                log_debug 'No email client available (sendmail/mail/curl), skipping email notification'
+            fi
+            return 0
+        fi
+
+        if [[ "$debug" == "yes" || "$_error_level" == "TEST" ]]; then
+            log_info 'Email notification sent to <b>%s</b>' "$smtp_to"
+        fi
+
+        return 0
+    }
+
+    function _send_email_via_curl() {
+        # Send email via SMTP using curl
+        # Supports SMTPS (port 465) and STARTTLS (port 587)
+        local _subject="$1"
+        local _message="$2"
+        local _error_level="$3"
+
+        local _smtp_port="${smtp_port:-587}"
+        local _smtp_url=""
+        local _curl_opts=()
+        local _curl_output=""
+
+        # Port 465 requires SMTPS (SSL/TLS), port 587 uses STARTTLS
+        if [[ "$_smtp_port" == "465" ]]; then
+            # SMTPS (SSL/TLS) for port 465
+            _smtp_url="smtps://${smtp_host}:${_smtp_port}"
+            _curl_opts+=("--ssl-reqd" "--insecure")
+        else
+            # STARTTLS for port 587
+            _smtp_url="smtp://${smtp_host}:${_smtp_port}"
+            if [[ "$smtp_use_tls" == "yes" ]]; then
+                _curl_opts+=("--ssl-reqd")
+            fi
+        fi
+
+        # Add authentication if credentials are provided
+        if [[ -n "$smtp_user" && -n "$smtp_pass" ]]; then
+            _curl_opts+=("--user" "${smtp_user}:${smtp_pass}")
+        fi
+
+        # Prepare email body for curl (simpler format than sendmail)
+        local _email_for_curl
+        _email_for_curl=$(
+            cat <<EOF
+From: ${smtp_from:-backup@localhost}
+To: $smtp_to
+Subject: $_subject
+
+$_message
+EOF
+        )
+
+        # Send email via curl SMTP
+        _curl_output=$(echo "$_email_for_curl" | curl -s -w "\n%{http_code}" "${_curl_opts[@]}" \
+            --url "$_smtp_url" \
+            --mail-from "${smtp_from:-backup@localhost}" \
+            --mail-rcpt "$smtp_to" \
+            --upload-file - 2>&1)
+
+        local _curl_exit_code=$?
+
+        if [[ $_curl_exit_code -eq 0 ]]; then
+            return 0
+        else
+            if [[ "$debug" == "yes" || "$_error_level" == "TEST" ]]; then
+                log_error 'Failed to send email via curl to <b>%s:%s</b>' "$smtp_host" "$_smtp_port"
+                log_error 'Curl output: %s' "$_curl_output"
+            fi
+            return 1
+        fi
+    }
+
+    #-------------------------- Error Handling Functions --------------------------------
+    # Functions for handling errors and success messages with logging and email notifications
+
+    function handle_error() {
+        # Handle errors: log error, save to log file, send email notification, and exit
+        local _error_message="$1"
+        local _exit_code="${2:-1}"
+
+        log_error '%s' "$_error_message"
+        save_log_end "ERROR" "$_error_message"
+
+        # Send error notification email
+        local _email_subject="[BACKUP ERROR] Backup failed: ${action:-unknown}"
+        local _email_message
+        _email_message="Backup operation failed!
+
+$_error_message
+
+Action: ${action:-unknown}
+Scope: ${app_id:-N/A}
+Host: ${server_id:-N/A}
+Time: $(date +"%Y-%m-%d %H:%M:%S")
+Log file: $LOG_FILE_PATH
+
+Please check the logs for more details."
+
+        send_email_notification "$_email_subject" "$_email_message" "ERROR"
+
+        exit "$_exit_code"
+    }
+
+    function handle_success() {
+        # Handle success: log success message and save to log file
+        local _success_message="$1"
+
+        log_success '%s' "$_success_message"
+        save_log_end "SUCCESS" "$_success_message"
+    }
+
+    #-------------------------- Backup Date Functions --------------------------------
+    # Functions for extracting and checking backup file dates for GFS retention strategy
+
+    function get_file_date() {
+        # Extract date from backup filename (format: YYYYMMDD)
+        # Returns 8-digit date string or empty if not found
+        local _file="$1"
+        basename "$_file" | grep -oE '[0-9]{8}' | head -1
+    }
+
+    function is_weekly_backup() {
+        # Check if backup date is the first day of week (Monday)
+        # Handles macOS (date -j) and Linux (date -d) date command differences
+        local _file_date="$1"
+        local _date_obj
+        if date -j -f "%Y%m%d" "$_file_date" +%u &>/dev/null 2>&1; then
+            # macOS date command
+            _date_obj=$(date -j -f "%Y%m%d" "$_file_date" +%u 2>/dev/null || echo "0")
+        elif date -d "$_file_date" +%u &>/dev/null 2>&1; then
+            # Linux date command
+            _date_obj=$(date -d "$_file_date" +%u 2>/dev/null || echo "0")
+        else
+            # Fallback: treat first day of month as weekly backup
+            [[ "${_file_date:6:2}" == "01" ]] && return 0 || return 1
+        fi
+        # Return 0 if Monday (day 1), 1 otherwise
+        [[ "$_date_obj" == "1" ]] && return 0 || return 1
+    }
+
+    function is_monthly_backup() {
+        # Check if backup date is the first day of month (day 01)
+        local _file_date="$1"
+        [[ "${_file_date:6:2}" == "01" ]] && return 0 || return 1
+    }
+
+    function is_yearly_backup() {
+        # Check if backup date is the first day of year (January 1st)
+        local _file_date="$1"
+        [[ "${_file_date:4:4}" == "0101" ]] && return 0 || return 1
+    }
+
+    #-------------------------- Cleanup Functions --------------------------------
+    # Functions for executing cleanup operations using GFS (Grandfather-Father-Son) retention strategy
+
+    function execute_cleanup() {
+        # Execute cleanup for all scopes: iterate through scopes and clean up database and file backups
+        # Uses GFS retention strategy to keep daily, weekly, monthly, and yearly backups
+        if [[ "$dry_run" == "yes" ]]; then
+            log_header 'Starting cleanup with GFS retention strategy (dry-run)'
+        else
+            log_header 'Starting cleanup with GFS retention strategy'
+        fi
+
+        # Get all scope names from configuration
+        local _scopes
+        _scopes=$(read_config ".scope | keys" -o=tsv 2>/dev/null | tr '\n' ' ')
+
+        if [[ -n "$_scopes" ]]; then
+            for _scope in $_scopes; do
+                eval "$(read_config ".scope.$_scope" -o=shell 2>/dev/null)"
+                if [[ -n "$sql_file_pattern" && "$sql_file_pattern" != "null" ]]; then
+                    # Clean up database backups matching the SQL file pattern
+                    local _pattern
+                    _pattern=$(printf "$sql_file_pattern" "*")
+                    cleanup_with_gfs_retention "$_scope" "$local_databases_path" "$_pattern" "databases"
+                fi
+                if [[ -n "$ssh_sync_path" && "$ssh_sync_path" != "null" ]]; then
+                    # Clean up file backups: pattern is YYYYMMDD.scope.tar.gz
+                    local _pattern
+                    _pattern="*.${_scope}.tar.gz"
+                    cleanup_with_gfs_retention "$_scope" "$local_archive_path" "$_pattern" "files"
+                fi
+                sql_file_pattern=""
+                ssh_sync_path=""
+            done
+        fi
+
+        printf "\n"
+        if [[ "$dry_run" == "yes" ]]; then
+            log_success 'Cleanup simulation completed (<b>DRY-RUN MODE</b> - no files were deleted)'
+        else
+            log_success 'Cleanup completed successfully'
+        fi
+    }
+
+    #-------------------------- Cleanup Helper Functions --------------------------------
+    # Helper functions for GFS retention cleanup: collecting file info and selecting best backups
+
+    function _collect_backup_file_info() {
+        # Collect information about all backup files: dates, ages in days, and timestamps
+        # Uses namerefs to populate associative arrays with file metadata
+        local -n _all_files_ref="$1"
+        local -n _file_info_ref="$2"
+        local -n _file_ages_ref="$3"
+        local -n _file_timestamps_ref="$4"
+
+        for _file in "${_all_files_ref[@]}"; do
+            local _file_date
+            _file_date=$(get_file_date "$_file")
+
+            if [[ -z "$_file_date" ]]; then
+                continue
+            fi
+
+            # Calculate file age in days from date in filename
+            local _file_timestamp
+            local _current_timestamp
+            if date -j -f "%Y%m%d" "$_file_date" +%s &>/dev/null 2>&1; then
+                # macOS date command
+                _file_timestamp=$(date -j -f "%Y%m%d" "$_file_date" +%s 2>/dev/null || echo "0")
+                _current_timestamp=$(date +%s)
+            elif date -d "$_file_date" +%s &>/dev/null 2>&1; then
+                # Linux date command
+                _file_timestamp=$(date -d "$_file_date" +%s 2>/dev/null || echo "0")
+                _current_timestamp=$(date +%s)
+            else
+                # Fallback: use file modification time
+                _file_timestamp=$(stat -f %m "$_file" 2>/dev/null || stat -c %Y "$_file" 2>/dev/null || echo "0")
+                _current_timestamp=$(date +%s)
+            fi
+
+            local _age_days=$(((_current_timestamp - _file_timestamp) / 86400))
+
+            _file_info_ref["$_file"]="$_file_date"
+            _file_ages_ref["$_file"]="$_age_days"
+            _file_timestamps_ref["$_file"]="$_file_timestamp"
+        done
+    }
+
+    function _keep_best_backup_from_period() {
+        # Select the best backup from a time period (week/month/year)
+        # First tries to find an ideal backup (e.g., Monday for weekly), falls back to newest available
+        local -n _file_info_ref="$1"
+        local -n _file_ages_ref="$2"
+        local -n _file_timestamps_ref="$3"
+        local -n _files_to_keep_ref="$4"
+        local _start_age="$5"
+        local _end_age="$6"
+        local _check_function="$7"  # Function name: is_weekly_backup, is_monthly_backup, or is_yearly_backup
+        local _keep_reason="$8"     # Reason string: "weekly", "monthly", or "yearly"
+        local _fallback_reason="$9" # Fallback reason: "weekly-fallback", "monthly-fallback", or "yearly-fallback"
+
+        local _best_file=""
+        local _best_timestamp=0
+        local _has_ideal_backup=false
+
+        # First, search for ideal backup (e.g., Monday for weekly, 1st of month for monthly)
+        for _file in "${!_file_info_ref[@]}"; do
+            local _age_days="${_file_ages_ref[$_file]}"
+            local _file_date="${_file_info_ref[$_file]}"
+
+            if [[ $_age_days -ge $_start_age && $_age_days -le $_end_age ]]; then
+                # Call check function via eval (bash doesn't support direct function call via variable)
+                if eval "$_check_function \"\$_file_date\""; then
+                    _has_ideal_backup=true
+                    _files_to_keep_ref["$_file"]="$_keep_reason"
+                    return 0
+                fi
+                # Remember newest backup from this period as fallback
+                local _file_ts="${_file_timestamps_ref[$_file]}"
+                if [[ $_file_ts -gt $_best_timestamp ]]; then
+                    _best_timestamp=$_file_ts
+                    _best_file="$_file"
+                fi
+            fi
+        done
+
+        # If no ideal backup found, keep the best available backup from this period
+        if [[ "$_has_ideal_backup" == "false" && -n "$_best_file" ]]; then
+            _files_to_keep_ref["$_best_file"]="$_fallback_reason"
+        fi
+    }
+
+    function cleanup_with_gfs_retention() {
+        # Clean up backup files using GFS (Grandfather-Father-Son) retention strategy
+        # Keeps: daily backups (last N days), weekly backups (last N weeks), monthly backups (last N months), yearly backups (last N years)
+        # Always keeps the newest backup as a safety measure
+        local _scope="$1"
+        local _backup_path="$2"
+        local _file_pattern="$3"
+        local _type="$4" # Backup type: "databases" or "files"
+
+        if [[ ! -d "$_backup_path" ]]; then
+            return 0
+        fi
+
+        # Load retention configuration from YAML
+        eval "$(read_config ".retention.$_type" -o=shell 2>/dev/null)"
+
+        # Default retention values if not configured
+        local _daily="${daily:-14}"
+        local _weekly="${weekly:-8}"
+        local _monthly="${monthly:-12}"
+        local _yearly="${yearly:-3}"
+
+        if [[ "$dry_run" == "yes" ]]; then
+            log_header 'Cleaning up <b>%s</b> backups at <b>%s</b> scope: <code>%s</code> (dry-run)' "$_type" "$_scope" "$_file_pattern"
+        else
+            log_header 'Cleaning up <b>%s</b> backups at <b>%s</b> scope: <code>%s</code>' "$_type" "$_scope" "$_file_pattern"
+        fi
+        log_info 'Retention: daily=<b>%d</b>d, weekly=<b>%d</b>w, monthly=<b>%d</b>m, yearly=<b>%d</b>y' "$_daily" "$_weekly" "$_monthly" "$_yearly"
+
+        # Find all backup files matching the pattern
+        local _all_files=()
+        local _temp_file
+        _temp_file=$(mktemp 2>/dev/null || echo "/tmp/backup_cleanup_$$")
+
+        find "$_backup_path" -name "$_file_pattern" -type f 2>/dev/null | sort >"$_temp_file"
+
+        while IFS= read -r _file; do
+            [[ -n "$_file" ]] && _all_files+=("$_file")
+        done <"$_temp_file"
+
+        rm -f "$_temp_file" 2>/dev/null
+
+        if [[ ${#_all_files[@]} -eq 0 ]]; then
+            log_info 'No backup files found to clean up'
+            return 0
+        fi
+
+        local _deleted_count=0
+        local _kept_count=0
+
+        # Associative arrays to store file metadata: dates, ages, and timestamps
+        declare -A _file_info
+        declare -A _file_ages
+        declare -A _file_timestamps
+
+        # Collect information about all backup files
+        _collect_backup_file_info _all_files _file_info _file_ages _file_timestamps
+
+        # Associative array to track which files should be kept
+        declare -A _files_to_keep
+
+        # Step 1: Keep all daily backups (from last N days)
+        for _file in "${!_file_info[@]}"; do
+            local _age_days="${_file_ages[$_file]}"
+            if [[ $_age_days -le $_daily ]]; then
+                _files_to_keep["$_file"]="daily"
+            fi
+        done
+
+        # Step 2: For weekly backups, check each week and keep the best available backup
+        for ((_week = 1; _week <= _weekly; _week++)); do
+            local _week_start_age=$((_daily + (_week - 1) * 7 + 1))
+            local _week_end_age=$((_daily + _week * 7))
+            _keep_best_backup_from_period _file_info _file_ages _file_timestamps _files_to_keep \
+                "$_week_start_age" "$_week_end_age" "is_weekly_backup" "weekly" "weekly-fallback"
+        done
+
+        # Step 3: For monthly backups, similar logic
+        for ((_month = 1; _month <= _monthly; _month++)); do
+            local _month_start_age=$((_weekly * 7 + (_month - 1) * 30 + 1))
+            local _month_end_age=$((_weekly * 7 + _month * 30))
+            _keep_best_backup_from_period _file_info _file_ages _file_timestamps _files_to_keep \
+                "$_month_start_age" "$_month_end_age" "is_monthly_backup" "monthly" "monthly-fallback"
+        done
+
+        # Step 4: For yearly backups, similar logic
+        for ((_year = 1; _year <= _yearly; _year++)); do
+            local _year_start_age=$((_monthly * 30 + (_year - 1) * 365 + 1))
+            local _year_end_age=$((_monthly * 30 + _year * 365))
+            _keep_best_backup_from_period _file_info _file_ages _file_timestamps _files_to_keep \
+                "$_year_start_age" "$_year_end_age" "is_yearly_backup" "yearly" "yearly-fallback"
+        done
+
+        # Step 5: Ensure at least one backup is always kept (the newest one)
+        # Even if all backups are older than retention period
+        local _newest_file=""
+        local _newest_timestamp=0
+        for _file in "${!_file_timestamps[@]}"; do
+            local _file_ts="${_file_timestamps[$_file]}"
+            if [[ $_file_ts -gt $_newest_timestamp ]]; then
+                _newest_timestamp=$_file_ts
+                _newest_file="$_file"
+            fi
+        done
+
+        # If no backups are marked to keep, keep at least the newest one
+        if [[ ${#_files_to_keep[@]} -eq 0 && -n "$_newest_file" ]]; then
+            _files_to_keep["$_newest_file"]="last-available"
+        fi
+
+        # Always keep the newest backup as a safety measure
+        if [[ -n "$_newest_file" ]]; then
+            _files_to_keep["$_newest_file"]="newest"
+        fi
+
+        # Process files and delete those not marked to keep
+        for _file in "${_all_files[@]}"; do
+            if [[ -n "${_files_to_keep[$_file]}" ]]; then
+                _kept_count=$((_kept_count + 1))
+                # Show details only in debug mode
+                if [[ "$debug" == "yes" ]]; then
+                    local _age_days="${_file_ages[$_file]}"
+                    local _reason="${_files_to_keep[$_file]}"
+                    log_info 'Keeping: <b>%s</b> (age: <b>%d</b>d, reason: <b>%s</b>)' "$(basename "$_file")" "$_age_days" "$_reason"
+                fi
+            else
+                _deleted_count=$((_deleted_count + 1))
+                # Show details only in debug mode or if there are few files to delete
+                if [[ "$debug" == "yes" || $_deleted_count -le 10 ]]; then
+                    local _age_days="${_file_ages[$_file]}"
+                    if [[ "$dry_run" == "yes" ]]; then
+                        log_info 'Would delete: <b>%s</b> (age: <b>%d</b>d)' "$(basename "$_file")" "$_age_days"
+                    else
+                        rm -f "$_file"
+                        log_info 'Deleted: <b>%s</b> (age: <b>%d</b>d)' "$(basename "$_file")" "$_age_days"
+                    fi
+                else
+                    # For larger number of files, delete without showing details
+                    if [[ "$dry_run" != "yes" ]]; then
+                        rm -f "$_file"
+                    fi
+                fi
+            fi
+        done
+
+        if [[ "$dry_run" == "yes" ]]; then
+            log_success 'Cleanup simulation: <b>%d</b> would be kept, <b>%d</b> would be deleted' "$_kept_count" "$_deleted_count"
+            if [[ $_deleted_count -gt 10 && "$debug" != "yes" ]]; then
+                log_info 'Use <code>--debug</code> to see details of all files'
+            fi
+        else
+            log_success 'Cleanup completed: <b>%d</b> kept, <b>%d</b> deleted' "$_kept_count" "$_deleted_count"
+            if [[ $_deleted_count -gt 10 && "$debug" != "yes" ]]; then
+                log_info 'Use <code>--debug</code> to see details of all deleted files'
+            fi
+            # Save to short.log - single entry with all cleanup information
+            save_log_start "cleanup" "$_type" "$_file_pattern" "kept:$_kept_count" "deleted:$_deleted_count"
+            save_log_end
+        fi
+    }
+
+    #-------------------------- Install Functions --------------------------------
+    # Functions for installing required tools
+
+    function install_yq() {
+        # Download and install yq tool from GitHub releases
+        # yq is required for reading YAML configuration files
+        log_info 'Installing yq tool...'
+        # shellcheck disable=SC2207
+        local urls
+        urls=($(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | sed 's/[()",{}]/ /g; s/ /\n/g' | grep "https.*releases/.*yq_linux_386"))
+        if [[ ${#urls[@]} -eq 0 ]]; then
+            log_error 'Failed to find yq download URL'
+            return 1
+        fi
+        if ! curl -L "${urls[0]}" >yq_linux_386; then
+            log_error 'Failed to download yq'
+            return 1
+        fi
+        if ! chmod +x yq_linux_386; then
+            log_error 'Failed to make yq executable'
+            return 1
+        fi
+        log_success 'yq installed successfully'
+    }
+
+    #-------------------------- List Functions --------------------------------
+    # Functions for listing available configuration options
+
+    function list_scopes() {
+        # Display list of available server names and scope names from configuration
+        local server_names
+        server_names="$(read_config '(.server[]|key)' | grep -v local | tr '\n' ' ')"
+        log_info '<b>Server names list</b>\n%s\n' "$server_names"
+        local scope_names
+        scope_names="$(read_config "(.scope[]|key)" | tr '\n' ' ')"
+        log_info '<b>Scopes list</b>\n%s\n' "$scope_names"
+    }
+
+    #-------------------------- Configuration Functions --------------------------------
+    # Functions for validating and merging configuration from YAML file
+
+    function validate_configuration() {
+        # Validate that required configuration exists: server_id, app_id, and their settings
+        # Loads server and scope configuration, merges variables with priority: server > scope
+        log_header 'Validate configuration'
+
+        if [[ -z "$server_id" || "$server_id" == "null" ]]; then
+            handle_error "Server name not specified! Available options: $server_names"
+        fi
+
+        eval "$(read_config ".server.$server_id" -o=shell)"
+        if [[ "$debug" == "yes" ]]; then
+            log_debug 'Server <b>%s</b> variables' "$server_id"
+            read_config ".server.$server_id" -o=shell
+        fi
+
+        if [[ -z "$ssh_host_name" || "$ssh_host_name" == "null" ]]; then
+            handle_error "Configuration for $server_id server does not exists!"
+        fi
+
+        if [[ -z "$app_id" ]]; then
+            handle_error "Scope not specified!"
+        fi
+
+        eval "$(read_config ".scope.$app_id" -o=shell 2>/dev/null)"
+        if [[ "$debug" == "yes" ]]; then
+            log_debug 'Scope <b>%s</b> variables' "$app_id"
+            read_config ".scope.$app_id" -o=shell
+        fi
+
+        if [[ -z "$ssh_sync_path" || "$ssh_sync_path" == "null" ]] && [[ -z "$sql_file_pattern" || "$sql_file_pattern" == "null" ]]; then
+            handle_error "Configuration for $app_id scope does not exists!"
+        fi
+
+        _merge_server_and_scope_variables
+        log_success "All ok"
+    }
+
+    function _merge_server_and_scope_variables() {
+        # Merge configuration variables from server and scope with priority: server settings override scope settings
+        # Creates remote_* variables that are used throughout the script
+        local variables=(ssh_sync_path ssh_sync_excludes gzip_content db_host db_port db_user db_pass db_name site_url wp_config_file)
+        if [[ "$debug" == "yes" ]]; then
+            log_debug 'Variables rewrite'
+        fi
+        for variable in "${variables[@]}"; do
+            # First try to get value from server configuration
+            local _var_name="server_${server_id}_${variable}"
+            eval "server_value=\${${_var_name}:-}"
+            if [[ -n "$server_value" && "$server_value" != "null" ]]; then
+                eval "remote_${variable}=\"\$server_value\""
+            else
+                # If not in server config, use value from scope
+                eval "scope_value=\${${variable}:-}"
+                if [[ -n "$scope_value" && "$scope_value" != "null" ]]; then
+                    eval "remote_${variable}=\"\$scope_value\""
+                fi
+            fi
+            if [[ "$debug" == "yes" ]]; then
+                eval "remote_var_value=\${remote_${variable}:-}"
+                echo "${variable}: server=[${server_value:-}] scope=[${scope_value:-}] remote=[${remote_var_value:-}]"
+            fi
+        done
+    }
+
+    #-------------------------- File Operations Functions --------------------------------
+    # Functions for backing up, restoring, and archiving files using rsync and tar
+
+    function _prepare_rsync_excludes() {
+        # Prepare rsync exclude options from configuration
+        # Converts ssh_sync_excludes array into --exclude options for rsync
+        rsync_exclude=""
+        tar_exclude=""
+        # shellcheck disable=SC2206
+        ssh_sync_excludes_array=($ssh_sync_excludes)
+        # shellcheck disable=SC2154
+        if [[ "${#ssh_sync_excludes_array[@]}" -gt "0" ]]; then
+            for exclude_path in "${ssh_sync_excludes_array[@]}"; do
+                rsync_exclude+="--exclude $exclude_path "
+            done
+        fi
+    }
+
+    function _prepare_tar_excludes() {
+        # Prepare tar exclude options from configuration
+        # Only includes paths that actually exist in the filesystem
+        tar_exclude=""
+        if [[ "${#ssh_sync_excludes_array[@]}" -gt "0" ]]; then
+            for exclude_path in "${ssh_sync_excludes_array[@]}"; do
+                if [[ -d "${local_home_path}${ssh_sync_path}${exclude_path}" ]] || [[ -f "${local_home_path}${ssh_sync_path}${exclude_path}" ]]; then
+                    tar_exclude+="--exclude='./$exclude_path' "
+                fi
+            done
+        fi
+    }
+
+    function backup_files() {
+        # Backup files from remote server to local directory using rsync
+        # Checks for changes first (unless --force), then syncs and optionally creates archive
+        if [[ "$dry_run" == "yes" ]]; then
+            # shellcheck disable=SC2154
+            log_header 'Would backup files: <b>%s:%s%s</b> → <b>%s%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            # shellcheck disable=SC2048
+            # shellcheck disable=SC2086
+            rsync \
+                --dry-run \
+                --verbose \
+                --archive \
+                --compress \
+                --partial --progress \
+                --update \
+                --delete-after \
+                $rsync_exclude \
+                "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+        else
+            # shellcheck disable=SC2154
+            log_header 'Backup files: <b>%s:%s%s</b> → <b>%s%s</b>' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            save_log_start "files" "backup" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            mkdir -p "${local_home_path}${ssh_sync_path}" || handle_error "Failed to create backup directory: ${local_home_path}${ssh_sync_path}"
+
+            # Check if there are changes to sync (unless --force is used)
+            local _has_changes
+            if [[ "$force" == "no" ]]; then
+                # shellcheck disable=SC2048
+                # shellcheck disable=SC2086
+                _has_changes=$(rsync \
+                    --dry-run \
+                    --archive \
+                    --compress \
+                    --partial --progress \
+                    --update \
+                    --delete-after \
+                    --out-format='changed file: %i %n%L' \
+                    $rsync_exclude \
+                    "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1 |
+                    grep -F 'changed file:')
+            else
+                _has_changes="force"
+            fi
+
+            if [[ "$_has_changes" == "" ]]; then
+                # No changes detected, just rename existing archive
+                log_success 'No new changes in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                mode="rename"
+            else
+                # Changes detected, sync files and create new archive
+                log_success 'Found new files in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                # shellcheck disable=SC2048
+                # shellcheck disable=SC2086
+                if ! rsync \
+                    --verbose \
+                    --archive \
+                    --compress \
+                    --partial --progress \
+                    --update \
+                    --delete-after \
+                    $rsync_exclude \
+                    "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1; then
+                    handle_error "rsync failed during files backup from ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                fi
+                mode="create"
+            fi
+            handle_success "Files backed up successfully."
+            save_log_end
+
+            # Create archive if gzip_content is enabled and skip_archive is not set
+            # shellcheck disable=SC2154
+            if [[ "$gzip_content" == "yes" && "$skip_archive" == "no" ]]; then
+                pack_files
+            fi
+        fi
+    }
+
+    function pack_files() {
+        # Create compressed tar archive from backed up files
+        # Mode "rename": renames existing archive to current date
+        # Mode "create": creates new archive with current date
+        _prepare_tar_excludes
+
+        current_export_file_name="$(date +%Y%m%d).${app_id}.tar.gz"
+        log_header 'Pack files: <b>%s</b> (mode: <b>%s</b>)' "${local_archive_path}${current_export_file_name}" "$mode"
+        save_log_start "files" "pack" "${local_archive_path}${current_export_file_name}" "$mode"
+        case "$mode" in
+        rename)
+            # Rename existing archive to current date (no changes detected, just update timestamp)
+            # shellcheck disable=SC2207
+            all_export_file_names=($(cd "$local_archive_path" && ls -r "*.${app_id}.tar.gz" 2>/dev/null))
+            if [[ "${#all_export_file_names[@]}" -gt 0 ]]; then
+                latest_export_file_name=${all_export_file_names[0]}
+                if [[ "$latest_export_file_name" != "$current_export_file_name" ]]; then
+                    (cd "$local_archive_path" && mv "$latest_export_file_name" "$current_export_file_name")
+                fi
+            fi
+            # Retention is now managed by cleanup_with_gfs_retention function
+            # We don't delete old files here - cleanup will handle it according to GFS strategy
+            ;;
+        create)
+            # Create new archive with current date (changes were detected)
+            rm -rf "${local_archive_path}${current_export_file_name}"
+            # shellcheck disable=SC2086
+            # shellcheck disable=SC2048
+            if ! eval "(cd "${local_home_path}${ssh_sync_path}" && tar -zcvf "${local_archive_path}${current_export_file_name}" $tar_exclude .)"; then
+                handle_error "Failed to create archive: ${current_export_file_name}"
+            fi
+            ;;
+        esac
+        save_log_end
+        log_success 'Files packed successfully'
+    }
+
+    function restore_files() {
+        # Restore files from local directory to remote server using rsync
+        # Prompts for confirmation before restoring (unless dry-run)
+        if [[ "$dry_run" == "yes" ]]; then
+            # shellcheck disable=SC2154
+            log_header 'Would restore files: <b>%s%s</b> → <b>%s:%s%s</b> (dry-run)' "${local_home_path}${ssh_sync_path}" "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+            rsync \
+                --dry-run \
+                --verbose \
+                --archive \
+                --compress \
+                --partial --progress \
+                --delete-after \
+                $rsync_exclude \
+                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+        else
+            # Prompt for confirmation before restoring
+            local _prompt_msg
+            _prompt_msg=$(printf "Restore from <b>%s</b> to <b>%s</b>? [y/n]: " "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}")
+            local _response
+            prompt_input _response "$_prompt_msg" "y" "" "y" "n"
+            if [[ "$_response" != "y" ]]; then
+                exit 1
+            fi
+            save_log_start "files" "restore" "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+            # Create remote directory if it doesn't exist
+            if ! ssh "$ssh_host_name" "mkdir -pv ""${ssh_home_path}${remote_ssh_sync_path}"""; then
+                handle_error "Failed to create remote directory on ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+            fi
+            # Sync files to remote server
+            # shellcheck disable=SC2048
+            # shellcheck disable=SC2086
+            if ! rsync \
+                --verbose \
+                --archive \
+                --compress \
+                --partial --progress \
+                --delete-after \
+                $rsync_exclude \
+                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}" 2>&1; then
+                handle_error "rsync failed during files restore to ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+            fi
+            handle_success "Files restored successfully."
+            save_log_end
+        fi
+    }
+
+    #-------------------------- Database Operations Functions --------------------------------
+    # Functions for backing up and restoring MySQL databases using mysqldump and mysql
+
+    function backup_database() {
+        # Backup MySQL database from remote server to local directory
+        # Uses mysqldump via SSH, compresses with gzip, and copies to local storage
+        # shellcheck disable=SC2059
+        current_export_file_name="$(printf "$sql_file_pattern" "$(date +%Y%m%d)")"
+        # shellcheck disable=SC2154
+        log_header 'Backup database: <b>%s:%s/%s</b> → <b>%s</b>' "$remote_db_host" "$remote_db_port" "$remote_db_name" "${local_databases_path}${current_export_file_name}"
+        mkdir -p "${local_databases_path}"
+        if [[ -f "${local_databases_path}${current_export_file_name}" && "$force" == "no" ]]; then
+            log_success 'Already backed up!'
+        else
+            if [[ "$dry_run" == "yes" ]]; then
+                log_info 'Would create new backup'
+            else
+                log_info 'Creating new backup'
+                save_log_start "database" "backup" "$remote_db_host:$remote_db_port/$remote_db_name" "$current_export_file_name"
+                # Execute mysqldump on remote server via SSH and compress with gzip
+                # shellcheck disable=SC2154
+                if ! ssh "$ssh_host_name" 'mysqldump --skip-lock-tables --verbose --host '"$remote_db_host"' --port '"$remote_db_port"' --user='"$remote_db_user"' --password='"$remote_db_pass"' --databases '"$remote_db_name"' | gzip > '"$current_export_file_name"'' 2>&1; then
+                    handle_error "mysqldump failed on ${ssh_host_name} for database ${remote_db_name}"
+                fi
+                # Copy compressed backup from remote server to local directory
+                if ! scp "$ssh_host_name":"${current_export_file_name}" "${local_databases_path}${current_export_file_name}" 2>&1; then
+                    handle_error "scp failed to copy backup from ${ssh_host_name}:${current_export_file_name}"
+                fi
+                # Remove temporary backup file from remote server
+                ssh "$ssh_host_name" 'rm -v '"$current_export_file_name"'' 2>/dev/null || true
+                handle_success "Database backed up successfully."
+                save_log_end
+            fi
+        fi
+    }
+
+    function restore_database() {
+        # Restore MySQL database from local backup file to remote server
+        # Finds newest backup matching pattern, copies to remote, and imports via mysql
+        # shellcheck disable=SC2059
+        # shellcheck disable=SC2012
+        # shellcheck disable=SC2046
+        current_import_file_name="$(cd "$local_databases_path" && ls -t $(printf "$sql_file_pattern" "*") | head -1)"
+        if [[ -f "${local_databases_path}${current_import_file_name}" ]]; then
+            if [[ "$dry_run" == "yes" ]]; then
+                # shellcheck disable=SC2154
+                log_header 'Would restore database: <b>%s</b> → <b>%s:%s/%s</b> (dry-run)' "$current_import_file_name" "$remote_db_host" "$remote_db_port" "$remote_db_name"
+                sleep 3 &
+                loading_spinner "💿 Testing db" "✅ Testing done" "$!"
+            else
+                # Prompt for confirmation before restoring
+                local _prompt_msg
+                _prompt_msg=$(printf "Restore from <b>%s</b> to <b>%s</b>? [y/n]: " "$current_import_file_name" "$remote_db_host:$remote_db_port/$remote_db_name")
+                local _response
+                prompt_input _response "$_prompt_msg" "y" "" "y" "n"
+                if [[ "$_response" != "y" ]]; then
+                    exit 1
+                fi
+                save_log_start "database" "restore" "$current_import_file_name" "$remote_db_host:$remote_db_port/$remote_db_name"
+                # Copy backup file to remote server
+                if ! scp "${local_databases_path}${current_import_file_name}" "$ssh_host_name":"$current_import_file_name" 2>&1; then
+                    handle_error "scp failed to copy backup to ${ssh_host_name}:${current_import_file_name}"
+                fi
+                # Decompress and import database, removing CREATE DATABASE and USE statements
+                ssh "$ssh_host_name" 'gunzip -c '"$current_import_file_name"' | grep -v "CREATE DATABASE" | grep -vE "USE (.*);" | mysql --host '"$remote_db_host"' --port '"$remote_db_port"' --user='"$remote_db_user"' --password='"$remote_db_pass"' '"$remote_db_name"'' &
+                _restore_pid=$!
+                loading_spinner "💿 Importing db" "✅ Database restored successfully." "$_restore_pid"
+                wait "$_restore_pid"
+                _restore_exit_code=$?
+                if [[ $_restore_exit_code -ne 0 ]]; then
+                    handle_error "mysql import failed on ${ssh_host_name} for database ${remote_db_name}"
+                fi
+                # Remove temporary backup file from remote server
+                ssh "$ssh_host_name" 'rm -v '"$current_import_file_name"'' 2>/dev/null || true
+                handle_success "Database restored successfully."
+                save_log_end
+            fi
+        else
+            handle_error "Backup file '${current_import_file_name}' does not exist in ${local_databases_path}"
+        fi
+    }
+
+    #-------------------------- WordPress Configuration Functions --------------------------------
+    # Functions for updating WordPress configuration files and copying extra files
+
+    function configure_wordpress() {
+        # Update WordPress wp-config.php file with database and site settings
+        # Adds missing definitions or updates existing ones using sed via SSH
+        if [[ -z "$remote_wp_config_file" ]]; then
+            return 0
+        fi
+
+        declare -A data
+        data[DB_HOST]="\"$remote_db_host:$remote_db_port\""
+        data[DB_USER]="\"$remote_db_user\""
+        data[DB_PASSWORD]="\"$remote_db_pass\""
+        data[DB_NAME]="\"$remote_db_name\""
+        data[WP_DEBUG]="false"
+        # shellcheck disable=SC2154
+        data[WP_SITEURL]="\"$remote_site_url\""
+        data[WP_HOME]="\"$remote_site_url\""
+
+        # Check and add/update WordPress configuration definitions
+        for key in "${!data[@]}"; do
+            value="${data[$key]}"
+            # Check if definition already exists in wp-config.php
+            exists=$(ssh "$ssh_host_name" "grep -c \"define.*""$key""\" ${ssh_home_path}${remote_ssh_sync_path}wp-config.php")
+            if [[ "$exists" -eq "0" ]]; then
+                log_info 'Adding missing <b>%s</b> definition' "$key"
+                # Add definition before "/* That's all, stop editing! Happy publishing. */"
+                if ! ssh "$ssh_host_name" "sed -i '/require_once/i\\define(\"""$key""\", ${value});' ${ssh_home_path}${remote_ssh_sync_path}wp-config.php" 2>&1; then
+                    handle_error "Failed to add WordPress config definition: $key"
+                fi
+            else
+                log_info 'Updating existing <b>%s</b> definition' "$key"
+                # Update existing definition using sed
+                if ! ssh "$ssh_host_name" "sed -i -e 's|define.*""$key"".*,.*;|define(\"""$key""\", ${value});|g' ${ssh_home_path}${remote_ssh_sync_path}wp-config.php" 2>&1; then
+                    handle_error "Failed to update WordPress config definition: $key"
+                fi
+            fi
+        done
+    }
+
+    function configure_extra_files() {
+        # Copy extra files from local to remote server as specified in configuration
+        # Reads extra_files array from scope.server.server_id configuration
+        log_debug 'Server <b>%s</b> at <b>%s</b> scope variables' "$server_id" "$app_id"
+        # shellcheck disable=SC2207
+        keys=($(read_config ".scope.$app_id.server.$server_id.extra_files|keys" -o=tsv))
+        for i in "${keys[@]}"; do
+            if [[ "$debug" == "yes" ]]; then
+                read_config ".scope.$app_id.server.$server_id.extra_files[$i]" -o=shell
+            fi
+            eval "$(read_config ".scope.$app_id.server.$server_id.extra_files[$i]" -o=shell)"
+            # Copy file from source to destination on remote server
+            # shellcheck disable=SC2154
+            if ! scp "$source" "$ssh_host_name:${ssh_home_path}${remote_ssh_sync_path}${destination}" 2>&1; then
+                handle_error "Failed to copy extra file: $source to ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}${destination}"
+            fi
+        done
+    }
+
+    function configure_scope() {
+        # Update configuration on remote server: WordPress config and extra files
+        # Combines WordPress configuration updates and extra file copying
+        if [[ "$dry_run" == "yes" ]]; then
+            # shellcheck disable=SC2154
+            log_header 'Would update config: <b>%s:%s%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+        else
+            # shellcheck disable=SC2154
+            log_header 'Update config: <b>%s:%s%s</b>' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+            save_log_start "config" "update" "${ssh_home_path}${remote_ssh_sync_path}"
+
+            # Update WordPress configuration
+            configure_wordpress
+            # Copy extra files
+            configure_extra_files
+
+            handle_success "Config updated successfully."
+            save_log_end
+        fi
+    }
+
+    #-------------------------- Argument Parsing Function --------------------------------
+    # Parse command-line arguments and set global variables
+
+    function parse_arguments() {
+        # Parse command-line arguments and set action, server_id, app_id, and flags
+        # Handles all command-line options and sets corresponding global variables
+        action=""
+        server_id=""
+        app_id=""
+        force="no"
+        dry_run="no"
+        debug="no"
+        skip_archive="no"
+
+        POSITIONAL_ARGS=()
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+            -s | --server)
+                shift
+                server_id="$1"
+                ;;
+            -i | --install)
+                install_yq
+                exit $?
+                ;;
+            -c | --cleanup)
+                action="cleanup"
+                ;;
+            -te | --test-email)
+                test_email_configuration
+                exit $?
+                ;;
+            -ls | --list-scopes)
+                list_scopes
+                exit
+                ;;
+            -bfs | --backup-files-scope)
+                shift
+                app_id="$1"
+                action="backup-files"
+                ;;
+            -rfs | --restore-files-scope)
+                shift
+                app_id="$1"
+                action="restore-files"
+                ;;
+            -bds | --backup-database-scope)
+                shift
+                app_id="$1"
+                action="backup-database"
+                ;;
+            -rds | --restore-database-scope)
+                shift
+                app_id="$1"
+                action="restore-database"
+                ;;
+            -cs | --configure-scope)
+                shift
+                app_id="$1"
+                action="configure"
+                ;;
+            -n | --dry-run)
+                dry_run="yes"
+                ;;
+            -d | --debug)
+                debug="yes"
+                ;;
+            -f | --force)
+                force="yes"
+                ;;
+            -a | --skip-archive)
+                skip_archive="yes"
+                ;;
+            -h | --help)
+                display_help
+                exit
+                ;;
+            *) POSITIONAL_ARGS+=("$1") ;;
+            esac
+            shift
+        done
+        set -- "${POSITIONAL_ARGS[@]}"
+    }
+
+    #-------------------------- Main Execution --------------------------------
+    # Parse arguments, initialize paths, and execute the requested action
+
+    parse_arguments "$@"
+
+    # Initialize local paths from configuration
+    local_home_path="$(pwd)/"
+    local_archive_path="$local_home_path$(read_config '.server.local.archive_path')"
+    local_databases_path="$local_home_path$(read_config '.server.local.databases_path')"
+    mkdir -p "$(dirname "$LOG_FILE_PATH")"
+
+    # Execute action based on parsed arguments
+    case "$action" in
+    cleanup)
+        execute_cleanup
+        ;;
+    backup-files | restore-files | backup-database | restore-database | configure)
+        validate_configuration
+        case "$action" in
+        backup-files | restore-files)
+            check_variables ssh_host_name ssh_home_path remote_ssh_sync_path local_home_path ssh_sync_path gzip_content
+            _prepare_rsync_excludes
+            case "$action" in
+            backup-files)
+                backup_files
+                ;;
+            restore-files)
+                restore_files
+                ;;
+            esac
+            ;;
+        backup-database | restore-database)
+            check_variables remote_db_host remote_db_port remote_db_user remote_db_pass remote_db_name
+            case "$action" in
+            backup-database)
+                backup_database
+                ;;
+            restore-database)
+                restore_database
+                ;;
+            esac
+            ;;
+        configure)
+            check_variables remote_ssh_sync_path remote_db_host remote_db_port remote_db_user remote_db_pass remote_db_name
+            configure_scope
+            ;;
+        esac
+        ;;
+    *)
+        if [[ -z "$action" ]]; then
+            handle_error "No action specified! Run <code>$0 --help</code> to see available options."
+        else
+            handle_error "Action $action does not exist!"
+        fi
+        ;;
+    esac
+}
+
+# Run main function
+main "$@"

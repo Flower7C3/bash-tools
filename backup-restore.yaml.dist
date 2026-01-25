@@ -1,0 +1,190 @@
+# Konfiguracja powiadomień email
+notifications:
+  enabled: "yes"  # yes/no
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_user: "backup@example.com"
+  smtp_pass: "smtp_password"
+  smtp_from: "backup@example.com"
+  smtp_to: "admin@example.com"
+  smtp_use_tls: "yes"  # yes/no
+
+# Konfiguracja retencji kopii zapasowych (GFS - Grandfather-Father-Son)
+retention:
+  # Retencja dla baz danych
+  databases:
+    daily: 14      # dni - codzienne kopie
+    weekly: 8      # tygodnie - jeden backup z każdego tygodnia
+    monthly: 12    # miesiące - jeden backup z każdego miesiąca
+    yearly: 3      # lata - jeden backup z każdego roku
+  # Retencja dla plików
+  files:
+    daily: 7       # dni - codzienne kopie
+    weekly: 4      # tygodnie - jeden backup z każdego tygodnia
+    monthly: 6     # miesiące - jeden backup z każdego miesiąca
+    yearly: 1      # lata - jeden backup z każdego roku
+
+# Konfiguracja serwerów
+server:
+  # Serwer lokalny
+  local:
+    archive_path: "archive/"
+    databases_path: "databases/"
+  
+  # Serwer produkcyjny
+  produkcja:
+    ssh_host_name: "produkcja.example.com"
+    ssh_home_path: "/var/www/"
+    archive_path: "backups/"
+    db_host: "localhost"
+    db_port: 3306
+    db_user: "db_user_produkcja"
+    db_pass: "secure_password_prod"
+    db_name: "database_prod"
+    site_url: "https://produkcja.example.com"
+    wp_config_file: "wp-config.php"
+  
+  # Serwer deweloperski
+  dev:
+    ssh_host_name: "dev.example.com"
+    ssh_home_path: "/var/www/"
+    archive_path: "backups/"
+    db_host: "localhost"
+    db_port: 3306
+    db_user: "db_user_dev"
+    db_pass: "secure_password_dev"
+    db_name: "database_dev"
+    site_url: "https://dev.example.com"
+    wp_config_file: "wp-config.php"
+
+# Konfiguracja listy domen
+domains:
+  example.com
+  foobar.example.com
+
+# Konfiguracja zakresów (scopes)
+# Uwaga: Pliki konfiguracyjne w extra_files mogą być w katalogu config/ lub var/
+# w zależności od struktury projektu. Przykład: "var/config.prestashop-parameters.php"
+scope:
+  # Zakres dla aplikacji WordPress
+  aplikacja:
+    ssh_sync_path: "public_html/"
+    ssh_sync_excludes:
+      - "wp-content/cache/"
+      - "wp-content/uploads/cache/"
+      - "wp-content/debug.log"
+    gzip_content: "yes"
+    db_host: "localhost"
+    db_port: 3306
+    db_user: "db_user_default"
+    db_pass: "secure_password_default"
+    db_name: "database_default"
+    site_url: "https://example.com"
+    wp_config_file: "wp-config.php"
+    sql_file_pattern: "%s.aplikacja.sql.gz"
+    
+    # Specyficzne ustawienia dla poszczególnych serwerów w ramach zakresu
+    # Uwaga: Pliki konfiguracyjne mogą być w katalogu config/ lub var/ w zależności od struktury projektu
+    server:
+      produkcja:
+        extra_files:
+          - source: "config/produkcja/.htaccess"
+            destination: ".htaccess"
+          - source: "config/produkcja/robots.txt"
+            destination: "robots.txt"
+          - source: "config/produkcja/wp-config-local.php"
+            destination: "wp-config-local.php"
+          - source: "config/produkcja/php.ini"
+            destination: "php.ini"
+          - source: "config/produkcja/favicon.ico"
+            destination: "favicon.ico"
+      dev:
+        extra_files:
+          - source: "config/dev/.htaccess"
+            destination: ".htaccess"
+          - source: "config/dev/robots.txt"
+            destination: "robots.txt"
+          - source: "config/dev/wp-config-local.php"
+            destination: "wp-config-local.php"
+          - source: "config/dev/php.ini"
+            destination: "php.ini"
+          - source: "config/dev/favicon.ico"
+            destination: "favicon.ico"
+          - source: "config/dev/google-verification.html"
+            destination: "google-verification.html"
+
+  # Zakres dla bazy danych
+  baza_danych:
+    db_host: "localhost"
+    db_port: 3306
+    db_user: "db_user_backup"
+    db_pass: "secure_password_backup"
+    db_name: "database_backup"
+    sql_file_pattern: "%s.baza_danych.sql.gz"
+
+    # Specyficzne ustawienia dla poszczególnych serwerów w ramach zakresu
+    server:
+      produkcja:
+        db_host: "db.produkcja.example.com"
+        db_port: 3306
+        db_user: "produkcja_user"
+        db_pass: "produkcja_password"
+        db_name: "produkcja_db"
+        extra_files:
+          - source: "config/produkcja/db-config.php"
+            destination: "db-config.php"
+          - source: "config/produkcja/db-credentials.php"
+            destination: "db-credentials.php"
+      dev:
+        db_host: "db.dev.example.com"
+        db_port: 3306
+        db_user: "dev_user"
+        db_pass: "dev_password"
+        db_name: "dev_db"
+        extra_files:
+          - source: "config/dev/db-config.php"
+            destination: "db-config.php"
+          - source: "config/dev/db-credentials.php"
+            destination: "db-credentials.php"
+          - source: "config/dev/adminer.php"
+            destination: "adminer.php"
+
+  # Zakres dla konfiguracji niestandardowej aplikacji
+  aplikacja_custom:
+    ssh_sync_path: "custom_app/"
+    ssh_sync_excludes:
+      - "cache/"
+      - "logs/"
+      - "tmp/"
+    gzip_content: "yes"
+    db_host: "localhost"
+    db_port: 3306
+    db_user: "custom_app_user"
+    db_pass: "custom_app_password"
+    db_name: "custom_app_db"
+    sql_file_pattern: "%s.custom_app.sql.gz"
+
+    # Specyficzne ustawienia dla poszczególnych serwerów w ramach zakresu
+    server:
+      produkcja:
+        extra_files:
+          - source: "config/produkcja/custom_app/.env"
+            destination: ".env"
+          - source: "config/produkcja/custom_app/config.php"
+            destination: "config/config.php"
+          - source: "config/produkcja/custom_app/settings.json"
+            destination: "config/settings.json"
+          - source: "config/produkcja/custom_app/nginx.conf"
+            destination: "nginx.conf"
+      dev:
+        extra_files:
+          - source: "config/dev/custom_app/.env"
+            destination: ".env"
+          - source: "config/dev/custom_app/config.php"
+            destination: "config/config.php"
+          - source: "config/dev/custom_app/settings.json"
+            destination: "config/settings.json"
+          - source: "config/dev/custom_app/nginx.conf"
+            destination: "nginx.conf"
+          - source: "config/dev/custom_app/debug.config.php"
+            destination: "config/debug.config.php"

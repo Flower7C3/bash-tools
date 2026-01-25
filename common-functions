@@ -18,35 +18,86 @@ shopt -s extglob
 
 ##----Formatting------------------------------------------------------------------------------------------------------------
 
+# Check if tput is available, otherwise use ANSI escape codes
+_tput_available() {
+  command -v tput >/dev/null 2>&1
+}
+
+_tput_safe() {
+  if _tput_available; then
+    tput "$@"
+  else
+    # Fallback to ANSI escape codes
+    case "$1" in
+    setaf)
+      case "$2" in
+      0) printf '\033[30m' ;; # black
+      1) printf '\033[31m' ;; # red
+      2) printf '\033[32m' ;; # green
+      3) printf '\033[33m' ;; # yellow
+      4) printf '\033[34m' ;; # blue
+      5) printf '\033[35m' ;; # magenta/purple
+      6) printf '\033[36m' ;; # cyan
+      7) printf '\033[37m' ;; # white
+      *) printf '\033[39m' ;; # default
+      esac
+      ;;
+    setab)
+      case "$2" in
+      0) printf '\033[40m' ;; # black
+      1) printf '\033[41m' ;; # red
+      2) printf '\033[42m' ;; # green
+      3) printf '\033[43m' ;; # yellow
+      4) printf '\033[44m' ;; # blue
+      5) printf '\033[45m' ;; # magenta/purple
+      6) printf '\033[46m' ;; # cyan
+      7) printf '\033[47m' ;; # white
+      *) printf '\033[49m' ;; # default
+      esac
+      ;;
+    bold)
+      printf '\033[1m' ;;
+    smul)
+      printf '\033[4m' ;;
+    rmul)
+      printf '\033[24m' ;;
+    sgr0)
+      printf '\033[0m' ;;
+    *)
+      printf '\033[0m' ;; # default reset
+    esac
+  fi
+}
+
 styler() {
   case "$1" in
   font | text | FONT | TEXT)
     case "$2" in
-    black | BLACK) tput setaf 0 ;;
-    red | RED) tput setaf 1 ;;
-    green | GREEN) tput setaf 2 ;;
-    yellow | YELLOW) tput setaf 3 ;;
-    blue | BLUE) tput setaf 4 ;;
-    purple | PURPLE) tput setaf 5 ;;
-    cyan | CYAN) tput setaf 6 ;;
-    white | WHITE) tput setaf 7 ;;
-    *) tput setaf 9 ;;
+    black | BLACK) _tput_safe setaf 0 ;;
+    red | RED) _tput_safe setaf 1 ;;
+    green | GREEN) _tput_safe setaf 2 ;;
+    yellow | YELLOW) _tput_safe setaf 3 ;;
+    blue | BLUE) _tput_safe setaf 4 ;;
+    purple | PURPLE) _tput_safe setaf 5 ;;
+    cyan | CYAN) _tput_safe setaf 6 ;;
+    white | WHITE) _tput_safe setaf 7 ;;
+    *) _tput_safe setaf 9 ;;
     esac
     ;;
   bg | background | BG | BACKGROUND)
     case "$2" in
-    black | BLACK) tput setab 0 ;;
-    red | RED) tput setab 1 ;;
-    green | GREEN) tput setab 2 ;;
-    yellow | YELLOW) tput setab 3 ;;
-    blue | BLUE) tput setab 4 ;;
-    purple | PURPLE) tput setab 5 ;;
-    cyan | CYAN) tput setab 6 ;;
-    white | WHITE) tput setab 7 ;;
-    *) tput setab 9 ;;
+    black | BLACK) _tput_safe setab 0 ;;
+    red | RED) _tput_safe setab 1 ;;
+    green | GREEN) _tput_safe setab 2 ;;
+    yellow | YELLOW) _tput_safe setab 3 ;;
+    blue | BLUE) _tput_safe setab 4 ;;
+    purple | PURPLE) _tput_safe setab 5 ;;
+    cyan | CYAN) _tput_safe setab 6 ;;
+    white | WHITE) _tput_safe setab 7 ;;
+    *) _tput_safe setab 9 ;;
     esac
     ;;
-  reset | RESET) tput sgr0 ;;
+  reset | RESET) _tput_safe sgr0 ;;
   esac
 }
 
@@ -62,6 +113,20 @@ readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
 readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
 readonly LOADING_ANIMATION_RETRY_INTERVAL=5
 
+loading_spinner() {
+  local _start_label="$1"
+  local _end_label="$2"
+  local _pid="$3"
+  local _spinner_chars=(" ⠙" " ⠸" " ⢰" " ⣠" "⢀⣀" "⣀⡀" "⣄ " "⡆ " "⠇ " "⠋ " "⠉⠁" "⠈⠉")
+  local _pnt=0
+
+  while kill -0 "$_pid" 2>/dev/null; do
+    printf '\r%s %b ' "$_start_label" "${_spinner_chars[_pnt++ % ${#_spinner_chars[@]}]}"
+    sleep 0.5
+  done
+  log_info ---reset '%s' "$_end_label"
+}
+
 ##----Display line------------------------------------------------------------------------------------------------------------
 
 log_message() {
@@ -73,10 +138,10 @@ log_message() {
     local _text
     # shellcheck disable=SC2059
     _text=$(printf -- "$_pattern" "$@")
-    _text=${_text//<b>/$(tput bold)${_color_value}}
+    _text=${_text//<b>/$(_tput_safe bold)${_color_value}}
     _text=${_text//<\/b>/$(styler reset)${_color_value}}
-    _text=${_text//<u>/$(tput smul)${_color_value}}
-    _text=${_text//<\/u>/$(tput rmul)${_color_value}}
+    _text=${_text//<u>/$(_tput_safe smul)${_color_value}}
+    _text=${_text//<\/u>/$(_tput_safe rmul)${_color_value}}
     _text=${_text//<code>/$(styler reset)$(styler bg 'CYAN')$(styler text 'BLACK')}
     _text=${_text//<\/code>/$(styler reset)${_color_value}}
     echo -e "$_text"
@@ -431,6 +496,24 @@ check_dependencies() {
   if [[ ${#_missing_deps[@]} -gt 0 ]]; then
     _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
     die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
+  fi
+}
+
+check_variables() {
+  local _vars=("$@")
+  local _missing_vars=()
+  local _missing_items
+
+  for var in "${_vars[@]}"; do
+    eval "local _value=\$$var"
+    if [[ -z "$_value" ]]; then
+      _missing_vars+=("$var")
+    fi
+  done
+
+  if [[ ${#_missing_vars[@]} -gt 0 ]]; then
+    _missing_items="$(printf '<b>%s</b>, ' "${_missing_vars[@]}")"
+    die 13 'Missing required variables: %s' "${_missing_items::-2}"
   fi
 }
 
