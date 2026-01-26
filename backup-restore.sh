@@ -24,20 +24,7 @@ main() {
 }
 
 backup_restore_main() {
-    log_title 'Backup and Restore Tool'
-
-    #-------------------------- Settings --------------------------------
-    # Change to script directory and initialize configuration paths
-    cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
-
-    config_file="backup-restore.yaml"
-    # shellcheck disable=SC2155
-    declare -r LOG_FILE_PATH="logs/$(date +%Y/%m/)short.log"
-
-    #-------------------------- Helper Functions --------------------------------
-    # Utility functions for configuration reading, logging, and string manipulation
-
-    function display_help() {
+    function show_usage() {
         # Display usage information and available command-line options
         log_usage_title '[OPTIONS]'
         echo
@@ -71,6 +58,9 @@ backup_restore_main() {
         log_usage_example_line '--test-email'
         exit 0
     }
+
+    #-------------------------- Helper Functions --------------------------------
+    # Utility functions for configuration reading, logging, and string manipulation
 
     function read_config() {
         # Read configuration values from YAML file using yq tool
@@ -132,6 +122,7 @@ backup_restore_main() {
         # Load email configuration from YAML
         eval "$(read_config ".notifications" -o=shell 2>/dev/null)"
 
+        # shellcheck disable=SC2154
         # Validate basic configuration
         if [[ "$enabled" != "yes" ]]; then
             log_error 'Email notifications are disabled in configuration (enabled: <b>%s</b>)' "$enabled"
@@ -172,7 +163,8 @@ backup_restore_main() {
 
         # Send test email with configuration details
         local _test_subject="[BACKUP TEST] Email configuration test"
-        local _test_message="This is a test email from the backup system.
+        local _test_message
+        _test_message="This is a test email from the backup system.
 
 If you received this email, the email configuration is working correctly.
 
@@ -439,6 +431,7 @@ Please check the logs for more details."
                 if [[ -n "$sql_file_pattern" && "$sql_file_pattern" != "null" ]]; then
                     # Clean up database backups matching the SQL file pattern
                     local _pattern
+                    # shellcheck disable=SC2059
                     _pattern=$(printf "$sql_file_pattern" "*")
                     cleanup_with_gfs_retention "$_scope" "$local_databases_path" "$_pattern" "databases"
                 fi
@@ -508,8 +501,11 @@ Please check the logs for more details."
     function _keep_best_backup_from_period() {
         # Select the best backup from a time period (week/month/year)
         # First tries to find an ideal backup (e.g., Monday for weekly), falls back to newest available
+        # shellcheck disable=SC2178
         local -n _file_info_ref="$1"
+        # shellcheck disable=SC2178
         local -n _file_ages_ref="$2"
+        # shellcheck disable=SC2178
         local -n _file_timestamps_ref="$3"
         local -n _files_to_keep_ref="$4"
         local _start_age="$5"
@@ -719,7 +715,7 @@ Please check the logs for more details."
         log_info 'Installing yq tool...'
         # shellcheck disable=SC2207
         local urls
-        urls=($(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | sed 's/[()",{}]/ /g; s/ /\n/g' | grep "https.*releases/.*yq_linux_386"))
+        read -r -a urls <<<"$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | sed 's/[()",{}]/ /g; s/ /\n/g' | grep "https.*releases/.*yq_linux_386")"
         if [[ ${#urls[@]} -eq 0 ]]; then
             log_error 'Failed to find yq download URL'
             return 1
@@ -966,6 +962,7 @@ Please check the logs for more details."
         if [[ "$dry_run" == "yes" ]]; then
             # shellcheck disable=SC2154
             log_header 'Would restore files: <b>%s%s</b> → <b>%s:%s%s</b> (dry-run)' "${local_home_path}${ssh_sync_path}" "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+            # shellcheck disable=SC2086
             rsync \
                 --dry-run \
                 --verbose \
@@ -1244,8 +1241,7 @@ Please check the logs for more details."
                 skip_archive="yes"
                 ;;
             -h | --help)
-                display_help
-                exit
+                show_usage
                 ;;
             *) POSITIONAL_ARGS+=("$1") ;;
             esac
@@ -1256,6 +1252,15 @@ Please check the logs for more details."
 
     #-------------------------- Main Execution --------------------------------
     # Parse arguments, initialize paths, and execute the requested action
+
+    log_title 'Backup and Restore Tool'
+
+    # Change to script directory and initialize configuration paths
+    cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+    config_file="backup-restore.yaml"
+    # shellcheck disable=SC2155
+    declare -r LOG_FILE_PATH="logs/$(date +%Y/%m/)short.log"
 
     parse_arguments "$@"
 
