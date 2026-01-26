@@ -24,7 +24,20 @@ main() {
 }
 
 backup_restore_main() {
-    function show_usage() {
+    log_title 'Backup and Restore Tool'
+
+    #-------------------------- Settings --------------------------------
+    # Change to script directory and initialize configuration paths
+    cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+    config_file="backup-restore.yaml"
+    # shellcheck disable=SC2155
+    declare -r LOG_FILE_PATH="logs/$(date +%Y/%m/)short.log"
+
+    #-------------------------- Helper Functions --------------------------------
+    # Utility functions for configuration reading, logging, and string manipulation
+
+    function display_help() {
         # Display usage information and available command-line options
         log_usage_title '[OPTIONS]'
         echo
@@ -59,9 +72,6 @@ backup_restore_main() {
         exit 0
     }
 
-    #-------------------------- Helper Functions --------------------------------
-    # Utility functions for configuration reading, logging, and string manipulation
-
     function read_config() {
         # Read configuration values from YAML file using yq tool
         # Tries system yq first, falls back to local yq_linux_386 binary
@@ -92,8 +102,30 @@ backup_restore_main() {
             return 0
         fi
         {
+            # Ensure we start on a new line if file exists and is not empty
+            if [[ -f "$LOG_FILE_PATH" ]] && [[ -s "$LOG_FILE_PATH" ]]; then
+                local _last_char
+                _last_char=$(tail -c 1 "$LOG_FILE_PATH" 2>/dev/null || echo "")
+                # If last character is not a newline, add one
+                if [[ "$_last_char" != $'\n' ]]; then
+                    printf "\n"
+                fi
+            fi
             printf "%s" "$(date +"%Y-%m-%d %H:%M:%S")"
-            printf "\t%s" "$@"
+            save_log_data "$@"
+        } >>"$LOG_FILE_PATH"
+    }
+
+    function save_log_data() {
+        # Write log entry to log file
+        # Skips logging in dry-run mode
+        if [[ "$dry_run" == "yes" ]]; then
+            return 0
+        fi
+        {
+            if [[ "$#" -gt "0" ]]; then
+                printf "\t%s" "$@"
+            fi
         } >>"$LOG_FILE_PATH"
     }
 
@@ -104,9 +136,7 @@ backup_restore_main() {
             return 0
         fi
         {
-            if [[ "$#" -gt "0" ]]; then
-                printf "\t%s" "$@"
-            fi
+            save_log_data "$@"
             printf "\n"
         } >>"$LOG_FILE_PATH"
     }
@@ -122,7 +152,6 @@ backup_restore_main() {
         # Load email configuration from YAML
         eval "$(read_config ".notifications" -o=shell 2>/dev/null)"
 
-        # shellcheck disable=SC2154
         # Validate basic configuration
         if [[ "$enabled" != "yes" ]]; then
             log_error 'Email notifications are disabled in configuration (enabled: <b>%s</b>)' "$enabled"
@@ -163,8 +192,7 @@ backup_restore_main() {
 
         # Send test email with configuration details
         local _test_subject="[BACKUP TEST] Email configuration test"
-        local _test_message
-        _test_message="This is a test email from the backup system.
+        local _test_message="This is a test email from the backup system.
 
 If you received this email, the email configuration is working correctly.
 
@@ -334,18 +362,25 @@ EOF
 
     function handle_error() {
         # Handle errors: log error, save to log file, send email notification, and exit
+        # Accepts multiple arguments for error message
         local _error_message="$1"
-        local _exit_code="${2:-1}"
+        shift
+        local _exit_code=1
 
-        log_error '%s' "$_error_message"
-        save_log_end "ERROR" "$_error_message"
+        log_error "$_error_message" "$@"
+
+        local text
+        # shellcheck disable=SC2059
+        text="$(log_error "$_error_message" "$@" ---style mail ---no-icon)"
+
+        save_log_end "ERROR: $text"
 
         # Send error notification email
         local _email_subject="[BACKUP ERROR] Backup failed: ${action:-unknown}"
         local _email_message
         _email_message="Backup operation failed!
 
-$_error_message
+$text
 
 Action: ${action:-unknown}
 Scope: ${app_id:-N/A}
@@ -362,10 +397,26 @@ Please check the logs for more details."
 
     function handle_success() {
         # Handle success: log success message and save to log file
+        # Accepts multiple arguments for success message
         local _success_message="$1"
+        shift
 
-        log_success '%s' "$_success_message"
-        save_log_end "SUCCESS" "$_success_message"
+        # Build full message from all arguments
+        local _full_message
+        if [[ $# -gt 0 ]]; then
+            # shellcheck disable=SC2059
+            _full_message=$(printf "$_success_message" "$@")
+        else
+            _full_message="$_success_message"
+        fi
+
+        log_success '%s' "$_full_message"
+
+        local text
+        # shellcheck disable=SC2059
+        text="$(log_success "$_full_message" ---style mail ---no-icon)"
+
+        save_log_end "SUCCESS: $text"
     }
 
     #-------------------------- Backup Date Functions --------------------------------
@@ -501,11 +552,8 @@ Please check the logs for more details."
     function _keep_best_backup_from_period() {
         # Select the best backup from a time period (week/month/year)
         # First tries to find an ideal backup (e.g., Monday for weekly), falls back to newest available
-        # shellcheck disable=SC2178
         local -n _file_info_ref="$1"
-        # shellcheck disable=SC2178
         local -n _file_ages_ref="$2"
-        # shellcheck disable=SC2178
         local -n _file_timestamps_ref="$3"
         local -n _files_to_keep_ref="$4"
         local _start_age="$5"
@@ -573,6 +621,7 @@ Please check the logs for more details."
             log_header 'Cleaning up <b>%s</b> backups at <b>%s</b> scope: <code>%s</code>' "$_type" "$_scope" "$_file_pattern"
         fi
         log_info 'Retention: daily=<b>%d</b>d, weekly=<b>%d</b>w, monthly=<b>%d</b>m, yearly=<b>%d</b>y' "$_daily" "$_weekly" "$_monthly" "$_yearly"
+        save_log_start "cleanup" "$_type" "$_file_pattern"
 
         # Find all backup files matching the pattern
         local _all_files=()
@@ -651,7 +700,7 @@ Please check the logs for more details."
         done
 
         # If no backups are marked to keep, keep at least the newest one
-        if [[ ${#_files_to_keep[@]} -eq 0 && -n "$_newest_file" ]]; then
+        if [[ -z "${_files_to_keep[*]}" && -n "$_newest_file" ]]; then
             _files_to_keep["$_newest_file"]="last-available"
         fi
 
@@ -662,12 +711,12 @@ Please check the logs for more details."
 
         # Process files and delete those not marked to keep
         for _file in "${_all_files[@]}"; do
-            if [[ -n "${_files_to_keep[$_file]}" ]]; then
+            if [[ -n "${_files_to_keep[$_file]:-}" ]]; then
                 _kept_count=$((_kept_count + 1))
                 # Show details only in debug mode
                 if [[ "$debug" == "yes" ]]; then
                     local _age_days="${_file_ages[$_file]}"
-                    local _reason="${_files_to_keep[$_file]}"
+                    local _reason="${_files_to_keep[$_file]:-}"
                     log_info 'Keeping: <b>%s</b> (age: <b>%d</b>d, reason: <b>%s</b>)' "$(basename "$_file")" "$_age_days" "$_reason"
                 fi
             else
@@ -690,19 +739,18 @@ Please check the logs for more details."
             fi
         done
 
+        save_log_data "kept:$_kept_count" "deleted:$_deleted_count"
+
         if [[ "$dry_run" == "yes" ]]; then
-            log_success 'Cleanup simulation: <b>%d</b> would be kept, <b>%d</b> would be deleted' "$_kept_count" "$_deleted_count"
+            handle_success 'Cleanup simulation: <b>%d</b> would be kept, <b>%d</b> would be deleted' "$_kept_count" "$_deleted_count"
             if [[ $_deleted_count -gt 10 && "$debug" != "yes" ]]; then
                 log_info 'Use <code>--debug</code> to see details of all files'
             fi
         else
-            log_success 'Cleanup completed: <b>%d</b> kept, <b>%d</b> deleted' "$_kept_count" "$_deleted_count"
+            handle_success 'Cleanup completed: <b>%d</b> kept, <b>%d</b> deleted' "$_kept_count" "$_deleted_count"
             if [[ $_deleted_count -gt 10 && "$debug" != "yes" ]]; then
                 log_info 'Use <code>--debug</code> to see details of all deleted files'
             fi
-            # Save to short.log - single entry with all cleanup information
-            save_log_start "cleanup" "$_type" "$_file_pattern" "kept:$_kept_count" "deleted:$_deleted_count"
-            save_log_end
         fi
     }
 
@@ -736,12 +784,12 @@ Please check the logs for more details."
 
     function list_scopes() {
         # Display list of available server names and scope names from configuration
-        local server_names
-        server_names="$(read_config '(.server[]|key)' | grep -v local | tr '\n' ' ')"
-        log_info '<b>Server names list</b>\n%s\n' "$server_names"
-        local scope_names
-        scope_names="$(read_config "(.scope[]|key)" | tr '\n' ' ')"
-        log_info '<b>Scopes list</b>\n%s\n' "$scope_names"
+        local server_names_list
+        server_names_list="$(read_config '(.server[]|key)' | grep -v local | tr '\n' ' ')"
+        log_info '<b>Server names list</b>\n%s\n' "$server_names_list"
+        local scope_names_list
+        scope_names_list="$(read_config "(.scope[]|key)" | tr '\n' ' ')"
+        log_info '<b>Scopes list</b>\n%s\n' "$scope_names_list"
     }
 
     #-------------------------- Configuration Functions --------------------------------
@@ -753,7 +801,9 @@ Please check the logs for more details."
         log_header 'Validate configuration'
 
         if [[ -z "$server_id" || "$server_id" == "null" ]]; then
-            handle_error "Server name not specified! Available options: $server_names"
+            local server_names
+            read -r -a server_names <<<"$(read_config '(.server[]|key)' | grep -v local | tr '\n' ' ')"
+            handle_error "Server name not specified! Available options: %s" "$(array_to_string '<b>%s</b>' ', ' "${server_names[@]}")"
         fi
 
         eval "$(read_config ".server.$server_id" -o=shell)"
@@ -763,7 +813,7 @@ Please check the logs for more details."
         fi
 
         if [[ -z "$ssh_host_name" || "$ssh_host_name" == "null" ]]; then
-            handle_error "Configuration for $server_id server does not exists!"
+            handle_error "Configuration for <b>%s</b> server does not exists!" "$server_id"
         fi
 
         if [[ -z "$app_id" ]]; then
@@ -776,8 +826,8 @@ Please check the logs for more details."
             read_config ".scope.$app_id" -o=shell
         fi
 
-        if [[ -z "$ssh_sync_path" || "$ssh_sync_path" == "null" ]] && [[ -z "$sql_file_pattern" || "$sql_file_pattern" == "null" ]]; then
-            handle_error "Configuration for $app_id scope does not exists!"
+        if [[ -z "${ssh_sync_path:-}" || "$ssh_sync_path" == "null" ]] && [[ -z "${sql_file_pattern:-}" || "$sql_file_pattern" == "null" ]]; then
+            handle_error "Configuration for <b>%s</b> scope does not exists!" "$app_id"
         fi
 
         _merge_server_and_scope_variables
@@ -820,7 +870,7 @@ Please check the logs for more details."
         rsync_exclude=""
         tar_exclude=""
         # shellcheck disable=SC2206
-        ssh_sync_excludes_array=($ssh_sync_excludes)
+        ssh_sync_excludes_array=(${remote_ssh_sync_excludes:-})
         # shellcheck disable=SC2154
         if [[ "${#ssh_sync_excludes_array[@]}" -gt "0" ]]; then
             for exclude_path in "${ssh_sync_excludes_array[@]}"; do
@@ -847,7 +897,7 @@ Please check the logs for more details."
         # Checks for changes first (unless --force), then syncs and optionally creates archive
         if [[ "$dry_run" == "yes" ]]; then
             # shellcheck disable=SC2154
-            log_header 'Would backup files: <b>%s:%s%s</b> → <b>%s%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            log_header 'Would backup files: <b>%s:%s</b> → <b>%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
             # shellcheck disable=SC2048
             # shellcheck disable=SC2086
             rsync \
@@ -859,18 +909,18 @@ Please check the logs for more details."
                 --update \
                 --delete-after \
                 $rsync_exclude \
-                "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+                "${ssh_host_name}":"${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
         else
             # shellcheck disable=SC2154
-            log_header 'Backup files: <b>%s:%s%s</b> → <b>%s%s</b>' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
-            save_log_start "files" "backup" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
-            mkdir -p "${local_home_path}${ssh_sync_path}" || handle_error "Failed to create backup directory: ${local_home_path}${ssh_sync_path}"
+            log_header 'Backup files: <b>%s:%s</b> → <b>%s</b>' "${ssh_host_name}" "${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            save_log_start "files" "backup" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}"
+            mkdir -p "${local_home_path}${ssh_sync_path}" || handle_error "Failed to create backup directory: <u>%s</u>" "${local_home_path}${ssh_sync_path}"
 
             # Check if there are changes to sync (unless --force is used)
-            local _has_changes
+            local _has_changes="x"
             if [[ "$force" == "no" ]]; then
-                # shellcheck disable=SC2048
                 # shellcheck disable=SC2086
+                # Use || true to prevent subshell from exiting on grep failure (no matches)
                 _has_changes=$(rsync \
                     --dry-run \
                     --archive \
@@ -880,19 +930,18 @@ Please check the logs for more details."
                     --delete-after \
                     --out-format='changed file: %i %n%L' \
                     $rsync_exclude \
-                    "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1 |
-                    grep -F 'changed file:')
+                    "${ssh_host_name}":"${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1 | grep -F 'changed file:' || true)
             else
                 _has_changes="force"
             fi
 
             if [[ "$_has_changes" == "" ]]; then
                 # No changes detected, just rename existing archive
-                log_success 'No new changes in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                log_success 'No new changes in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
                 mode="rename"
             else
                 # Changes detected, sync files and create new archive
-                log_success 'Found new files in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                log_success 'Found new files in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
                 # shellcheck disable=SC2048
                 # shellcheck disable=SC2086
                 if ! rsync \
@@ -903,17 +952,16 @@ Please check the logs for more details."
                     --update \
                     --delete-after \
                     $rsync_exclude \
-                    "${ssh_host_name}":"${ssh_home_path}${remote_ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1; then
-                    handle_error "rsync failed during files backup from ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                    "${ssh_host_name}":"${ssh_home_path}${ssh_sync_path}" "${local_home_path}${ssh_sync_path}" 2>&1; then
+                    handle_error "rsync failed during files backup from <u>%s</u>" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
                 fi
                 mode="create"
             fi
             handle_success "Files backed up successfully."
-            save_log_end
 
             # Create archive if gzip_content is enabled and skip_archive is not set
             # shellcheck disable=SC2154
-            if [[ "$gzip_content" == "yes" && "$skip_archive" == "no" ]]; then
+            if [[ "${gzip_content:-no}" == "yes" && "${skip_archive:-no}" == "no" ]]; then
                 pack_files
             fi
         fi
@@ -932,15 +980,14 @@ Please check the logs for more details."
         rename)
             # Rename existing archive to current date (no changes detected, just update timestamp)
             # shellcheck disable=SC2207
-            all_export_file_names=($(cd "$local_archive_path" && ls -r "*.${app_id}.tar.gz" 2>/dev/null))
+            all_export_file_names=($(cd "$local_archive_path" && ls -r "*.${app_id}.tar.gz" 2>/dev/null || true))
             if [[ "${#all_export_file_names[@]}" -gt 0 ]]; then
                 latest_export_file_name=${all_export_file_names[0]}
                 if [[ "$latest_export_file_name" != "$current_export_file_name" ]]; then
-                    (cd "$local_archive_path" && mv "$latest_export_file_name" "$current_export_file_name")
+                    (cd "$local_archive_path" && mv "$latest_export_file_name" "$current_export_file_name" || true)
                 fi
             fi
-            # Retention is now managed by cleanup_with_gfs_retention function
-            # We don't delete old files here - cleanup will handle it according to GFS strategy
+            handle_success 'Files moved successfully'
             ;;
         create)
             # Create new archive with current date (changes were detected)
@@ -948,12 +995,11 @@ Please check the logs for more details."
             # shellcheck disable=SC2086
             # shellcheck disable=SC2048
             if ! eval "(cd "${local_home_path}${ssh_sync_path}" && tar -zcvf "${local_archive_path}${current_export_file_name}" $tar_exclude .)"; then
-                handle_error "Failed to create archive: ${current_export_file_name}"
+                handle_error "Failed to create archive: <u>%s</u>" "${current_export_file_name}"
             fi
+            handle_success 'Files packed successfully'
             ;;
         esac
-        save_log_end
-        log_success 'Files packed successfully'
     }
 
     function restore_files() {
@@ -961,7 +1007,7 @@ Please check the logs for more details."
         # Prompts for confirmation before restoring (unless dry-run)
         if [[ "$dry_run" == "yes" ]]; then
             # shellcheck disable=SC2154
-            log_header 'Would restore files: <b>%s%s</b> → <b>%s:%s%s</b> (dry-run)' "${local_home_path}${ssh_sync_path}" "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+            log_header 'Would restore files: <b>%s%s</b> → <b>%s:%s%s</b> (dry-run)' "${local_home_path}${ssh_sync_path}" "${ssh_host_name}" "${ssh_home_path}${ssh_sync_path}"
             # shellcheck disable=SC2086
             rsync \
                 --dry-run \
@@ -971,20 +1017,20 @@ Please check the logs for more details."
                 --partial --progress \
                 --delete-after \
                 $rsync_exclude \
-                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
         else
             # Prompt for confirmation before restoring
             local _prompt_msg
-            _prompt_msg=$(printf "Restore from <b>%s</b> to <b>%s</b>? [y/n]: " "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}")
+            _prompt_msg=$(printf "Restore from <b>%s</b> to <b>%s</b>? [y/n]: " "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}")
             local _response
             prompt_input _response "$_prompt_msg" "y" "" "y" "n"
             if [[ "$_response" != "y" ]]; then
                 exit 1
             fi
-            save_log_start "files" "restore" "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+            save_log_start "files" "restore" "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
             # Create remote directory if it doesn't exist
-            if ! ssh "$ssh_host_name" "mkdir -pv ""${ssh_home_path}${remote_ssh_sync_path}"""; then
-                handle_error "Failed to create remote directory on ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+            if ! ssh "$ssh_host_name" "mkdir -pv ""${ssh_home_path}${ssh_sync_path}"""; then
+                handle_error "Failed to create remote directory on <u>%s</u>" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
             fi
             # Sync files to remote server
             # shellcheck disable=SC2048
@@ -996,11 +1042,10 @@ Please check the logs for more details."
                 --partial --progress \
                 --delete-after \
                 $rsync_exclude \
-                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}" 2>&1; then
-                handle_error "rsync failed during files restore to ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}"
+                "${local_home_path}${ssh_sync_path}" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}" 2>&1; then
+                handle_error "rsync failed during files restore to <u>%s</u>" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
             fi
             handle_success "Files restored successfully."
-            save_log_end
         fi
     }
 
@@ -1026,16 +1071,15 @@ Please check the logs for more details."
                 # Execute mysqldump on remote server via SSH and compress with gzip
                 # shellcheck disable=SC2154
                 if ! ssh "$ssh_host_name" 'mysqldump --skip-lock-tables --verbose --host '"$remote_db_host"' --port '"$remote_db_port"' --user='"$remote_db_user"' --password='"$remote_db_pass"' --databases '"$remote_db_name"' | gzip > '"$current_export_file_name"'' 2>&1; then
-                    handle_error "mysqldump failed on ${ssh_host_name} for database ${remote_db_name}"
+                    handle_error "mysqldump failed on <b>%s</b> for database <b>%s</b>" "$ssh_host_name" "$remote_db_name"
                 fi
                 # Copy compressed backup from remote server to local directory
                 if ! scp "$ssh_host_name":"${current_export_file_name}" "${local_databases_path}${current_export_file_name}" 2>&1; then
-                    handle_error "scp failed to copy backup from ${ssh_host_name}:${current_export_file_name}"
+                    handle_error "scp failed to copy backup from <u>%s</u>" "${ssh_host_name}:${current_export_file_name}"
                 fi
                 # Remove temporary backup file from remote server
                 ssh "$ssh_host_name" 'rm -v '"$current_export_file_name"'' 2>/dev/null || true
                 handle_success "Database backed up successfully."
-                save_log_end
             fi
         fi
     }
@@ -1060,12 +1104,13 @@ Please check the logs for more details."
                 local _response
                 prompt_input _response "$_prompt_msg" "y" "" "y" "n"
                 if [[ "$_response" != "y" ]]; then
+                    save_log_end "restore cancelled"
                     exit 1
                 fi
                 save_log_start "database" "restore" "$current_import_file_name" "$remote_db_host:$remote_db_port/$remote_db_name"
                 # Copy backup file to remote server
                 if ! scp "${local_databases_path}${current_import_file_name}" "$ssh_host_name":"$current_import_file_name" 2>&1; then
-                    handle_error "scp failed to copy backup to ${ssh_host_name}:${current_import_file_name}"
+                    handle_error "scp failed to copy backup to <u>%s</u>" "${ssh_host_name}:${current_import_file_name}"
                 fi
                 # Decompress and import database, removing CREATE DATABASE and USE statements
                 ssh "$ssh_host_name" 'gunzip -c '"$current_import_file_name"' | grep -v "CREATE DATABASE" | grep -vE "USE (.*);" | mysql --host '"$remote_db_host"' --port '"$remote_db_port"' --user='"$remote_db_user"' --password='"$remote_db_pass"' '"$remote_db_name"'' &
@@ -1074,15 +1119,14 @@ Please check the logs for more details."
                 wait "$_restore_pid"
                 _restore_exit_code=$?
                 if [[ $_restore_exit_code -ne 0 ]]; then
-                    handle_error "mysql import failed on ${ssh_host_name} for database ${remote_db_name}"
+                    handle_error "mysql import failed on <b>%s</b> for database <b>%s</b>" "$ssh_host_name" "$remote_db_name"
                 fi
                 # Remove temporary backup file from remote server
                 ssh "$ssh_host_name" 'rm -v '"$current_import_file_name"'' 2>/dev/null || true
                 handle_success "Database restored successfully."
-                save_log_end
             fi
         else
-            handle_error "Backup file '${current_import_file_name}' does not exist in ${local_databases_path}"
+            handle_error "Backup file <u>%s</u> does not exist in <u>%s</u>" "$current_import_file_name" "$local_databases_path"
         fi
     }
 
@@ -1110,18 +1154,18 @@ Please check the logs for more details."
         for key in "${!data[@]}"; do
             value="${data[$key]}"
             # Check if definition already exists in wp-config.php
-            exists=$(ssh "$ssh_host_name" "grep -c \"define.*""$key""\" ${ssh_home_path}${remote_ssh_sync_path}wp-config.php")
+            exists=$(ssh "$ssh_host_name" "grep -c \"define.*""$key""\" ${ssh_home_path}${ssh_sync_path}wp-config.php")
             if [[ "$exists" -eq "0" ]]; then
                 log_info 'Adding missing <b>%s</b> definition' "$key"
                 # Add definition before "/* That's all, stop editing! Happy publishing. */"
-                if ! ssh "$ssh_host_name" "sed -i '/require_once/i\\define(\"""$key""\", ${value});' ${ssh_home_path}${remote_ssh_sync_path}wp-config.php" 2>&1; then
-                    handle_error "Failed to add WordPress config definition: $key"
+                if ! ssh "$ssh_host_name" "sed -i '/require_once/i\\define(\"""$key""\", ${value});' ${ssh_home_path}${ssh_sync_path}wp-config.php" 2>&1; then
+                    handle_error "Failed to add WordPress config definition: <b>%s</b>" "$key"
                 fi
             else
                 log_info 'Updating existing <b>%s</b> definition' "$key"
                 # Update existing definition using sed
-                if ! ssh "$ssh_host_name" "sed -i -e 's|define.*""$key"".*,.*;|define(\"""$key""\", ${value});|g' ${ssh_home_path}${remote_ssh_sync_path}wp-config.php" 2>&1; then
-                    handle_error "Failed to update WordPress config definition: $key"
+                if ! ssh "$ssh_host_name" "sed -i -e 's|define.*""$key"".*,.*;|define(\"""$key""\", ${value});|g' ${ssh_home_path}${ssh_sync_path}wp-config.php" 2>&1; then
+                    handle_error "Failed to update WordPress config definition: <b>%s</b>" "$key"
                 fi
             fi
         done
@@ -1140,8 +1184,8 @@ Please check the logs for more details."
             eval "$(read_config ".scope.$app_id.server.$server_id.extra_files[$i]" -o=shell)"
             # Copy file from source to destination on remote server
             # shellcheck disable=SC2154
-            if ! scp "$source" "$ssh_host_name:${ssh_home_path}${remote_ssh_sync_path}${destination}" 2>&1; then
-                handle_error "Failed to copy extra file: $source to ${ssh_host_name}:${ssh_home_path}${remote_ssh_sync_path}${destination}"
+            if ! scp "$source" "$ssh_host_name:${ssh_home_path}${ssh_sync_path}${destination}" 2>&1; then
+                handle_error "Failed to copy extra file: <b>%s</b> to <u>%s</u>" "$source" "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}${destination}"
             fi
         done
     }
@@ -1151,11 +1195,11 @@ Please check the logs for more details."
         # Combines WordPress configuration updates and extra file copying
         if [[ "$dry_run" == "yes" ]]; then
             # shellcheck disable=SC2154
-            log_header 'Would update config: <b>%s:%s%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
+            log_header 'Would update config: <b>%s:%s%s</b> (dry-run)' "${ssh_host_name}" "${ssh_home_path}${ssh_sync_path}"
         else
             # shellcheck disable=SC2154
-            log_header 'Update config: <b>%s:%s%s</b>' "${ssh_host_name}" "${ssh_home_path}${remote_ssh_sync_path}"
-            save_log_start "config" "update" "${ssh_home_path}${remote_ssh_sync_path}"
+            log_header 'Update config: <b>%s:%s%s</b>' "${ssh_host_name}" "${ssh_home_path}${ssh_sync_path}"
+            save_log_start "config" "update" "${ssh_home_path}${ssh_sync_path}"
 
             # Update WordPress configuration
             configure_wordpress
@@ -1163,7 +1207,6 @@ Please check the logs for more details."
             configure_extra_files
 
             handle_success "Config updated successfully."
-            save_log_end
         fi
     }
 
@@ -1241,7 +1284,8 @@ Please check the logs for more details."
                 skip_archive="yes"
                 ;;
             -h | --help)
-                show_usage
+                display_help
+                exit
                 ;;
             *) POSITIONAL_ARGS+=("$1") ;;
             esac
@@ -1252,15 +1296,6 @@ Please check the logs for more details."
 
     #-------------------------- Main Execution --------------------------------
     # Parse arguments, initialize paths, and execute the requested action
-
-    log_title 'Backup and Restore Tool'
-
-    # Change to script directory and initialize configuration paths
-    cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
-
-    config_file="backup-restore.yaml"
-    # shellcheck disable=SC2155
-    declare -r LOG_FILE_PATH="logs/$(date +%Y/%m/)short.log"
 
     parse_arguments "$@"
 
@@ -1279,7 +1314,7 @@ Please check the logs for more details."
         validate_configuration
         case "$action" in
         backup-files | restore-files)
-            check_variables ssh_host_name ssh_home_path remote_ssh_sync_path local_home_path ssh_sync_path gzip_content
+            check_variables ssh_host_name ssh_home_path ssh_sync_path local_home_path gzip_content
             _prepare_rsync_excludes
             case "$action" in
             backup-files)
@@ -1302,7 +1337,7 @@ Please check the logs for more details."
             esac
             ;;
         configure)
-            check_variables remote_ssh_sync_path remote_db_host remote_db_port remote_db_user remote_db_pass remote_db_name
+            check_variables ssh_sync_path remote_db_host remote_db_port remote_db_user remote_db_pass remote_db_name
             configure_scope
             ;;
         esac
@@ -1311,7 +1346,7 @@ Please check the logs for more details."
         if [[ -z "$action" ]]; then
             handle_error "No action specified! Run <code>$0 --help</code> to see available options."
         else
-            handle_error "Action $action does not exist!"
+            handle_error "Action <b>%s</b> does not exist!" "$action"
         fi
         ;;
     esac

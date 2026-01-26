@@ -5,11 +5,11 @@
 ##----Check bash version------------------------------------------------------------------------------------------------------------
 
 if [[ "$BASH_VERSION" == 0* ]] || [[ "$BASH_VERSION" == 1* ]] || [[ "$BASH_VERSION" == 2* ]] || [[ "$BASH_VERSION" == 3* ]]; then
-  echo "Bash version is too low. Consider upgrading to bash newer than $BASH_VERSION"
-  if uname | grep -iq Darwin; then
-    echo "Read more on https://itnext.io/upgrading-bash-on-macos-7138bd1066ba"
-  fi
-  exit 9
+    echo "Bash version is too low. Consider upgrading to bash newer than $BASH_VERSION"
+    if uname | grep -iq Darwin; then
+        echo "Read more on https://itnext.io/upgrading-bash-on-macos-7138bd1066ba"
+    fi
+    exit 9
 fi
 
 # Set terminal type for proper color support
@@ -20,85 +20,90 @@ shopt -s extglob
 
 # Check if tput is available, otherwise use ANSI escape codes
 _tput_available() {
-  command -v tput >/dev/null 2>&1
+    command -v tput >/dev/null 2>&1
 }
 
 _tput_safe() {
-  if _tput_available; then
-    tput "$@"
-  else
-    # Fallback to ANSI escape codes
-    case "$1" in
-    setaf)
-      case "$2" in
-      0) printf '\033[30m' ;; # black
-      1) printf '\033[31m' ;; # red
-      2) printf '\033[32m' ;; # green
-      3) printf '\033[33m' ;; # yellow
-      4) printf '\033[34m' ;; # blue
-      5) printf '\033[35m' ;; # magenta/purple
-      6) printf '\033[36m' ;; # cyan
-      7) printf '\033[37m' ;; # white
-      *) printf '\033[39m' ;; # default
-      esac
-      ;;
-    setab)
-      case "$2" in
-      0) printf '\033[40m' ;; # black
-      1) printf '\033[41m' ;; # red
-      2) printf '\033[42m' ;; # green
-      3) printf '\033[43m' ;; # yellow
-      4) printf '\033[44m' ;; # blue
-      5) printf '\033[45m' ;; # magenta/purple
-      6) printf '\033[46m' ;; # cyan
-      7) printf '\033[47m' ;; # white
-      *) printf '\033[49m' ;; # default
-      esac
-      ;;
-    bold)
-      printf '\033[1m' ;;
-    smul)
-      printf '\033[4m' ;;
-    rmul)
-      printf '\033[24m' ;;
-    sgr0)
-      printf '\033[0m' ;;
-    *)
-      printf '\033[0m' ;; # default reset
-    esac
-  fi
+    if _tput_available; then
+        tput "$@"
+    else
+        # Fallback to ANSI escape codes
+        case "$1" in
+        setaf)
+            case "$2" in
+            0) printf '\033[30m' ;; # black
+            1) printf '\033[31m' ;; # red
+            2) printf '\033[32m' ;; # green
+            3) printf '\033[33m' ;; # yellow
+            4) printf '\033[34m' ;; # blue
+            5) printf '\033[35m' ;; # magenta/purple
+            6) printf '\033[36m' ;; # cyan
+            7) printf '\033[37m' ;; # white
+            *) printf '\033[39m' ;; # default
+            esac
+            ;;
+        setab)
+            case "$2" in
+            0) printf '\033[40m' ;; # black
+            1) printf '\033[41m' ;; # red
+            2) printf '\033[42m' ;; # green
+            3) printf '\033[43m' ;; # yellow
+            4) printf '\033[44m' ;; # blue
+            5) printf '\033[45m' ;; # magenta/purple
+            6) printf '\033[46m' ;; # cyan
+            7) printf '\033[47m' ;; # white
+            *) printf '\033[49m' ;; # default
+            esac
+            ;;
+        bold)
+            printf '\033[1m'
+            ;;
+        smul)
+            printf '\033[4m'
+            ;;
+        rmul)
+            printf '\033[24m'
+            ;;
+        sgr0)
+            printf '\033[0m'
+            ;;
+        *)
+            printf '\033[0m'
+            ;; # default reset
+        esac
+    fi
 }
 
 styler() {
-  case "$1" in
-  font | text | FONT | TEXT)
-    case "$2" in
-    black | BLACK) _tput_safe setaf 0 ;;
-    red | RED) _tput_safe setaf 1 ;;
-    green | GREEN) _tput_safe setaf 2 ;;
-    yellow | YELLOW) _tput_safe setaf 3 ;;
-    blue | BLUE) _tput_safe setaf 4 ;;
-    purple | PURPLE) _tput_safe setaf 5 ;;
-    cyan | CYAN) _tput_safe setaf 6 ;;
-    white | WHITE) _tput_safe setaf 7 ;;
-    *) _tput_safe setaf 9 ;;
+    case "$1" in
+    font | text | FONT | TEXT)
+        case "$2" in
+        black | BLACK) _tput_safe setaf 0 ;;
+        red | RED) _tput_safe setaf 1 ;;
+        green | GREEN) _tput_safe setaf 2 ;;
+        yellow | YELLOW) _tput_safe setaf 3 ;;
+        blue | BLUE) _tput_safe setaf 4 ;;
+        purple | PURPLE) _tput_safe setaf 5 ;;
+        cyan | CYAN) _tput_safe setaf 6 ;;
+        white | WHITE) _tput_safe setaf 7 ;;
+        *) _tput_safe setaf 9 ;;
+        esac
+        ;;
+    bg | background | BG | BACKGROUND)
+        case "$2" in
+        black | BLACK) _tput_safe setab 0 ;;
+        red | RED) _tput_safe setab 1 ;;
+        green | GREEN) _tput_safe setab 2 ;;
+        yellow | YELLOW) _tput_safe setab 3 ;;
+        blue | BLUE) _tput_safe setab 4 ;;
+        purple | PURPLE) _tput_safe setab 5 ;;
+        cyan | CYAN) _tput_safe setab 6 ;;
+        white | WHITE) _tput_safe setab 7 ;;
+        *) _tput_safe setab 9 ;;
+        esac
+        ;;
+    reset | RESET) _tput_safe sgr0 ;;
     esac
-    ;;
-  bg | background | BG | BACKGROUND)
-    case "$2" in
-    black | BLACK) _tput_safe setab 0 ;;
-    red | RED) _tput_safe setab 1 ;;
-    green | GREEN) _tput_safe setab 2 ;;
-    yellow | YELLOW) _tput_safe setab 3 ;;
-    blue | BLUE) _tput_safe setab 4 ;;
-    purple | PURPLE) _tput_safe setab 5 ;;
-    cyan | CYAN) _tput_safe setab 6 ;;
-    white | WHITE) _tput_safe setab 7 ;;
-    *) _tput_safe setab 9 ;;
-    esac
-    ;;
-  reset | RESET) _tput_safe sgr0 ;;
-  esac
 }
 
 # Icons
@@ -114,226 +119,256 @@ readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
 readonly LOADING_ANIMATION_RETRY_INTERVAL=5
 
 loading_spinner() {
-  local _start_label="$1"
-  local _end_label="$2"
-  local _pid="$3"
-  local _spinner_chars=(" ⠙" " ⠸" " ⢰" " ⣠" "⢀⣀" "⣀⡀" "⣄ " "⡆ " "⠇ " "⠋ " "⠉⠁" "⠈⠉")
-  local _pnt=0
+    local _start_label="$1"
+    local _end_label="$2"
+    local _pid="$3"
+    local _spinner_chars=(" ⠙" " ⠸" " ⢰" " ⣠" "⢀⣀" "⣀⡀" "⣄ " "⡆ " "⠇ " "⠋ " "⠉⠁" "⠈⠉")
+    local _pnt=0
 
-  while kill -0 "$_pid" 2>/dev/null; do
-    printf '\r%s %b ' "$_start_label" "${_spinner_chars[_pnt++ % ${#_spinner_chars[@]}]}"
-    sleep 0.5
-  done
-  log_info ---reset '%s' "$_end_label"
+    while kill -0 "$_pid" 2>/dev/null; do
+        printf '\r%s %b ' "$_start_label" "${_spinner_chars[_pnt++ % ${#_spinner_chars[@]}]}"
+        sleep 0.5
+    done
+    log_info ---reset '%s' "$_end_label"
 }
 
 ##----Display line------------------------------------------------------------------------------------------------------------
 
 log_message() {
-  function _text_format() {
-    local _color_value="$1"
-    shift
-    local _pattern="$1"
-    shift
+    function _text_format() {
+        local _style="$1"
+        shift
+        local _color_value="$1"
+        shift
+        local _pattern="$1"
+        shift
+        local _text
+        # shellcheck disable=SC2059
+        _text=$(printf -- "$_pattern" "$@")
+        case "$_style" in
+        mail | email)
+            _text=${_text//<b>/\**}
+            _text=${_text//<\/b>/\**}
+            _text=${_text//<u>/__}
+            _text=${_text//<\/u>/__}
+            _text=${_text//<code>/<<}
+            _text=${_text//<\/code>/>>}
+            ;;
+        *)
+            _text=${_text//<b>/$(_tput_safe bold)${_color_value}}
+            _text=${_text//<\/b>/$(styler reset)${_color_value}}
+            _text=${_text//<u>/$(_tput_safe smul)${_color_value}}
+            _text=${_text//<\/u>/$(_tput_safe rmul)${_color_value}}
+            _text=${_text//<code>/$(styler reset)$(styler bg 'CYAN')$(styler text 'BLACK')}
+            _text=${_text//<\/code>/$(styler reset)${_color_value}}
+            ;;
+        esac
+        echo -e "$_text"
+    }
+    local _color_value=""
+    local _icon=""
+    local _style="shell"
+    local _width=64
+    local _line_prepend=""
+    local _line_append="\n"
     local _text
+    local _status=""
+    local POSITIONAL_ARGS=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        ---color)
+            shift
+            _color_value="$(styler text "$1")"
+            ;;
+        ---style)
+            shift
+            _style="$1"
+            ;;
+        ---icon)
+            shift
+            _icon="$1"
+            ;;
+        ---no-icon)
+            _icon=""
+            ;;
+        ---width)
+            shift
+            _width="$1"
+            ;;
+        ---prepend)
+            shift
+            _line_prepend="$_line_prepend$1"
+            ;;
+        ---bell)
+            _line_prepend="$_line_prepend\a"
+            ;;
+        ---reset)
+            _line_prepend="\r$_line_prepend"
+            ;;
+        ---one-line)
+            _line_append=""
+            ;;
+        ---status)
+            shift
+            _status="$1"
+            ;;
+        *) POSITIONAL_ARGS+=("$1") ;;
+        esac
+        shift
+    done
+    set -- "${POSITIONAL_ARGS[@]}"
     # shellcheck disable=SC2059
-    _text=$(printf -- "$_pattern" "$@")
-    _text=${_text//<b>/$(_tput_safe bold)${_color_value}}
-    _text=${_text//<\/b>/$(styler reset)${_color_value}}
-    _text=${_text//<u>/$(_tput_safe smul)${_color_value}}
-    _text=${_text//<\/u>/$(_tput_safe rmul)${_color_value}}
-    _text=${_text//<code>/$(styler reset)$(styler bg 'CYAN')$(styler text 'BLACK')}
-    _text=${_text//<\/code>/$(styler reset)${_color_value}}
-    echo -e "$_text"
-  }
-  local _color_value=""
-  local _icon=""
-  local _width=64
-  local _line_prepend=""
-  local _line_append="\n"
-  local _text
-  local _status=""
-  local POSITIONAL_ARGS=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    ---color)
-      shift
-      _color_value="$(styler text "$1")"
-      ;;
-    ---icon)
-      shift
-      _icon="$1"
-      ;;
-    ---width)
-      shift
-      _width="$1"
-      ;;
-    ---prepend)
-      shift
-      _line_prepend="$_line_prepend$1"
-      ;;
-    ---bell)
-      _line_prepend="$_line_prepend\a"
-      ;;
-    ---reset)
-      _line_prepend="\r$_line_prepend"
-      ;;
-    ---one-line)
-      _line_append=""
-      ;;
-    ---status)
-      shift
-      _status="$1"
-      ;;
-    *) POSITIONAL_ARGS+=("$1") ;;
+    _text="$(_text_format "$_style" "$_color_value" "$@")"
+
+    if [[ -n "$_icon" ]]; then
+        _text="$(_text_format "$_style" "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
+    fi
+    if [[ -n "$_status" ]]; then
+        _text="$(_text_format "$_style" "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding "$_width" "$_text")" "$_text" "$_status")"
+    fi
+    case "$_style" in
+    mail | email)
+        echo -e -n "${_line_prepend}${_text}${_line_append}"
+        ;;
+    *)
+        echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
+        ;;
     esac
-    shift
-  done
-  set -- "${POSITIONAL_ARGS[@]}"
-  # shellcheck disable=SC2059
-  _text="$(_text_format "$_color_value" "$@")"
-  if [[ -n "$_icon" ]]; then
-    _text="$(_text_format "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
-  fi
-  if [[ -n "$_status" ]]; then
-    _text="$(_text_format "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding "$_width" "$_text")" "$_text" "$_status")"
-  fi
-  echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
 }
 
 prepare_log_message() {
-  local _color="$1"
-  shift
-  local _icon="$1"
-  shift
-  local POSITIONAL_ARGS=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    ---color)
-      shift
-      _color="$1"
-      ;;
-    ---icon)
-      shift
-      _icon="$1"
-      ;;
-    *) POSITIONAL_ARGS+=("$1") ;;
-    esac
+    local _color="$1"
     shift
-  done
-  set -- "${POSITIONAL_ARGS[@]}"
-  log_message ---color "$_color" ---icon "$_icon" "$@"
+    local _icon="$1"
+    shift
+    local POSITIONAL_ARGS=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        ---color)
+            shift
+            _color="$1"
+            ;;
+        ---icon)
+            shift
+            _icon="$1"
+            ;;
+        *) POSITIONAL_ARGS+=("$1") ;;
+        esac
+        shift
+    done
+    set -- "${POSITIONAL_ARGS[@]}"
+    log_message ---color "$_color" ---icon "$_icon" "$@"
 }
 
 log_info() {
-  prepare_log_message 'CYAN' "$ICON_INFO" "$@"
+    prepare_log_message 'CYAN' "$ICON_INFO" "$@"
 }
 
 log_success() {
-  prepare_log_message 'GREEN' "$ICON_SUCCESS" "$@"
+    prepare_log_message 'GREEN' "$ICON_SUCCESS" "$@"
 }
 
 log_warning() {
-  prepare_log_message 'BLUE' "$ICON_WARNING" "$@"
+    prepare_log_message 'BLUE' "$ICON_WARNING" "$@"
 }
 
 log_error() {
-  prepare_log_message 'RED' "$ICON_ERROR" "$@"
+    prepare_log_message 'RED' "$ICON_ERROR" "$@"
 }
 
 log_debug() {
-  if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
-    prepare_log_message 'PURPLE' "$ICON_DEBUG" "$@"
-  fi
+    if [[ "${DEBUG:-0}" == "1" || "${debug:-0}" == "1" ]]; then
+        prepare_log_message 'PURPLE' "$ICON_DEBUG" "$@"
+    fi
 }
 
 log_title() {
-  local _title="$1"
-  local _version="${2:-}"
-  local _title_text
-  if [[ -n "$_version" ]]; then
-    _title_text="${_title} v${_version}"
-  else
-    _title_text="${_title}"
-  fi
+    local _title="$1"
+    local _version="${2:-}"
+    local _title_text
+    if [[ -n "$_version" ]]; then
+        _title_text="${_title} v${_version}"
+    else
+        _title_text="${_title}"
+    fi
 
-  # Calculate padding to center the title
-  local _title_length=${#_title_text}
-  local _total_width=64
-  if [[ "$_title_length" -gt "$_total_width" ]]; then
-    _total_width=$((_title_length + 4))
-  fi
-  if [[ $((_title_length % 2)) -eq 1 ]]; then
-    _total_width="$((_total_width - 1))"
-  fi
-  local _padding=$(((_total_width - _title_length) / 2))
+    # Calculate padding to center the title
+    local _title_length=${#_title_text}
+    local _total_width=64
+    if [[ "$_title_length" -gt "$_total_width" ]]; then
+        _total_width=$((_title_length + 4))
+    fi
+    if [[ $((_title_length % 2)) -eq 1 ]]; then
+        _total_width="$((_total_width - 1))"
+    fi
+    local _padding=$(((_total_width - _title_length) / 2))
 
-  log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
-  log_message ---color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-  log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+    log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+    log_message ---color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+    log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
 }
 
 log_header() {
-  local _message="$1"
-  shift
-  log_message ---color 'PURPLE' "<b>$_message</b>" "$@"
+    local _message="$1"
+    shift
+    log_message ---color 'PURPLE' "<b>$_message</b>" "$@"
 }
 
 log_usage_title() {
-  log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$(dirname "$0")/$(basename "$0")" "$*"
+    log_message ---color 'PURPLE' '<b>Usage</b> <code>%s %s</code>' "$(dirname "$0")/$(basename "$0")" "$*"
 }
 
 log_usage_options_line() {
-  local _width=30
-  local POSITIONAL_ARGS=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    ---width)
-      shift
-      _width="$1"
-      ;;
-    *) POSITIONAL_ARGS+=("$1") ;;
-    esac
+    local _width=30
+    local POSITIONAL_ARGS=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        ---width)
+            shift
+            _width="$1"
+            ;;
+        *) POSITIONAL_ARGS+=("$1") ;;
+        esac
+        shift
+    done
+    set -- "${POSITIONAL_ARGS[@]}"
+    local _parameters
+    IFS=';' read -r -a _parameters <<<"$1"
     shift
-  done
-  set -- "${POSITIONAL_ARGS[@]}"
-  local _parameters
-  IFS=';' read -r -a _parameters <<<"$1"
-  shift
 
-  local _padding
-  _padding=$(calculate_real_padding "$_width" "${_parameters[*]}")
-  _padding=$((_padding + 7 * ${#_parameters[@]}))
-  local _options
-  _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>' ', ' "${_parameters[@]}")")"
-  local _message="$1"
-  shift
-  log_message "${_options} ${_message}" "$@"
+    local _padding
+    _padding=$(calculate_real_padding "$_width" "${_parameters[*]}")
+    _padding=$((_padding + 7 * ${#_parameters[@]}))
+    local _options
+    _options="$(printf '  %-*s' "$_padding" "$(array_to_string '<b>%s</b>' ', ' "${_parameters[@]}")")"
+    local _message="$1"
+    shift
+    log_message "${_options} ${_message}" "$@"
 }
 
 calculate_real_padding() {
-  local _width="$1"
-  local _text="$2"
-  local _raw_bytes
-  _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
-  local _text_bytes
-  _text_bytes="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
-  local _text_chars
-  _text_chars="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -m | tr -d ' ')"
-  local _padding=$((_width + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-  echo "$_padding"
+    local _width="$1"
+    local _text="$2"
+    local _raw_bytes
+    _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
+    local _text_bytes
+    _text_bytes="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
+    local _text_chars
+    _text_chars="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -m | tr -d ' ')"
+    local _padding=$((_width + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
+    echo "$_padding"
 }
 
 log_usage_example_line() {
-  log_message ---color 'CYAN' ---icon ' $' '<code>%s %s</code>' "$(dirname "$0")/$(basename "$0")" "$*"
+    log_message ---color 'CYAN' ---icon ' $' '<code>%s %s</code>' "$(dirname "$0")/$(basename "$0")" "$*"
 }
 
 # Die with error message
 die() {
-  local _error_code="$1"
-  shift
-  log_error "$@"
-  exit "$_error_code"
+    local _error_code="$1"
+    shift
+    log_error "$@"
+    exit "$_error_code"
 }
 
 ##----Loading animation------------------------------------------------------------------------------------------------------------
@@ -341,75 +376,75 @@ loading_animation_pid=""
 loading_animation_message=""
 
 loading_animation_loop() {
-  local _exit_code=0
-  local _exit_trap=0
-  local _status=""
-  local _countdown=""
-  local POSITIONAL_ARGS=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    ---message)
-      shift
-      loading_animation_message="$1"
-      ;;
-    ---time)
-      shift
-      _countdown="$1"
-      ;;
-    ---exit-code)
-      shift
-      _exit_code="$1"
-      ;;
-    ---status)
-      shift
-      _status="$1"
-      ;;
-    ---trap) _exit_trap=1 ;;
-    *) POSITIONAL_ARGS+=("$1") ;;
-    esac
-    shift
-  done
-  set -- "${POSITIONAL_ARGS[@]}"
-  if [[ -n "$loading_animation_pid" ]]; then
-    kill "$loading_animation_pid" 2>/dev/null || true
-    wait "$loading_animation_pid" 2>/dev/null || true
-    printf "\r%100s\r$(styler reset)" ""
-    if [[ "$loading_animation_message" != "" ]]; then
-      if [[ "$_exit_code" -gt "0" ]]; then
-        log_error ---status "$_status" "$loading_animation_message" "$@"
-      elif [[ "$_exit_code" -lt "0" ]]; then
-        log_warning ---status "$_status" "$loading_animation_message" "$@"
-      else
-        log_success ---status "$_status" "$loading_animation_message" "$@"
-      fi
-      loading_animation_pid=""
-      loading_animation_message=""
+    local _exit_code=0
+    local _exit_trap=0
+    local _status=""
+    local _countdown=""
+    local POSITIONAL_ARGS=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        ---message)
+            shift
+            loading_animation_message="$1"
+            ;;
+        ---time)
+            shift
+            _countdown="$1"
+            ;;
+        ---exit-code)
+            shift
+            _exit_code="$1"
+            ;;
+        ---status)
+            shift
+            _status="$1"
+            ;;
+        ---trap) _exit_trap=1 ;;
+        *) POSITIONAL_ARGS+=("$1") ;;
+        esac
+        shift
+    done
+    set -- "${POSITIONAL_ARGS[@]}"
+    if [[ -n "$loading_animation_pid" ]]; then
+        kill "$loading_animation_pid" 2>/dev/null || true
+        wait "$loading_animation_pid" 2>/dev/null || true
+        printf "\r%100s\r$(styler reset)" ""
+        if [[ "$loading_animation_message" != "" ]]; then
+            if [[ "$_exit_code" -gt "0" ]]; then
+                log_error ---status "$_status" "$loading_animation_message" "$@"
+            elif [[ "$_exit_code" -lt "0" ]]; then
+                log_warning ---status "$_status" "$loading_animation_message" "$@"
+            else
+                log_success ---status "$_status" "$loading_animation_message" "$@"
+            fi
+            loading_animation_pid=""
+            loading_animation_message=""
+        fi
+    elif [[ "$_exit_trap" -eq "0" ]]; then
+        (
+            _step=0
+            while true; do
+                for _frame in "${LOADING_ANIMATION[@]}"; do
+                    if [[ -n "$loading_animation_message" ]]; then
+                        log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message" 2>/dev/null || break
+                        sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
+                    else
+                        log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" 2>/dev/null | bc -z 2>/dev/null || echo "$_countdown")" 2>/dev/null || break
+                        sleep "1"
+                    fi
+                    _step="$((_step + 1))"
+                    printf "\r" 2>/dev/null || break
+                done
+            done
+        ) &
+        loading_animation_pid=$!
     fi
-  elif [[ "$_exit_trap" -eq "0" ]]; then
-    (
-      _step=0
-      while true; do
-        for _frame in "${LOADING_ANIMATION[@]}"; do
-          if [[ -n "$loading_animation_message" ]]; then
-            log_message ---color 'CYAN' ---one-line ---icon "$_frame" "$loading_animation_message" 2>/dev/null || break
-            sleep "$LOADING_ANIMATION_FRAME_INTERVAL"
-          else
-            log_message ---color 'CYAN' ---one-line 'waiting %s' "$(echo "$_countdown - $_step" 2>/dev/null | bc -z 2>/dev/null || echo "$_countdown")" 2>/dev/null || break
-            sleep "1"
-          fi
-          _step="$((_step + 1))"
-          printf "\r" 2>/dev/null || break
-        done
-      done
-    ) &
-    loading_animation_pid=$!
-  fi
 }
 
 wait_moment() {
-  loading_animation_loop ---time "$LOADING_ANIMATION_RETRY_INTERVAL"
-  sleep "$LOADING_ANIMATION_RETRY_INTERVAL"
-  loading_animation_loop ---exit-code 0
+    loading_animation_loop ---time "$LOADING_ANIMATION_RETRY_INTERVAL"
+    sleep "$LOADING_ANIMATION_RETRY_INTERVAL"
+    loading_animation_loop ---exit-code 0
 }
 
 trap "loading_animation_loop ---trap;exit" SIGINT
@@ -418,184 +453,184 @@ trap "loading_animation_loop ---trap;exit" EXIT
 ##----IO------------------------------------------------------------------------------------------------------------
 
 prompt_input() {
-  # prepare
-  local _var_name="$1"
-  shift
-  local _prompt_text="$1"
-  shift
-  local _default_value="${1:-}"
-  shift
-  local _prompt_length="${1:-}"
-  shift
-  local _message
-  if [[ "$#" -gt "0" ]]; then
-    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
-  else
-    _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s: " "$_prompt_text")"
-  fi
+    # prepare
+    local _var_name="$1"
+    shift
+    local _prompt_text="$1"
+    shift
+    local _default_value="${1:-}"
+    shift
+    local _prompt_length="${1:-}"
+    shift
+    local _message
+    if [[ "$#" -gt "0" ]]; then
+        _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s [%s]: " "$_prompt_text" "$(array_to_string '<b>%s</b>' ',' "$@")")"
+    else
+        _message="$(log_message ---color "YELLOW" ---icon "$ICON_PROMPT" ---one-line "%s: " "$_prompt_text")"
+    fi
 
-  # get
-  local _value
-  if [[ "$_prompt_length" -gt "0" ]]; then
-    read -r -n "$_prompt_length" -p "$_message" -e -i "$_default_value" _value
-  else
-    read -r -p "$_message" -e -i "$_default_value" _value
-  fi
-  if [[ -z "$_value" ]]; then
-    _value="$_default_value"
-  fi
+    # get
+    local _value
+    if [[ "$_prompt_length" -gt "0" ]]; then
+        read -r -n "$_prompt_length" -p "$_message" -e -i "$_default_value" _value
+    else
+        read -r -p "$_message" -e -i "$_default_value" _value
+    fi
+    if [[ -z "$_value" ]]; then
+        _value="$_default_value"
+    fi
 
-  # set
-  eval "$_var_name=\"$_value\""
+    # set
+    eval "$_var_name=\"$_value\""
 }
 
 confirm_or_exit() {
-  local _message="$1"
-  local _default_value="${2:-}"
-  local _response="z"
+    local _message="$1"
+    local _default_value="${2:-}"
+    local _response="z"
 
-  while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
-    prompt_input _response "$_message" "$_default_value" 1 "Y" "y" "N" "n"
-    [[ "$_response" =~ ^[Yy]?$ ]] && break
-    [[ "$_response" =~ ^[Nn]?$ ]] && exit 0
-    log_warning 'Invalid option selected'
-  done
+    while [[ ! "$_response" =~ ^[YyNn]?$ ]]; do
+        prompt_input _response "$_message" "$_default_value" 1 "Y" "y" "N" "n"
+        [[ "$_response" =~ ^[Yy]?$ ]] && break
+        [[ "$_response" =~ ^[Nn]?$ ]] && exit 0
+        log_warning 'Invalid option selected'
+    done
 }
 
 ##----Convert------------------------------------------------------------------------------------------------------------
 
 array_to_string() {
-  local _pattern="$1"
-  shift
-  local _delimiter="$1"
-  shift
-  local _parameters_list
-  # shellcheck disable=SC2059
-  _parameters_list="$(printf "${_pattern}${_delimiter}" "$@")"
-  echo -n "${_parameters_list::-${#_delimiter}}"
+    local _pattern="$1"
+    shift
+    local _delimiter="$1"
+    shift
+    local _parameters_list
+    # shellcheck disable=SC2059
+    _parameters_list="$(printf "${_pattern}${_delimiter}" "$@")"
+    echo -n "${_parameters_list::-${#_delimiter}}"
 }
 
 ##----Checking------------------------------------------------------------------------------------------------------------
 
 # Check if command exists
 command_exists() {
-  command -v "$1" >/dev/null 2>&1
+    command -v "$1" >/dev/null 2>&1
 }
 
 check_dependencies() {
-  local _deps=("$@")
-  local _missing_deps=()
-  local _missing_items
+    local _deps=("$@")
+    local _missing_deps=()
+    local _missing_items
 
-  for dep in "${_deps[@]}"; do
-    if ! command_exists "$dep"; then
-      _missing_deps+=("$dep")
+    for dep in "${_deps[@]}"; do
+        if ! command_exists "$dep"; then
+            _missing_deps+=("$dep")
+        fi
+    done
+
+    if [[ ${#_missing_deps[@]} -gt 0 ]]; then
+        _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
+        die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
     fi
-  done
-
-  if [[ ${#_missing_deps[@]} -gt 0 ]]; then
-    _missing_items="$(printf '<b>%s</b>, ' "${_missing_deps[@]}")"
-    die 13 'Missing dependencies: %s. Please install them and try again.' "${_missing_items::-2}"
-  fi
 }
 
 check_variables() {
-  local _vars=("$@")
-  local _missing_vars=()
-  local _missing_items
+    local _vars=("$@")
+    local _missing_vars=()
+    local _missing_items
 
-  for var in "${_vars[@]}"; do
-    eval "local _value=\$$var"
-    if [[ -z "$_value" ]]; then
-      _missing_vars+=("$var")
+    for var in "${_vars[@]}"; do
+        eval "local _value=\$$var"
+        if [[ -z "$_value" ]] || [[ "$_value" == "" ]]; then
+            _missing_vars+=("$var")
+        fi
+    done
+
+    if [[ ${#_missing_vars[@]} -gt 0 ]]; then
+        _missing_items="$(printf '<b>%s</b>, ' "${_missing_vars[@]}")"
+        die 13 'Missing required variables: %s' "${_missing_items::-2}"
     fi
-  done
-
-  if [[ ${#_missing_vars[@]} -gt 0 ]]; then
-    _missing_items="$(printf '<b>%s</b>, ' "${_missing_vars[@]}")"
-    die 13 'Missing required variables: %s' "${_missing_items::-2}"
-  fi
 }
 
 ##----Validation------------------------------------------------------------------------------------------------------------
 
 # Validate URL format
 validate_url() {
-  local _url="$1"
-  if [[ ! "$_url" =~ ^https?:// ]]; then
-    log_error 'Invalid URL format: <u>%s</u>. It must start with <b>http://</b> or <b>https://</b>' "$_url"
-    return 1
-  fi
-  return 0
+    local _url="$1"
+    if [[ ! "$_url" =~ ^https?:// ]]; then
+        log_error 'Invalid URL format: <u>%s</u>. It must start with <b>http://</b> or <b>https://</b>' "$_url"
+        return 1
+    fi
+    return 0
 }
 
 # Validate domain format
 validate_domain() {
-  local _domain="$1"
-  if [[ -z "$_domain" ]]; then
-    log_error 'Domain name cannot be empty'
-    return 1
-  fi
-  if [[ ! "$_domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
-    log_error 'Invalid domain name format: <u>%s</u>' "$_domain"
-    return 1
-  fi
-  return 0
+    local _domain="$1"
+    if [[ -z "$_domain" ]]; then
+        log_error 'Domain name cannot be empty'
+        return 1
+    fi
+    if [[ ! "$_domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+        log_error 'Invalid domain name format: <u>%s</u>' "$_domain"
+        return 1
+    fi
+    return 0
 }
 
 # Validate WordPress directory
 validate_wp_directory() {
-  local _wp_dir="$1"
-  if [[ ! -d "$_wp_dir" ]]; then
-    log_error 'WordPress directory does not exist: <u>%s</u>' "$_wp_dir"
-    return 1
-  fi
-  if [[ ! -f "$_wp_dir/wp-config.php" ]]; then
-    log_error 'Given directory is not a valid WordPress installation: <u>%s</u>. It must contain <u>%s</u> file.' "$_wp_dir" "wp-config.php"
-    return 1
-  fi
-  return 0
+    local _wp_dir="$1"
+    if [[ ! -d "$_wp_dir" ]]; then
+        log_error 'WordPress directory does not exist: <u>%s</u>' "$_wp_dir"
+        return 1
+    fi
+    if [[ ! -f "$_wp_dir/wp-config.php" ]]; then
+        log_error 'Given directory is not a valid WordPress installation: <u>%s</u>. It must contain <u>%s</u> file.' "$_wp_dir" "wp-config.php"
+        return 1
+    fi
+    return 0
 }
 
 # Validate directory exists
 validate_directory() {
-  local _dir="$1"
-  if [[ ! -d "$_dir" ]]; then
-    log_error 'Directory does not exist: <u>%s</u>' "$_dir"
-    return 1
-  fi
-  return 0
+    local _dir="$1"
+    if [[ ! -d "$_dir" ]]; then
+        log_error 'Directory does not exist: <u>%s</u>' "$_dir"
+        return 1
+    fi
+    return 0
 }
 
 # Validate file exists
 validate_file() {
-  local _file="$1"
-  if [[ ! -f "$_file" ]]; then
-    log_error 'File does not exist: <u>%s</u>' "$_file"
-    return 1
-  fi
-  return 0
+    local _file="$1"
+    if [[ ! -f "$_file" ]]; then
+        log_error 'File does not exist: <u>%s</u>' "$_file"
+        return 1
+    fi
+    return 0
 }
 
 # Validate positive number
 validate_positive_number() {
-  local _num="$1"
-  local _name="${2:-number}"
+    local _num="$1"
+    local _name="${2:-number}"
 
-  if ! [[ "$_num" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (($(echo "$_num <= 0" | bc -l))); then
-    log_error '%s must be a positive number' "$_name"
-    return 1
-  fi
-  return 0
+    if ! [[ "$_num" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (($(echo "$_num <= 0" | bc -l))); then
+        log_error '%s must be a positive number' "$_name"
+        return 1
+    fi
+    return 0
 }
 
 update_application() {
-  local _source_url
-  _source_url="https://raw.githubusercontent.com/Flower7C3/bash-tools/master/$(basename "$0")"
-  log_info 'Downloading new app version from <b>%s</b>' "$_source_url"
-  if curl "$_source_url" >"$(dirname "$0")/$(basename "$0")"; then
-    exit
-  else
-    exit 1
-  fi
+    local _source_url
+    _source_url="https://raw.githubusercontent.com/Flower7C3/bash-tools/master/$(basename "$0")"
+    log_info 'Downloading new app version from <b>%s</b>' "$_source_url"
+    if curl "$_source_url" >"$(dirname "$0")/$(basename "$0")"; then
+        exit
+    else
+        exit 1
+    fi
 }
