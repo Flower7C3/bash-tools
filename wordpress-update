@@ -46,7 +46,7 @@ wordpress_main() {
       'Skip git operations'
     log_usage_options_line '-n;--dry-run' \
       'Show what would be done without making changes'
-    log_usage_options_line '-f;--force' \
+    log_usage_options_line '-f;--force;--yolo' \
       'Force update even if version is the same'
     log_usage_options_line '-u;--update' \
       'Update app'
@@ -306,7 +306,7 @@ Issue: $_issue"
         dry_run=1
         shift
         ;;
-      -f | --force)
+      -f | --force | --yolo)
         force=1
         shift
         ;;

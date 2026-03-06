@@ -55,7 +55,7 @@ backup_restore_main() {
         log_usage_options_line '-rds;--restore-database-scope <ZAKRES>' 'Określa zakres danych do przywracania bazy danych'
         log_usage_options_line '-cs;--configure-scope <ZAKRES>' 'Określa zakres danych do aktualizacji konfiguracji'
         log_usage_options_line '-n;--dry-run' 'Symulacja operacji bez wykonywania rzeczywistych zmian'
-        log_usage_options_line '-f;--force' 'Wymusza wykonanie kopii zapasowej nawet bez zmian'
+        log_usage_options_line '-f;--force;--yolo' 'Wymusza wykonanie kopii zapasowej nawet bez zmian'
         log_usage_options_line '-d;--debug' 'Włącza tryb debugowania (pokazuje dodatkowe informacje)'
         log_usage_options_line '-a;--skip-archive' 'Pomija archiwizację plików po wykonaniu kopii zapasowej'
         log_usage_options_line '-h;--help' 'Wyświetla tę pomoc'
@@ -1277,7 +1277,7 @@ Please check the logs for more details."
             -d | --debug)
                 debug="yes"
                 ;;
-            -f | --force)
+            -f | --force | --yolo)
                 force="yes"
                 ;;
             -a | --skip-archive)
