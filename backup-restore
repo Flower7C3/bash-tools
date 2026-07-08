@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Backup and restore tool
-# Usage: ./backup-restore.sh [OPTIONS]
+# Usage: ./backup-restore [OPTIONS]
 
 set -euo pipefail
 
@@ -24,8 +24,6 @@ main() {
 }
 
 backup_restore_main() {
-    log_title 'Backup and Restore Tool'
-
     #-------------------------- Settings --------------------------------
     # Change to script directory and initialize configuration paths
     cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
@@ -41,31 +39,32 @@ backup_restore_main() {
         # Display usage information and available command-line options
         log_usage_title '[OPTIONS]'
         echo
-        echo 'Narzędzie do wykonywania kopii zapasowych i przywracania danych'
+        echo 'Backup and restore tool for files and databases'
         echo
         log_header 'Options'
-        log_usage_options_line '-s;--server <SERVER>' 'Określa serwer z konfiguracji'
-        log_usage_options_line '-i;--install' 'Instalacja narzędzia'
-        log_usage_options_line '-c;--cleanup' 'Czyści stare kopie zapasowe'
-        log_usage_options_line '-te;--test-email' 'Testuje konfigurację powiadomień email'
-        log_usage_options_line '-ls;--list-scopes' 'Pokazuje listę zakresów'
-        log_usage_options_line '-bfs;--backup-files-scope <ZAKRES>' 'Określa zakres danych do archiwizacji plików'
-        log_usage_options_line '-rfs;--restore-files-scope <ZAKRES>' 'Określa zakres danych do przywracania plików'
-        log_usage_options_line '-bds;--backup-database-scope <ZAKRES>' 'Określa zakres danych do archiwizacji bazy danych'
-        log_usage_options_line '-rds;--restore-database-scope <ZAKRES>' 'Określa zakres danych do przywracania bazy danych'
-        log_usage_options_line '-cs;--configure-scope <ZAKRES>' 'Określa zakres danych do aktualizacji konfiguracji'
-        log_usage_options_line '-n;--dry-run' 'Symulacja operacji bez wykonywania rzeczywistych zmian'
-        log_usage_options_line '-f;--force;--yolo' 'Wymusza wykonanie kopii zapasowej nawet bez zmian'
-        log_usage_options_line '-d;--debug' 'Włącza tryb debugowania (pokazuje dodatkowe informacje)'
-        log_usage_options_line '-a;--skip-archive' 'Pomija archiwizację plików po wykonaniu kopii zapasowej'
-        log_usage_options_line '-h;--help' 'Wyświetla tę pomoc'
+        log_usage_options_line '-s;--server <SERVER>' 'Select server from configuration'
+        log_usage_options_line '-i;--install' 'Install required tools (yq)'
+        log_usage_options_line '-c;--cleanup' 'Clean up old backups'
+        log_usage_options_line '-te;--test-email' 'Test email notification configuration'
+        log_usage_options_line '-ls;--list-scopes' 'List available scopes'
+        log_usage_options_line '-bfs;--backup-files-scope <SCOPE>' 'Backup files for the given scope'
+        log_usage_options_line '-rfs;--restore-files-scope <SCOPE>' 'Restore files for the given scope'
+        log_usage_options_line '-bds;--backup-database-scope <SCOPE>' 'Backup database for the given scope'
+        log_usage_options_line '-rds;--restore-database-scope <SCOPE>' 'Restore database for the given scope'
+        log_usage_options_line '-cs;--configure-scope <SCOPE>' 'Update configuration for the given scope'
+        log_usage_options_line '-n;--dry-run' 'Simulate operations without making changes'
+        log_usage_options_line '-f;--force;--yolo' 'Force backup even when no changes are detected'
+        log_usage_options_line '-d;--debug' 'Enable debug output'
+        log_usage_options_line '-a;--skip-archive' 'Skip file archiving after backup'
+        log_usage_options_line '-u;--update' 'Update app'
+        log_usage_options_line '-h;--help' 'Show this help message'
         echo
         log_header 'Examples'
-        echo ' Backup plików'
-        log_usage_example_line '--server produkcja --backup-files-scope aplikacja'
-        echo ' Restore bazy danych'
-        log_usage_example_line '--server dev --restore-database-scope baza_danych'
-        echo ' Cleanup z dry-run'
+        echo ' File backup'
+        log_usage_example_line '--server production --backup-files-scope application'
+        echo ' Database restore'
+        log_usage_example_line '--server dev --restore-database-scope database'
+        echo ' Cleanup dry-run'
         log_usage_example_line '--cleanup --dry-run'
         echo ' Test email'
         log_usage_example_line '--test-email'
@@ -168,12 +167,12 @@ backup_restore_main() {
             return 1
         fi
 
-        log_info 'SMTP Host: <b>%s</b>' "$smtp_host"
-        log_info 'SMTP Port: <b>%s</b>' "${smtp_port:-587}"
-        log_info 'SMTP User: <b>%s</b>' "${smtp_user:-not set}"
-        log_info 'From: <b>%s</b>' "${smtp_from:-backup@localhost}"
-        log_info 'To: <b>%s</b>' "$smtp_to"
-        log_info 'Use TLS: <b>%s</b>' "${smtp_use_tls:-no}"
+        log_info ---icon '📧' 'SMTP Host: <b>%s</b>' "$smtp_host"
+        log_info ---icon '🔌' 'SMTP Port: <b>%s</b>' "${smtp_port:-587}"
+        log_info ---icon '👤' 'SMTP User: <b>%s</b>' "${smtp_user:-not set}"
+        log_info ---icon '📤' 'From: <b>%s</b>' "${smtp_from:-backup@localhost}"
+        log_info ---icon '📥' 'To: <b>%s</b>' "$smtp_to"
+        log_info ---icon '🔒' 'Use TLS: <b>%s</b>' "${smtp_use_tls:-no}"
 
         # Check for available email tools (sendmail, mail, or curl)
         local _email_tool=""
@@ -205,11 +204,11 @@ Test details:
 
 This is an automated test message."
 
-        log_info 'Sending test email to <b>%s</b>...' "$smtp_to"
+        log_info ---icon '✉️' 'Sending test email to <b>%s</b>...' "$smtp_to"
 
         if send_email_notification "$_test_subject" "$_test_message" "TEST"; then
-            log_success 'Test email sent successfully!'
-            log_info 'Please check your inbox at <b>%s</b>' "$smtp_to"
+            log_success ---icon '✉️' 'Test email sent successfully!'
+            log_info ---icon '📥' 'Please check your inbox at <b>%s</b>' "$smtp_to"
             return 0
         else
             log_error 'Failed to send test email'
@@ -499,9 +498,9 @@ Please check the logs for more details."
 
         printf "\n"
         if [[ "$dry_run" == "yes" ]]; then
-            log_success 'Cleanup simulation completed (<b>DRY-RUN MODE</b> - no files were deleted)'
+            log_success ---icon '🗑' 'Cleanup simulation completed (<b>DRY-RUN MODE</b> - no files were deleted)'
         else
-            log_success 'Cleanup completed successfully'
+            log_success ---icon '🗑' 'Cleanup completed successfully'
         fi
     }
 
@@ -760,7 +759,7 @@ Please check the logs for more details."
     function install_yq() {
         # Download and install yq tool from GitHub releases
         # yq is required for reading YAML configuration files
-        log_info 'Installing yq tool...'
+        log_info ---icon '📦' 'Installing yq tool...'
         # shellcheck disable=SC2207
         local urls
         read -r -a urls <<<"$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | sed 's/[()",{}]/ /g; s/ /\n/g' | grep "https.*releases/.*yq_linux_386")"
@@ -776,7 +775,7 @@ Please check the logs for more details."
             log_error 'Failed to make yq executable'
             return 1
         fi
-        log_success 'yq installed successfully'
+        log_success ---icon '✨' 'yq installed successfully'
     }
 
     #-------------------------- List Functions --------------------------------
@@ -831,7 +830,7 @@ Please check the logs for more details."
         fi
 
         _merge_server_and_scope_variables
-        log_success "All ok"
+        log_success ---icon '✓' "All ok"
     }
 
     function _merge_server_and_scope_variables() {
@@ -937,11 +936,11 @@ Please check the logs for more details."
 
             if [[ "$_has_changes" == "" ]]; then
                 # No changes detected, just rename existing archive
-                log_success 'No new changes in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
+                log_success ---icon '💾' 'No new changes in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
                 mode="rename"
             else
                 # Changes detected, sync files and create new archive
-                log_success 'Found new files in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
+                log_success ---icon '📁' 'Found new files in <b>%s</b>' "${ssh_host_name}:${ssh_home_path}${ssh_sync_path}"
                 # shellcheck disable=SC2048
                 # shellcheck disable=SC2086
                 if ! rsync \
@@ -1061,12 +1060,12 @@ Please check the logs for more details."
         log_header 'Backup database: <b>%s:%s/%s</b> → <b>%s</b>' "$remote_db_host" "$remote_db_port" "$remote_db_name" "${local_databases_path}${current_export_file_name}"
         mkdir -p "${local_databases_path}"
         if [[ -f "${local_databases_path}${current_export_file_name}" && "$force" == "no" ]]; then
-            log_success 'Already backed up!'
+            log_success ---icon '💾' 'Already backed up!'
         else
             if [[ "$dry_run" == "yes" ]]; then
-                log_info 'Would create new backup'
+                log_info ---icon '💾' 'Would create new backup'
             else
-                log_info 'Creating new backup'
+                log_info ---icon '💾' 'Creating new backup'
                 save_log_start "database" "backup" "$remote_db_host:$remote_db_port/$remote_db_name" "$current_export_file_name"
                 # Execute mysqldump on remote server via SSH and compress with gzip
                 # shellcheck disable=SC2154
@@ -1283,9 +1282,11 @@ Please check the logs for more details."
             -a | --skip-archive)
                 skip_archive="yes"
                 ;;
+            -u | --update)
+                update_application
+                ;;
             -h | --help)
                 display_help
-                exit
                 ;;
             *) POSITIONAL_ARGS+=("$1") ;;
             esac
@@ -1298,6 +1299,12 @@ Please check the logs for more details."
     # Parse arguments, initialize paths, and execute the requested action
 
     parse_arguments "$@"
+
+    if [[ -z "$action" ]]; then
+        handle_error "No action specified! Run <code>$0 --help</code> to see available options."
+    fi
+
+    log_title 'Backup and Restore Tool'
 
     # Initialize local paths from configuration
     local_home_path="$(pwd)/"

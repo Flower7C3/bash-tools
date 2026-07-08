@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # HTTP status code and redirect checker
-# Usage: ./url-status-check [OPTIONS] <URLs...>
+# Usage: ./check-url [OPTIONS] <URLs...>
 
 set -euo pipefail
 
@@ -38,7 +38,7 @@ url_main() {
       'Maximum number of redirects to follow (default: %s)' "$DEFAULT_MAX_REDIRECTS"
     log_usage_options_line '-t;--timeout <SECONDS>' \
       'Request timeout (default: %s)' "$DEFAULT_TIMEOUT"
-    log_usage_options_line '-u;--user-agent <STRING>' \
+    log_usage_options_line '-a;--user-agent <STRING>' \
       'User agent string (default: Mozilla/5.0...)'
     log_usage_options_line '-m;--method <METHOD>' \
       'HTTP method (default: GET)'
@@ -174,13 +174,13 @@ EOF
         _status_note="$(printf '%s, %d redirects' "$_status_note" "$_redirect_count")"
       fi
       if [[ "$_response_code" -lt 300 ]]; then
-        log_success ---width 80 '%s' "$_message" ---status "$_status_note"
+        log_success ---icon '✓' ---width 80 '%s' "$_message" ---status "$_status_note"
       elif [[ "$_response_code" -lt 400 ]]; then
-        log_warning ---width 80 '%s' "$_message" ---status "$_status_note"
+        log_warning ---icon '↪' ---width 80 '%s' "$_message" ---status "$_status_note"
       elif [[ "$_response_code" -lt 500 ]]; then
-        log_error ---width 80 '%s' "$_message" ---status "$_status_note"
+        log_error ---icon '✗' ---width 80 '%s' "$_message" ---status "$_status_note"
       else
-        log_info ---width 80 '%s' "$_message" ---status "$_status_note"
+        log_info ---icon '⛔' ---width 80 '%s' "$_message" ---status "$_status_note"
       fi
       ;;
     esac
@@ -356,19 +356,16 @@ EOF
     done
   }
 
-  log_title 'URL status check'
-
-  # Check if curl is available
   check_dependencies curl
 
-  # If no arguments provided, show usage
   if [[ $# -eq 0 ]]; then
     log_error 'No URLs provided'
     show_usage
   fi
 
-  # Parse arguments
   parse_arguments "$@"
+
+  log_title 'URL Status Check'
 }
 
 # Run main function

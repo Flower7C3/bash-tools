@@ -125,12 +125,12 @@ wallpaper_crop_main() {
     done
   }
 
-  log_title 'WALLPAPER CROPPER'
   parse_arguments "$@"
-  # Validate system requirements
   if ! validate_system_requirements; then
     exit 1
   fi
+
+  log_title 'Wallpaper Cropper'
 
   # Continue with the rest of the script logic...
   run_wallpaper_crop "$source_image" "$external_inches" "$builtin_inches" "$crop_position"

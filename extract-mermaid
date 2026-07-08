@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+
+# Export ```mermaid blocks from Markdown to SVG or PNG.
+# Usage: ./extract-mermaid <file.md> [options]
+
+set -euo pipefail
+
+main() {
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # shellcheck source=common-functions
+  source "$(dirname "$0")/common-functions"
+  export_mermaid_main "$@"
+}
+
+export_mermaid_main() {
+  local INPUT="" OUT="" FORMAT="svg" WIDTH="" HEIGHT="" SCALE="" PREFIX="" DRY_RUN=0 JOBS=""
+  local -a _MMDC_CMD=()
+
+  show_usage() {
+    local exit_code="${1:-0}"
+    log_usage_title '<file.md> [options]'
+    echo
+    echo 'Export Mermaid diagrams from Markdown files'
+    echo
+    log_header 'Options'
+    log_usage_options_line '--out;-o <dir>' \
+      'Output directory (default: <file>-diagrams/ next to source)'
+    log_usage_options_line '--format;-f <svg|png>' \
+      'Output format (default: svg)'
+    log_usage_options_line '--width;-w <px>' \
+      'Render viewport width (default: 800)'
+    log_usage_options_line '--height;-H <px>' \
+      'Render viewport height (default: 600; mermaid fits content)'
+    log_usage_options_line '--scale;-s <n>' \
+      'Puppeteer scale for PNG (default: 1; e.g. 2 = retina)'
+    log_usage_options_line '--jobs;-j <n>' \
+      'Parallel render jobs (default: half of available CPUs)'
+    log_usage_options_line '--prefix <text>' \
+      'Filename prefix'
+    log_usage_options_line '--dry-run' \
+      'Show what would be exported without rendering'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    echo 'Output filenames come from the nearest heading above each mermaid block'
+    echo '(e.g. "## 2. Architecture" → architecture.svg). Duplicates get a numeric suffix.'
+    echo 'Requires: npx @mermaid-js/mermaid-cli (auto-downloaded on first run).'
+    echo
+    log_header 'Examples'
+    log_usage_example_line 'docs/frontend-cache.md'
+    log_usage_example_line 'docs/frontend-cache.md --format png --width 1600'
+    log_usage_example_line 'docs/frontend-cache.md --jobs 4 --dry-run'
+    exit "$exit_code"
+  }
+
+  default_jobs() {
+    local cpus
+    cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+    echo $((cpus > 1 ? cpus / 2 : 1))
+  }
+
+  parse_positive_int() {
+    local raw="$1" label="$2"
+    if [[ ! "$raw" =~ ^[1-9][0-9]*$ ]]; then
+      die 1 '%s must be a positive integer (px), got: %s' "$label" "$raw"
+    fi
+    echo "$raw"
+  }
+
+  parse_positive_number() {
+    local raw="$1" label="$2"
+    if ! awk -v v="$raw" 'BEGIN { exit !(v+0 > 0 && v == v+0) }'; then
+      die 1 '%s must be a positive number, got: %s' "$label" "$raw"
+    fi
+    echo "$raw"
+  }
+
+  init_mmdc() {
+    [[ ${#_MMDC_CMD[@]} -gt 0 ]] && return 0
+
+    if command -v mmdc &>/dev/null; then
+      _MMDC_CMD=(mmdc)
+      return 0
+    fi
+
+    log_info ---icon '📦' 'Preparing Mermaid CLI (first run may download packages)...'
+    if ! npx -y @mermaid-js/mermaid-cli --version &>/dev/null; then
+      die 1 'Failed to run @mermaid-js/mermaid-cli'
+    fi
+
+    local npm_cache candidate
+    npm_cache="${NPM_CONFIG_CACHE:-${npm_config_cache:-$HOME/.npm}}"
+    while IFS= read -r candidate; do
+      if [[ -x "$candidate" ]]; then
+        _MMDC_CMD=("$candidate")
+        return 0
+      fi
+    done < <(find "$npm_cache/_npx" -path '*/node_modules/.bin/mmdc' -type f 2>/dev/null | sort -r)
+
+    _MMDC_CMD=(npx -y @mermaid-js/mermaid-cli)
+  }
+
+  render_diagram() {
+    local source_path="$1" output_path="$2"
+    local -a args=(-i "$source_path" -o "$output_path" -b transparent -q)
+
+    [[ "$FORMAT" == png ]] && args+=(-e png)
+    [[ -n "$WIDTH" ]] && args+=(-w "$WIDTH")
+    [[ -n "$HEIGHT" ]] && args+=(-H "$HEIGHT")
+    [[ -n "$SCALE" ]] && args+=(-s "$SCALE")
+
+    local stderr_file
+    stderr_file=$(mktemp)
+    if ! "${_MMDC_CMD[@]}" "${args[@]}" 2>"$stderr_file"; then
+      local err
+      err=$(<"$stderr_file")
+      rm -f "$stderr_file"
+      printf '%s\n' "$err" >&2
+      return 1
+    fi
+    rm -f "$stderr_file"
+  }
+
+  extract_blocks() {
+    local file="$1" work_dir="$2"
+    python3 - "$file" "$work_dir" <<'PY'
+import os
+import re
+import sys
+import unicodedata
+
+def slugify(text: str) -> str:
+    text = re.sub(r"[\U0001F300-\U0001FAFF\U00002600-\U000027BF]", "", text)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")[:80]
+    return text
+
+def main() -> None:
+    md_path, work_dir = sys.argv[1], sys.argv[2]
+    with open(md_path, encoding="utf-8") as handle:
+        lines = handle.readlines()
+
+    last_heading = ""
+    in_mermaid = False
+    current: list[str] = []
+    start_line = 0
+    block_index = 0
+
+    for line_no, raw in enumerate(lines, 1):
+        line = raw.rstrip("\n")
+        heading = re.match(r"^#{1,6}\s+(.+)$", line)
+        if heading:
+            last_heading = slugify(heading.group(1))
+
+        if re.match(r"^```mermaid\s*$", line):
+            in_mermaid = True
+            current = []
+            start_line = line_no
+            continue
+
+        if in_mermaid and re.match(r"^```\s*$", line):
+            in_mermaid = False
+            content = "\n".join(current).strip()
+            if content:
+                block_index += 1
+                path = os.path.join(work_dir, f"block-{block_index}.mmd")
+                with open(path, "w", encoding="utf-8") as out:
+                    out.write(content + "\n")
+                print(f"{block_index}|{start_line}|{last_heading}|{path}")
+            continue
+
+        if in_mermaid:
+            current.append(line)
+
+if __name__ == "__main__":
+    main()
+PY
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -h | --help)
+      show_usage
+      ;;
+    -u | --update)
+      update_application
+      ;;
+    --out | -o)
+      OUT="$2"
+      shift 2
+      ;;
+    --format | -f)
+      FORMAT="$2"
+      if [[ "$FORMAT" != svg && "$FORMAT" != png ]]; then
+        die 1 'Unsupported format: %s. Use svg or png.' "$FORMAT"
+      fi
+      shift 2
+      ;;
+    --width | -w)
+      WIDTH=$(parse_positive_int "$2" "Width")
+      shift 2
+      ;;
+    --height | -H)
+      HEIGHT=$(parse_positive_int "$2" "Height")
+      shift 2
+      ;;
+    --scale | -s)
+      SCALE=$(parse_positive_number "$2" "Scale")
+      shift 2
+      ;;
+    --jobs | -j)
+      JOBS=$(parse_positive_int "$2" "Jobs")
+      shift 2
+      ;;
+    --prefix)
+      PREFIX="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -*)
+      die 1 'Unknown option: %s' "$1"
+      ;;
+    *)
+      if [[ -n "$INPUT" ]]; then
+        die 1 'More than one input file provided: %s' "$1"
+      fi
+      INPUT="$1"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ -z "$INPUT" ]]; then
+    show_usage 1
+  fi
+
+  [[ -z "$JOBS" ]] && JOBS=$(default_jobs)
+
+  local input_path
+  input_path=$(cd "$(dirname "$INPUT")" && pwd)/$(basename "$INPUT")
+
+  if [[ ! -f "$input_path" ]]; then
+    die 1 'File not found: %s' "$input_path"
+  fi
+
+  log_title 'Mermaid Diagram Exporter'
+
+  _MERMAID_WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mermaid-export-XXXXXX")
+  trap 'rm -rf "${_MERMAID_WORK_DIR:-}"' EXIT
+
+  local -a manifest=()
+  while IFS= read -r entry; do
+    manifest+=("$entry")
+  done < <(extract_blocks "$input_path" "$_MERMAID_WORK_DIR")
+
+  if [[ "${#manifest[@]}" -eq 0 ]]; then
+    log_warning ---icon '📄' 'No <code>mermaid</code> blocks found in: <u>%s</u>' "$input_path"
+    return 0
+  fi
+
+  local base_name out_dir
+  base_name=$(basename "$input_path")
+  base_name="${base_name%.*}"
+
+  if [[ -n "$OUT" ]]; then
+    out_dir=$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")
+  else
+    out_dir="$(dirname "$input_path")/${base_name}-diagrams"
+  fi
+
+  declare -A name_counts=()
+  local -a names=()
+  local entry index start_line heading content_file name base count
+  for entry in "${manifest[@]}"; do
+    IFS='|' read -r index start_line heading content_file <<<"$entry"
+    base="$heading"
+    if [[ -z "$base" ]]; then
+      base=$(printf 'diagram-%02d' "$index")
+    fi
+    count=${name_counts[$base]:-0}
+    name_counts[$base]=$((count + 1))
+    if [[ "$count" -eq 0 ]]; then
+      name="${PREFIX}${base}"
+    else
+      name="${PREFIX}${base}-$((count + 1))"
+    fi
+    names+=("$name|$start_line|$content_file")
+  done
+
+  log_info ---icon '📄' 'Source: <u>%s</u>' "$input_path"
+  log_info ---icon '📊' 'Diagrams: <b>%d</b>' "${#manifest[@]}"
+  log_info ---icon '📁' 'Output directory: <u>%s</u>' "$out_dir"
+  log_info ---icon '🖼' 'Format: <b>%s</b>' "$FORMAT"
+  [[ -n "$WIDTH" ]] && log_info ---icon '↔' 'Width: <b>%spx</b>' "$WIDTH"
+  [[ -n "$HEIGHT" ]] && log_info ---icon '↕' 'Height: <b>%spx</b>' "$HEIGHT"
+  [[ -n "$SCALE" ]] && log_info ---icon '🔍' 'Scale: <b>%s</b>' "$SCALE"
+  [[ "$DRY_RUN" -eq 0 ]] && log_info ---icon '⚙' 'Parallel jobs: <b>%d</b>' "$JOBS"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    local i=0
+    for entry in "${names[@]}"; do
+      IFS='|' read -r name start_line _ <<<"$entry"
+      i=$((i + 1))
+      log_info '  [%d] line %d → <code>%s.%s</code>' "$i" "$start_line" "$name" "$FORMAT"
+    done
+    return 0
+  fi
+
+  init_mmdc
+  mkdir -p "$out_dir"
+
+  local -a render_queue=()
+  for entry in "${names[@]}"; do
+    IFS='|' read -r name start_line content_file <<<"$entry"
+    local source_path="$_MERMAID_WORK_DIR/${name}.mmd"
+    cp "$content_file" "$source_path"
+    render_queue+=("$name|$start_line|$source_path|$out_dir/$name.$FORMAT")
+  done
+
+  local active=0 fail_file
+  fail_file="$_MERMAID_WORK_DIR/render-failures.log"
+  : >"$fail_file"
+
+  render_worker() {
+    local name="$1" start_line="$2" source_path="$3" output_path="$4"
+    if ! render_diagram "$source_path" "$output_path"; then
+      {
+        printf '%s\n' "$name"
+      } >>"$fail_file"
+      return 1
+    fi
+    log_success ---icon '🖼' '<code>%s</code> (line %d)' "$(basename "$output_path")" "$start_line"
+  }
+
+  for item in "${render_queue[@]}"; do
+    IFS='|' read -r name start_line source_path output_path <<<"$item"
+    while [[ "$active" -ge "$JOBS" ]]; do
+      if ! wait -n; then
+        die 1 'One or more diagrams failed to render'
+      fi
+      active=$((active - 1))
+    done
+    render_worker "$name" "$start_line" "$source_path" "$output_path" &
+    active=$((active + 1))
+  done
+
+  while [[ "$active" -gt 0 ]]; do
+    if ! wait -n; then
+      die 1 'One or more diagrams failed to render'
+    fi
+    active=$((active - 1))
+  done
+
+  if [[ -s "$fail_file" ]]; then
+    die 1 'One or more diagrams failed to render'
+  fi
+
+  log_success ---icon '✨' 'Done: <u>%s</u>' "$out_dir"
+}
+
+main "$@"

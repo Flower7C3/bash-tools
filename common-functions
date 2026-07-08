@@ -114,6 +114,64 @@ readonly ICON_ERROR='✗︎'
 readonly ICON_DEBUG='⌗'
 readonly ICON_PROMPT='✏︎'
 
+# Cached escape sequences (avoid repeated tput/subshell overhead per log line)
+_STYLE_BOLD=$(_tput_safe bold)
+_STYLE_RESET=$(_tput_safe sgr0)
+_STYLE_SMUL=$(_tput_safe smul)
+_STYLE_RMUL=$(_tput_safe rmul)
+_BG_CYAN=$(_tput_safe setab 6)
+_COLOR_BLACK=$(_tput_safe setaf 0)
+_COLOR_CYAN=$(_tput_safe setaf 6)
+_COLOR_GREEN=$(_tput_safe setaf 2)
+_COLOR_BLUE=$(_tput_safe setaf 4)
+_COLOR_RED=$(_tput_safe setaf 1)
+_COLOR_PURPLE=$(_tput_safe setaf 5)
+_COLOR_WHITE=$(_tput_safe setaf 7)
+_COLOR_YELLOW=$(_tput_safe setaf 3)
+
+_log_color_code() {
+    case "$1" in
+    BLACK) _tput_safe setaf 0 ;;
+    RED) _tput_safe setaf 1 ;;
+    GREEN) _tput_safe setaf 2 ;;
+    YELLOW) _tput_safe setaf 3 ;;
+    BLUE) _tput_safe setaf 4 ;;
+    PURPLE) _tput_safe setaf 5 ;;
+    CYAN) _tput_safe setaf 6 ;;
+    WHITE) _tput_safe setaf 7 ;;
+    *) echo "" ;;
+    esac
+}
+
+_log_apply_format() {
+    local _style="$1"
+    local _color_value="$2"
+    local _pattern="$3"
+    shift 3
+    local _text
+    # shellcheck disable=SC2059
+    printf -v _text -- "$_pattern" "$@"
+    case "$_style" in
+    mail | email)
+        _text=${_text//<b>/\**}
+        _text=${_text//<\/b>/\**}
+        _text=${_text//<u>/__}
+        _text=${_text//<\/u>/__}
+        _text=${_text//<code>/<<}
+        _text=${_text//<\/code>/>>}
+        ;;
+    *)
+        _text=${_text//<b>/$_STYLE_BOLD$_color_value}
+        _text=${_text//<\/b>/$_STYLE_RESET$_color_value}
+        _text=${_text//<u>/$_STYLE_SMUL$_color_value}
+        _text=${_text//<\/u>/$_STYLE_RMUL$_color_value}
+        _text=${_text//<code>/$_STYLE_RESET$_BG_CYAN$_COLOR_BLACK}
+        _text=${_text//<\/code>/$_STYLE_RESET$_color_value}
+        ;;
+    esac
+    REPLY="$_text"
+}
+
 readonly LOADING_ANIMATION=("⠇" "⠋" "⠙" "⠸" "⠴" "⠦")
 readonly LOADING_ANIMATION_FRAME_INTERVAL=0.15
 readonly LOADING_ANIMATION_RETRY_INTERVAL=5
@@ -135,50 +193,29 @@ loading_spinner() {
 ##----Display line------------------------------------------------------------------------------------------------------------
 
 log_message() {
-    function _text_format() {
-        local _style="$1"
-        shift
-        local _color_value="$1"
-        shift
-        local _pattern="$1"
-        shift
-        local _text
-        # shellcheck disable=SC2059
-        _text=$(printf -- "$_pattern" "$@")
-        case "$_style" in
-        mail | email)
-            _text=${_text//<b>/\**}
-            _text=${_text//<\/b>/\**}
-            _text=${_text//<u>/__}
-            _text=${_text//<\/u>/__}
-            _text=${_text//<code>/<<}
-            _text=${_text//<\/code>/>>}
-            ;;
-        *)
-            _text=${_text//<b>/$(_tput_safe bold)${_color_value}}
-            _text=${_text//<\/b>/$(styler reset)${_color_value}}
-            _text=${_text//<u>/$(_tput_safe smul)${_color_value}}
-            _text=${_text//<\/u>/$(_tput_safe rmul)${_color_value}}
-            _text=${_text//<code>/$(styler reset)$(styler bg 'CYAN')$(styler text 'BLACK')}
-            _text=${_text//<\/code>/$(styler reset)${_color_value}}
-            ;;
-        esac
-        echo -e "$_text"
-    }
     local _color_value=""
     local _icon=""
     local _style="shell"
     local _width=64
     local _line_prepend=""
-    local _line_append="\n"
-    local _text
+    local _line_append=$'\n'
+    local _text=""
     local _status=""
     local POSITIONAL_ARGS=()
     while [[ $# -gt 0 ]]; do
         case "$1" in
         ---color)
             shift
-            _color_value="$(styler text "$1")"
+            case "$1" in
+            CYAN) _color_value="$_COLOR_CYAN" ;;
+            GREEN) _color_value="$_COLOR_GREEN" ;;
+            BLUE) _color_value="$_COLOR_BLUE" ;;
+            RED) _color_value="$_COLOR_RED" ;;
+            PURPLE) _color_value="$_COLOR_PURPLE" ;;
+            WHITE) _color_value="$_COLOR_WHITE" ;;
+            YELLOW) _color_value="$_COLOR_YELLOW" ;;
+            *) _color_value="$(_log_color_code "$1")" ;;
+            esac
             ;;
         ---style)
             shift
@@ -200,10 +237,10 @@ log_message() {
             _line_prepend="$_line_prepend$1"
             ;;
         ---bell)
-            _line_prepend="$_line_prepend\a"
+            _line_prepend="$_line_prepend"$'\a'
             ;;
         ---reset)
-            _line_prepend="\r$_line_prepend"
+            _line_prepend=$'\r'"$_line_prepend"
             ;;
         ---one-line)
             _line_append=""
@@ -217,21 +254,23 @@ log_message() {
         shift
     done
     set -- "${POSITIONAL_ARGS[@]}"
-    # shellcheck disable=SC2059
-    _text="$(_text_format "$_style" "$_color_value" "$@")"
+    _log_apply_format "$_style" "$_color_value" "$@"
+    _text="$REPLY"
 
     if [[ -n "$_icon" ]]; then
-        _text="$(_text_format "$_style" "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text")"
+        _log_apply_format "$_style" "$_color_value" ' <b>%s</b> %s' "$_icon" "$_text"
+        _text="$REPLY"
     fi
     if [[ -n "$_status" ]]; then
-        _text="$(_text_format "$_style" "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding "$_width" "$_text")" "$_text" "$_status")"
+        _log_apply_format "$_style" "$_color_value" '%-*s [<b>%s</b>]' "$(calculate_real_padding "$_width" "$_text")" "$_text" "$_status"
+        _text="$REPLY"
     fi
     case "$_style" in
     mail | email)
-        echo -e -n "${_line_prepend}${_text}${_line_append}"
+        printf '%b' "${_line_prepend}${_text}${_line_append}"
         ;;
     *)
-        echo -e -n "${_line_prepend}${_color_value}${_text}${_line_append}$(styler reset)"
+        printf '%b' "${_line_prepend}${_color_value}${_text}${_line_append}${_STYLE_RESET}"
         ;;
     esac
 }
@@ -282,6 +321,8 @@ log_debug() {
     fi
 }
 
+# App banner. Call once after arg parsing and validation, before main work.
+# Do not call on --help, --update, or other early-exit paths.
 log_title() {
     local _title="$1"
     local _version="${2:-}"
@@ -303,9 +344,9 @@ log_title() {
     fi
     local _padding=$(((_total_width - _title_length) / 2))
 
-    log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
-    log_message ---color 'WHITE' "<b>║%*s$(styler text 'YELLOW')%s%*s$(styler text 'WHITE')║</b>" "$_padding" " " "$_title_text" "$_padding" " "
-    log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 1 $_total_width))"
+    log_message ---color 'WHITE' '<b>╔%s╗</b>' "$(printf '═%.0s' $(seq 1 "$_total_width"))"
+    log_message ---color 'WHITE' "<b>║%*s${_COLOR_YELLOW}%s%*s${_COLOR_WHITE}║</b>" "$_padding" " " "$_title_text" "$_padding" " "
+    log_message ---color 'WHITE' '<b>╚%s╝</b>' "$(printf '═%.0s' $(seq 1 "$_total_width"))"
 }
 
 log_header() {
@@ -349,14 +390,8 @@ log_usage_options_line() {
 calculate_real_padding() {
     local _width="$1"
     local _text="$2"
-    local _raw_bytes
-    _raw_bytes="$(echo -n "${_text//$'\e'[\[(]*([0-9;])[@-n]/}" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
-    local _text_bytes
-    _text_bytes="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -c | tr -d ' ')"
-    local _text_chars
-    _text_chars="$(echo -n "$_text" | { dd bs=1 count=1000000 2>/dev/null || true; } | wc -m | tr -d ' ')"
-    local _padding=$((_width + (_text_bytes - _text_chars) + (_text_bytes - _raw_bytes)))
-    echo "$_padding"
+    local _visible="${_text//$'\e'[\[(]*([0-9;])[@-n]/}"
+    echo $((_width + ${#_text} - ${#_visible}))
 }
 
 log_usage_example_line() {

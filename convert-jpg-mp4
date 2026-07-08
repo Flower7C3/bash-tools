@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Convert JPG images to MP4 video
-# Usage: ./jpg-to-mp4-convert [OPTIONS]
+# Usage: ./convert-jpg-mp4 [OPTIONS]
 
 set -euo pipefail
 
@@ -122,20 +122,16 @@ converter_main() {
       die 11 "No JPG files found in <u>%s</u> directory" "$_source_dir"
     fi
 
-    log_info 'Found <b>%s</b> JPG files in <u>%s</u> directory' "$_jpg_count" "$_source_dir"
+    log_info ---icon '🖼' 'Found <b>%s</b> JPG files in <u>%s</u> directory' "$_jpg_count" "$_source_dir"
     source_dir="$_source_dir"
     return 0
   }
 
-  log_title 'JPG to MP4 Converter'
-
-  # Check dependencies
   check_dependencies ffmpeg
-
-  # Parse command line arguments
   parse_arguments "$@"
 
-  # If no source directory provided, prompt for it
+  log_title 'JPG to MP4 Converter'
+
   if [ -z "$source_dir" ]; then
     prompt_for_directory
   else
@@ -164,7 +160,7 @@ converter_main() {
 
   if ffmpeg -framerate "$framerate" -i "$temp_dir/img%05d.$extension" -vf format=yuv420p "$output_file"; then
     rm -rf "$temp_dir"
-    log_success ---status "$source_dir$output_file" "Video created"
+    log_success ---icon '🎬' ---status "$source_dir$output_file" "Video created"
   else
     rm -rf "$temp_dir"
     die 12 "Video conversion failed"

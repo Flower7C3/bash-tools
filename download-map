@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Map downloader for GeoApify and OpenStreetMap
-# Usage: ./map-download [OPTIONS]
+# Usage: ./download-map [OPTIONS]
 
 set -euo pipefail
 
@@ -151,7 +151,7 @@ map_main() {
   # Function to create output directory
   create_output_dir() {
     if [[ ! -d "$OUTPUT_DIR" ]]; then
-      log_info 'Creating output directory: <u>%s</u>' "$OUTPUT_DIR"
+      log_info ---icon '📁' 'Creating output directory: <u>%s</u>' "$OUTPUT_DIR"
       mkdir -p "$OUTPUT_DIR"
     fi
   }
@@ -167,7 +167,7 @@ map_main() {
       return 1
     fi
 
-    log_info 'Downloading OSM map...'
+    log_info ---icon '🗺' 'Downloading OSM map...'
 
     # Convert coordinates to tile coordinates
     local _xtile_min _xtile_max _ytile_min _ytile_max
@@ -262,7 +262,7 @@ map_main() {
 
     if [[ ${#temp_files[@]} -gt 0 ]]; then
       magick "${temp_files[@]}" -append "$output_file"
-      log_success 'OSM map saved' ---status "$output_file"
+      log_success ---icon '🗺' 'OSM map saved' ---status "$output_file"
     else
       log_error 'No tiles were successfully downloaded'
       return 1
@@ -274,7 +274,7 @@ map_main() {
 
   # Function to download GeoApify map
   download_geoapify_map() {
-    log_info 'Downloading GeoApify map...'
+    log_info ---icon '🗺' 'Downloading GeoApify map...'
 
     if [[ -z "$API_KEY" ]]; then
       log_error 'API key is required for GeoApify'
@@ -308,7 +308,7 @@ map_main() {
     # Download map
     log_info 'Downloading map from GeoApify...'
     if curl -s -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) Gecko/20100101 Firefox/87.0' "$_url" -o "$_output_file"; then
-      log_success 'GeoApify map saved: <u>%s</u>' "$_output_file"
+      log_success ---icon '🗺' 'GeoApify map saved: <u>%s</u>' "$_output_file"
     else
       log_error 'Failed to download map from GeoApify'
       return 1
@@ -406,21 +406,16 @@ map_main() {
     done
   }
 
-  log_title 'Map Downloader'
-
-  # Parse arguments
   parse_arguments "$@"
 
-  # Set default provider if not specified
   if [[ -z "$PROVIDER" ]]; then
     PROVIDER="$DEFAULT_PROVIDER"
   fi
 
-  # Check dependencies
   check_dependencies curl bc magick
-
-  # Create output directory
   create_output_dir
+
+  log_title 'Map Downloader'
 
   # Validate inputs based on provider
   if [[ "$PROVIDER" == "osm" ]]; then

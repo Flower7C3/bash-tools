@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # URL redirects and status code checker
-# Usage: ./redirects-check [OPTIONS] <data_file>
+# Usage: ./check-redirects [OPTIONS] <data_file>
 
 set -euo pipefail
 
@@ -183,7 +183,7 @@ EOF
       return 1
     fi
 
-    log_info 'Processing redirects from file: <u>%s</u>' "$_file"
+    log_info ---icon '📄' 'Processing redirects from file: <u>%s</u>' "$_file"
 
     # Create error log file
     rm -f "${_file}.error.log"
@@ -237,10 +237,10 @@ EOF
     done <"$_file"
 
     # Summary
-    log_info 'Processed %s redirects: %s correct, %s incorrect' "$_total_count" "$_correct_count" "$((_total_count - _correct_count))"
+    log_info ---icon '📊' 'Processed %s redirects: %s correct, %s incorrect' "$_total_count" "$_correct_count" "$((_total_count - _correct_count))"
 
     if [[ -s "${_file}.error.log" ]]; then
-      log_warning 'Errors logged to: <u>%s</u>' "${_file}.error.log"
+      log_warning ---icon '⚠' 'Errors logged to: <u>%s</u>' "${_file}.error.log"
     fi
   }
 
@@ -304,19 +304,15 @@ EOF
     done
   }
 
-  log_title 'Redirects Checker'
-
-  # Check if curl is available
   check_dependencies curl
-
-  # Parse arguments
   parse_arguments "$@"
 
-  # Validate input
   if [[ -z "$DATA_FILE" ]]; then
     log_error 'No data file specified'
     show_usage
   fi
+
+  log_title 'Redirects Checker'
 
   # Process data file
   process_data_file "$DATA_FILE"

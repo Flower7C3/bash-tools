@@ -39,7 +39,7 @@ beeper_main() {
     log_usage_options_line '-u;--update' \
       'Update app'
     log_usage_options_line '-h;--help' \
-      'show this help'
+      'Show this help message'
     exit 0
   }
   function show_commands() {
@@ -620,14 +620,13 @@ beeper_main() {
   }
   trap 'finish' EXIT
 
-  log_title 'Beeper'
-
   if ! config_load "$@"; then
-    # Help was shown, exit
     return 0
   fi
 
-  log_info 'Press <b>CTRL+C</b> to stop..'
+  log_title 'Beeper'
+
+  log_info ---icon '🎹' 'Press <b>CTRL+C</b> to stop..'
   if [[ "$notes_file_name" != "" ]] && [[ -f $notes_file_name ]]; then
     DEBUG=${DEBUG:-0}
     file_read

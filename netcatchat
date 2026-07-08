@@ -190,10 +190,10 @@ netcatchat_main() {
   ### NETCAT ###
   function netcat_start() {
     if [[ -n "$sender_port" ]]; then
-      log_success ---status "$BASHPID" "Started netcat chat"
+      log_success ---icon '💬' ---status "$BASHPID" "Started netcat chat"
       nc -l -k "$sender_port" 2>/dev/null &
       nc_pid=$!
-      log_success ---status "$nc_pid" "Started netcat server on %d port" "$sender_port"
+      log_success ---icon '🌐' ---status "$nc_pid" "Started netcat server on %d port" "$sender_port"
       message_from_system "<b>${sender_nickname}</b> in now connected to netcatchat from <u>${sender_hostname} ${sender_port}</u>"
     else
       log_error 'Sender port is not defined'
@@ -670,10 +670,10 @@ netcatchat_main() {
   }
 
   ### INIT ###
-  log_title 'NetCat Chat'
   check_dependencies nc ping nmap grep
-  #  trap "echo '';netcat_kill;" EXIT
   config_load "$@"
+
+  log_title 'NetCat Chat'
   netcat_start
   option_reset
   while true; do

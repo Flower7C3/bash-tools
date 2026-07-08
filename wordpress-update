@@ -116,7 +116,7 @@ wordpress_main() {
     local _backup_dir
     _backup_dir="${_docroot}/../wp-backup-$(date +%Y%m%d-%H%M%S)"
 
-    log_info 'Creating backup to: <u>%s</u>' "$_backup_dir"
+    log_info ---icon '💾' 'Creating backup to: <u>%s</u>' "$_backup_dir"
 
     if [[ "$dry_run" == "1" ]]; then
       log_info 'DRY RUN: Would create backup at <u>%s</u>' "$_backup_dir"
@@ -138,7 +138,7 @@ wordpress_main() {
       fi
     done
 
-    log_success ---status "$_backup_dir" "Backup created"
+    log_success ---icon '💾' ---status "$_backup_dir" "Backup created"
   }
 
   # Function to download WordPress
@@ -147,7 +147,7 @@ wordpress_main() {
     local _zip_file="$2"
     local _download_url="https://wordpress.org/wordpress-${_version}.zip"
 
-    log_info 'Downloading WordPress %s from <u>%s</u>' "$_version" "$_download_url"
+    log_info ---icon '📥' 'Downloading WordPress %s from <u>%s</u>' "$_version" "$_download_url"
 
     if [[ "$dry_run" == "1" ]]; then
       log_info 'DRY RUN: Would download from <u>%s</u>' "$_download_url"
@@ -159,7 +159,7 @@ wordpress_main() {
       return 1
     fi
 
-    log_success ---status "$_zip_file" "WordPress %s downloaded successfully" "$_version"
+    log_success ---icon '📦' ---status "$_zip_file" "WordPress %s downloaded successfully" "$_version"
   }
 
   # Function to extract WordPress
@@ -168,7 +168,7 @@ wordpress_main() {
     local _extract_dir
     _extract_dir="$(dirname "$_zip_file")/wordpress"
 
-    log_info 'Extracting WordPress archive'
+    log_info ---icon '📂' 'Extracting WordPress archive'
 
     if [[ "$dry_run" == "1" ]]; then
       log_info 'DRY RUN: Would extract to <u>%s</u>' "$_extract_dir"
@@ -180,7 +180,7 @@ wordpress_main() {
       return 1
     fi
 
-    log_success 'WordPress extracted successfully' ---status "$_extract_dir"
+    log_success ---icon '📂' 'WordPress extracted successfully' ---status "$_extract_dir"
   }
 
   # Function to update WordPress files
@@ -188,7 +188,7 @@ wordpress_main() {
     local _docroot="$1"
     local _extract_dir="$2"
 
-    log_info 'Updating WordPress core files'
+    log_info ---icon '🔄' 'Updating WordPress core files'
 
     # Remove old core files
     for dir in "${WP_DIRECTORIES[@]}"; do
@@ -225,7 +225,7 @@ wordpress_main() {
       fi
     done
 
-    log_success 'WordPress core files updated successfully'
+    log_success ---icon '✨' 'WordPress core files updated successfully'
   }
 
   # Function to commit to git
@@ -330,12 +330,13 @@ Issue: $_issue"
     done
   }
 
-  log_title 'WordPress Update'
   parse_arguments "$@"
   check_dependencies curl git
   if ! validate_wp_directory "$wp_source"; then
     exit
   fi
+
+  log_title 'WordPress Update'
 
   # Get current version
   local _current_version
@@ -388,7 +389,7 @@ Issue: $_issue"
   cleanup "$(dirname "$_zip_file")"
 
   # Final success message
-  log_success 'WordPress updated successfully from %s to %s' "$_current_version" "$wp_version"
+  log_success ---icon '✨' 'WordPress updated successfully from %s to %s' "$_current_version" "$wp_version"
 
   if [[ "$dry_run" == "1" ]]; then
     log_info 'This was a dry run - no actual changes were made'

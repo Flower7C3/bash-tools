@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # SSL/TLS certificate checker
-# Usage: ./ssl-check [OPTIONS] <domain>
+# Usage: ./check-ssl [OPTIONS] <domain>
 
 set -euo pipefail
 
@@ -163,21 +163,21 @@ EOF
     *)
       # Text format
       log_header 'Certificate Information for %s:%s' "$_domain" "$_port"
-      log_info "Subject" ---status "$_subject"
-      log_info "Issuer" ---status "$_issuer"
-      log_info "Valid From" ---status "$_not_before"
-      log_info "Valid Until" ---status "$_not_after"
-      log_info "Serial Number" ---status "$_serial"
-      log_info "SHA1 Fingerprint" ---status "$_fingerprint"
+      log_info ---icon '👤' "Subject" ---status "$_subject"
+      log_info ---icon '🏢' "Issuer" ---status "$_issuer"
+      log_info ---icon '📅' "Valid From" ---status "$_not_before"
+      log_info ---icon '📅' "Valid Until" ---status "$_not_after"
+      log_info ---icon '🔢' "Serial Number" ---status "$_serial"
+      log_info ---icon '🔑' "SHA1 Fingerprint" ---status "$_fingerprint"
 
       if [[ $_is_expired -eq 1 ]]; then
-        log_error 'Status' ---status 'EXPIRED'
+        log_error ---icon '⛔' 'Status' ---status 'EXPIRED'
       elif [[ $_not_yet_valid -eq 1 ]]; then
-        log_warning 'Status' ---status 'NOT YET VALID'
+        log_warning ---icon '⏳' 'Status' ---status 'NOT YET VALID'
       elif [[ $_expires_soon -eq 1 ]]; then
-        log_warning 'Status' ---status "EXPIRES SOON ($_days_until_expiry days)"
+        log_warning ---icon '⚠' 'Status' ---status "EXPIRES SOON ($_days_until_expiry days)"
       else
-        log_success 'Status' ---status "VALID ($_days_until_expiry days remaining)"
+        log_success ---icon '🔒' 'Status' ---status "VALID ($_days_until_expiry days remaining)"
       fi
       ;;
     esac
@@ -216,7 +216,7 @@ EOF
       die 1 'Batch file not found: <u>%s</u>' "$_file"
     fi
 
-    log_info ---status "$_file" 'Processing batch file'
+    log_info ---icon '📄' ---status "$_file" 'Processing batch file'
 
     # Add CSV header if output format is CSV
     if [[ "$OUTPUT_FORMAT" == "csv" ]]; then
@@ -311,20 +311,16 @@ EOF
     done
   }
 
-  log_title 'SSL Certificate Checker'
-
-  # Check if OpenSSL is available
   check_dependencies openssl
-
-  # Parse arguments
   parse_arguments "$@"
 
-  # Validate input
   if [[ -z "$DOMAIN_NAME" && "$BATCH_MODE" -eq 0 ]]; then
     log_error 'No domain specified'
     echo
     show_usage
   fi
+
+  log_title 'SSL Certificate Checker'
 
   # Process batch mode
   if [[ "$BATCH_MODE" -eq 1 ]]; then
