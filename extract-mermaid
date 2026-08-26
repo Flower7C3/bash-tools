@@ -22,6 +22,7 @@ main() {
 export_mermaid_main() {
   local INPUT="" OUT="" FORMAT="svg" WIDTH="" HEIGHT="" SCALE="" PREFIX="" DRY_RUN=0 JOBS=""
   local -a _MMDC_CMD=()
+  local _PUPPETEER_CONFIG=""
 
   show_usage() {
     local exit_code="${1:-0}"
@@ -109,10 +110,93 @@ export_mermaid_main() {
     _MMDC_CMD=(npx -y @mermaid-js/mermaid-cli)
   }
 
+  write_puppeteer_config() {
+    local kind="$1" browser="$2"
+    _PUPPETEER_CONFIG="$_MERMAID_WORK_DIR/puppeteer.json"
+    python3 - "$kind" "$browser" "$_PUPPETEER_CONFIG" <<'PY'
+import json
+import sys
+
+kind, browser, dest = sys.argv[1], sys.argv[2], sys.argv[3]
+cfg = {"executablePath": browser}
+if kind != "shell":
+    cfg["headless"] = True
+with open(dest, "w", encoding="utf-8") as handle:
+    json.dump(cfg, handle)
+PY
+  }
+
+  find_browser() {
+    local cache="${PUPPETEER_CACHE_DIR:-$HOME/.cache/puppeteer}"
+    local candidate cmd
+
+    while IFS= read -r candidate; do
+      if [[ -x "$candidate" ]]; then
+        printf 'shell|%s\n' "$candidate"
+        return 0
+      fi
+    done < <(find "$cache/chrome-headless-shell" -type f -name 'chrome-headless-shell' 2>/dev/null | sort -r)
+
+    while IFS= read -r candidate; do
+      if [[ -x "$candidate" ]]; then
+        printf 'chrome|%s\n' "$candidate"
+        return 0
+      fi
+    done < <(find "$cache/chrome" \( -name 'Google Chrome for Testing' -o -name 'chrome' \) -type f 2>/dev/null | sort -r)
+
+    for candidate in \
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
+      "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
+      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"; do
+      if [[ -x "$candidate" ]]; then
+        printf 'chrome|%s\n' "$candidate"
+        return 0
+      fi
+    done
+
+    for cmd in google-chrome google-chrome-stable chromium chromium-browser microsoft-edge; do
+      if command_exists "$cmd"; then
+        printf 'chrome|%s\n' "$(command -v "$cmd")"
+        return 0
+      fi
+    done
+
+    return 1
+  }
+
+  ensure_puppeteer_browser() {
+    local found kind path
+    if found=$(find_browser); then
+      kind="${found%%|*}"
+      path="${found#*|}"
+      write_puppeteer_config "$kind" "$path"
+      log_info ---icon '🌐' 'Browser: <u>%s</u>' "$path"
+      return 0
+    fi
+
+    log_info ---icon '📦' 'Installing chrome-headless-shell for Puppeteer...'
+    if ! npx -y @puppeteer/browsers install chrome-headless-shell >/dev/null; then
+      die 1 'No Chrome/Chromium found and chrome-headless-shell install failed'
+    fi
+
+    if found=$(find_browser); then
+      kind="${found%%|*}"
+      path="${found#*|}"
+      write_puppeteer_config "$kind" "$path"
+      log_info ---icon '🌐' 'Browser: <u>%s</u>' "$path"
+      return 0
+    fi
+
+    die 1 'Could not find a Chrome/Chromium browser for Mermaid CLI'
+  }
+
   render_diagram() {
     local source_path="$1" output_path="$2"
     local -a args=(-i "$source_path" -o "$output_path" -b transparent -q)
 
+    [[ -n "$_PUPPETEER_CONFIG" ]] && args+=(-p "$_PUPPETEER_CONFIG")
     [[ "$FORMAT" == png ]] && args+=(-e png)
     [[ -n "$WIDTH" ]] && args+=(-w "$WIDTH")
     [[ -n "$HEIGHT" ]] && args+=(-H "$HEIGHT")
@@ -260,7 +344,7 @@ PY
   log_title 'Mermaid Diagram Exporter'
 
   _MERMAID_WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mermaid-export-XXXXXX")
-  trap 'rm -rf "${_MERMAID_WORK_DIR:-}"' EXIT
+  trap 'wait 2>/dev/null || true; rm -rf "${_MERMAID_WORK_DIR:-}"' EXIT
 
   local -a manifest=()
   while IFS= read -r entry; do
@@ -321,6 +405,7 @@ PY
   fi
 
   init_mmdc
+  ensure_puppeteer_browser
   mkdir -p "$out_dir"
 
   local -a render_queue=()
@@ -331,7 +416,7 @@ PY
     render_queue+=("$name|$start_line|$source_path|$out_dir/$name.$FORMAT")
   done
 
-  local active=0 fail_file
+  local active=0 fail_file had_fail=0
   fail_file="$_MERMAID_WORK_DIR/render-failures.log"
   : >"$fail_file"
 
@@ -349,9 +434,7 @@ PY
   for item in "${render_queue[@]}"; do
     IFS='|' read -r name start_line source_path output_path <<<"$item"
     while [[ "$active" -ge "$JOBS" ]]; do
-      if ! wait -n; then
-        die 1 'One or more diagrams failed to render'
-      fi
+      wait -n || had_fail=1
       active=$((active - 1))
     done
     render_worker "$name" "$start_line" "$source_path" "$output_path" &
@@ -359,13 +442,11 @@ PY
   done
 
   while [[ "$active" -gt 0 ]]; do
-    if ! wait -n; then
-      die 1 'One or more diagrams failed to render'
-    fi
+    wait -n || had_fail=1
     active=$((active - 1))
   done
 
-  if [[ -s "$fail_file" ]]; then
+  if [[ "$had_fail" -ne 0 || -s "$fail_file" ]]; then
     die 1 'One or more diagrams failed to render'
   fi
 
