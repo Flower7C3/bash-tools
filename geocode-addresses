@@ -1,0 +1,416 @@
+#!/usr/bin/env bash
+
+# Geocode addresses from a CSV or CLI arguments
+# Usage: ./geocode-addresses [OPTIONS] [<csv_file> | <address>...]
+
+set -euo pipefail
+
+main() {
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # shellcheck source=common-functions
+  source "$(dirname "$0")/common-functions"
+  geocode_main "$@"
+}
+
+geocode_main() {
+  show_usage() {
+    log_usage_title '[OPTIONS] [<csv_file> | <address>...]'
+    echo
+    echo 'Resolve addresses to latitude/longitude and write a CSV'
+    echo
+    log_header 'Options'
+    log_usage_options_line '-a;--address-col <NAME|N>' \
+      'CSV address column name or 1-based index (default: address, adres, or first column)'
+    log_usage_options_line '-o;--output <FILE>' \
+      'Output CSV (default: <input>-geocoded.csv or stdout for CLI addresses)'
+    log_usage_options_line '-p;--provider <PROVIDER>' \
+      'geoapify or nominatim (default: geoapify if API key is set, else nominatim)'
+    log_usage_options_line '-k;--api-key <KEY>' \
+      'GeoApify API key (or env GEOAPIFY_API_KEY)'
+    log_usage_options_line '--lat-col <NAME>' \
+      'Latitude column name (default: lat)'
+    log_usage_options_line '--lng-col <NAME>' \
+      'Longitude column name (default: lng)'
+    log_usage_options_line '--force' \
+      'Re-geocode rows that already have coordinates'
+    log_usage_options_line '--delay <SECONDS>' \
+      'Pause between requests (default: 0.2 geoapify, 1 nominatim)'
+    log_usage_options_line '-v;--verbose' \
+      'Verbose output'
+    log_usage_options_line '-d;--debug' \
+      'Debug output'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    log_header 'Examples'
+    log_usage_example_line '--address-col adres places.csv'
+    log_usage_example_line '-k YOUR_KEY -a 1 -o geo.csv places.csv'
+    log_usage_example_line '"Rynek Główny 1, Kraków" "Plac Defilad 1, Warszawa"'
+    exit 0
+  }
+
+  local ADDRESS_COL="" OUTPUT="" PROVIDER="" API_KEY="${GEOAPIFY_API_KEY:-}"
+  local LAT_COL="lat" LNG_COL="lng" FORCE=0 DELAY="" VERBOSE=0
+  # shellcheck disable=SC2034
+  local DEBUG=0
+  local -a INPUTS=()
+
+  parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+      -a | --address-col)
+        ADDRESS_COL="$2"
+        shift 2
+        ;;
+      -o | --output)
+        OUTPUT="$2"
+        shift 2
+        ;;
+      -p | --provider)
+        PROVIDER="$2"
+        if [[ "$PROVIDER" != "geoapify" && "$PROVIDER" != "nominatim" ]]; then
+          die 1 'Invalid provider: %s. Must be <b>geoapify</b> or <b>nominatim</b>' "$PROVIDER"
+        fi
+        shift 2
+        ;;
+      -k | --api-key)
+        API_KEY="$2"
+        shift 2
+        ;;
+      --lat-col)
+        LAT_COL="$2"
+        shift 2
+        ;;
+      --lng-col)
+        LNG_COL="$2"
+        shift 2
+        ;;
+      --force)
+        FORCE=1
+        shift
+        ;;
+      --delay)
+        DELAY="$2"
+        shift 2
+        ;;
+      -v | --verbose)
+        VERBOSE=1
+        shift
+        ;;
+      -d | --debug)
+        DEBUG=1
+        shift
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        echo
+        show_usage
+        ;;
+      *)
+        INPUTS+=("$1")
+        shift
+        ;;
+      esac
+    done
+  }
+
+  parse_arguments "$@"
+
+  if [[ ${#INPUTS[@]} -eq 0 ]]; then
+    log_error 'Provide a CSV file or one or more addresses'
+    echo
+    show_usage
+  fi
+
+  if [[ -z "$PROVIDER" ]]; then
+    if [[ -n "$API_KEY" ]]; then
+      PROVIDER="geoapify"
+    else
+      PROVIDER="nominatim"
+    fi
+  fi
+
+  if [[ "$PROVIDER" == "geoapify" && -z "$API_KEY" ]]; then
+    die 1 'API key is required for GeoApify. Use <code>--api-key</code> or <code>GEOAPIFY_API_KEY</code>'
+  fi
+
+  if [[ -z "$DELAY" ]]; then
+    if [[ "$PROVIDER" == "nominatim" ]]; then
+      DELAY="1"
+    else
+      DELAY="0.2"
+    fi
+  fi
+
+  check_dependencies curl python3
+  log_title 'Geocode Addresses'
+
+  local input_mode="cli"
+  if [[ ${#INPUTS[@]} -eq 1 && -f "${INPUTS[0]}" ]]; then
+    input_mode="csv"
+  fi
+
+  if [[ "$input_mode" == "csv" && -z "$OUTPUT" ]]; then
+    local _base="${INPUTS[0]}"
+    OUTPUT="${_base%.csv}-geocoded.csv"
+    OUTPUT="${OUTPUT%.CSV}-geocoded.csv"
+  fi
+
+  log_info ---icon '🌍' 'Provider: <b>%s</b>' "$PROVIDER"
+  if [[ "$input_mode" == "csv" ]]; then
+    log_info ---icon '📄' 'Input: <u>%s</u>' "${INPUTS[0]}"
+  else
+    log_info ---icon '📍' 'Addresses: <b>%d</b>' "${#INPUTS[@]}"
+  fi
+  [[ -n "$OUTPUT" ]] && log_info ---icon '💾' 'Output: <u>%s</u>' "$OUTPUT"
+
+  consume_py_logs() {
+    local kind a b c
+    while IFS=$'\t' read -r kind a b c; do
+      case "$kind" in
+      PROGRESS)
+        local _pct=0
+        if [[ "${b:-0}" -gt 0 ]]; then
+          _pct=$((100 * a / b))
+        fi
+        log_info ---reset 'Geocoding: %d/%d (%d%%)' "$a" "$b" "$_pct"
+        ;;
+      INFO) log_info '%s' "$a" ;;
+      OK) log_success ---icon '📍' '%s' "$a" ;;
+      WARN) log_warning '%s' "$a" ;;
+      ERR) log_error '%s' "$a" ;;
+      DEBUG) log_debug '%s' "$a" ;;
+      STAT) log_info ---icon '📊' '%s' "$a" ;;
+      *) [[ -n "$kind" ]] && log_info '%s' "$kind${a:+	$a}" ;;
+      esac
+    done
+  }
+
+  local _py_status=0
+  local _py_fifo
+  _py_fifo="$(mktemp -u "${TMPDIR:-/tmp}/geocode-addresses.XXXXXX")"
+  mkfifo "$_py_fifo"
+  consume_py_logs <"$_py_fifo" &
+  local _log_pid=$!
+  ADDRESS_COL="$ADDRESS_COL" OUTPUT="$OUTPUT" PROVIDER="$PROVIDER" API_KEY="$API_KEY" \
+    LAT_COL="$LAT_COL" LNG_COL="$LNG_COL" FORCE="$FORCE" DELAY="$DELAY" \
+    VERBOSE="$VERBOSE" DEBUG="$DEBUG" INPUT_MODE="$input_mode" \
+    python3 - "${INPUTS[@]}" 2>"$_py_fifo" <<'PY' || _py_status=$?
+import csv
+import io
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+provider = os.environ["PROVIDER"]
+api_key = os.environ.get("API_KEY", "")
+address_col = os.environ.get("ADDRESS_COL", "")
+lat_col = os.environ["LAT_COL"]
+lng_col = os.environ["LNG_COL"]
+force = os.environ["FORCE"] == "1"
+delay = float(os.environ["DELAY"])
+verbose = os.environ["VERBOSE"] == "1"
+debug = os.environ.get("DEBUG", "0") == "1"
+output_path = os.environ.get("OUTPUT", "")
+input_mode = os.environ["INPUT_MODE"]
+inputs = sys.argv[1:]
+
+
+def log(kind, msg):
+    print(f"{kind}\t{msg}", file=sys.stderr, flush=True)
+
+
+def sniff_reader(raw: str):
+    sample = raw[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+    except csv.Error:
+        dialect = csv.excel
+    return csv.DictReader(io.StringIO(raw), dialect=dialect)
+
+
+def resolve_col(fieldnames, spec, fallbacks):
+    names = list(fieldnames or [])
+    if spec:
+        if spec.isdigit():
+            idx = int(spec) - 1
+            if idx < 0 or idx >= len(names):
+                log("ERR", f"Address column index out of range: {spec}")
+                sys.exit(1)
+            return names[idx]
+        for name in names:
+            if name == spec or name.lower() == spec.lower():
+                return name
+        log("ERR", f"Column not found: {spec}")
+        sys.exit(1)
+    lowered = {name.lower(): name for name in names}
+    for cand in fallbacks:
+        if cand in lowered:
+            return lowered[cand]
+    return names[0] if names else None
+
+
+def request_json(url, headers):
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8")), resp.status
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        log("WARN", f"HTTP {exc.code}: {body[:180]}")
+        return None, exc.code
+    except urllib.error.URLError as exc:
+        log("WARN", f"Request failed: {exc}")
+        return None, 0
+
+
+def geocode(address):
+    headers = {"User-Agent": "bash-tools/geocode-addresses"}
+    if provider == "geoapify":
+        qs = urllib.parse.urlencode(
+            {"text": address, "format": "json", "limit": 1, "apiKey": api_key}
+        )
+        url = f"https://api.geoapify.com/v1/geocode/search?{qs}"
+        if debug:
+            log("DEBUG", url.replace(api_key, "***") if api_key else url)
+        data, _ = request_json(url, headers)
+        if not data:
+            return "", "", ""
+        results = data.get("results") or []
+        if not results:
+            return "", "", ""
+        hit = results[0]
+        return str(hit.get("lat", "")), str(hit.get("lon", "")), hit.get("formatted", "")
+    qs = urllib.parse.urlencode({"q": address, "format": "json", "limit": 1})
+    url = f"https://nominatim.openstreetmap.org/search?{qs}"
+    if debug:
+        log("DEBUG", url)
+    data, _ = request_json(url, headers)
+    if not data:
+        return "", "", ""
+    hit = data[0]
+    return str(hit.get("lat", "")), str(hit.get("lon", "")), hit.get("display_name", "")
+
+
+def has_coords(row):
+    lat = (row.get(lat_col) or "").strip()
+    lng = (row.get(lng_col) or "").strip()
+    return bool(lat) and bool(lng)
+
+
+rows = []
+fieldnames = []
+addr_key = "address"
+
+if input_mode == "csv":
+    raw = open(inputs[0], encoding="utf-8-sig", newline="").read()
+    reader = sniff_reader(raw)
+    fieldnames = list(reader.fieldnames or [])
+    addr_key = resolve_col(fieldnames, address_col, ("address", "adres", "addr", "ulica"))
+    if not addr_key:
+        log("ERR", "CSV has no columns")
+        sys.exit(1)
+    rows = list(reader)
+    if debug:
+        log("DEBUG", f"Address column: {addr_key}")
+else:
+    fieldnames = ["address"]
+    addr_key = "address"
+    rows = [{"address": item} for item in inputs]
+
+if lat_col not in fieldnames:
+    fieldnames.append(lat_col)
+if lng_col not in fieldnames:
+    fieldnames.append(lng_col)
+if "formatted" not in fieldnames:
+    fieldnames.append("formatted")
+
+ok = 0
+fail = 0
+skipped = 0
+out_rows = []
+total = len(rows)
+if debug:
+    log("DEBUG", f"provider={provider} rows={total} delay={delay} force={force}")
+
+for i, row in enumerate(rows, 1):
+    address = (row.get(addr_key) or "").strip()
+    if not address:
+        log("WARN", f"Row {i}/{total}: empty address")
+        fail += 1
+        out_rows.append(row)
+        continue
+    if has_coords(row) and not force:
+        skipped += 1
+        if verbose:
+            log("INFO", f"Row {i}/{total}: skip existing {row.get(lat_col)},{row.get(lng_col)}")
+        else:
+            log("PROGRESS", f"{i}\t{total}")
+        out_rows.append(row)
+        continue
+    if verbose:
+        log("INFO", f"Geocoding {i}/{total} - {address}")
+    else:
+        log("PROGRESS", f"{i}\t{total}")
+    lat, lng, formatted = geocode(address)
+    if delay:
+        time.sleep(delay)
+    if not lat or not lng:
+        log("WARN", f"Row {i}/{total}: no result for {address}")
+        fail += 1
+        out_rows.append(row)
+        continue
+    row[lat_col] = lat
+    row[lng_col] = lng
+    row["formatted"] = formatted
+    ok += 1
+    if verbose:
+        log("OK", f"{address} -> {lat},{lng}")
+    out_rows.append(row)
+
+buf = io.StringIO()
+writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore")
+writer.writeheader()
+writer.writerows(out_rows)
+csv_text = buf.getvalue()
+
+if output_path:
+    with open(output_path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(csv_text)
+else:
+    sys.stdout.write(csv_text)
+
+log("STAT", f"{ok} ok, {fail} failed, {skipped} skipped")
+PY
+
+  wait "$_log_pid" || true
+  rm -f "$_py_fifo"
+  if [[ "$VERBOSE" != "1" ]]; then
+    echo
+  fi
+
+  if [[ "$_py_status" -ne 0 ]]; then
+    die "$_py_status" 'Geocoding failed'
+  fi
+}
+
+main "$@"
