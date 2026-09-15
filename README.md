@@ -21,6 +21,8 @@ Collection of useful bash scripts for development and system administration.
 
 - `backup-restore` - Backup and restore files and databases
 - `download-map` - Download maps from GeoApify or OpenStreetMap
+- `geocode-addresses` - Resolve addresses from a CSV or CLI to latitude/longitude
+- `generate-map` - Build a GeoApify map with 2-letter marker labels from CSV coordinates
 - `beeper` - Piano music player using system beep
 - `crop-wallpaper` - Create wallpapers for vertical dual-screen layout
 
@@ -64,3 +66,5 @@ All scripts support `-h` or `--help` for usage information. Most scripts also su
 - Common tools: curl, ffmpeg, git, etc. (see individual script requirements)
 - `extract-mermaid`: Python 3, Node.js/npx, `@mermaid-js/mermaid-cli` (auto-installed via npx)
 - `backup-restore`: `yq`, `rsync`, `ssh`, database client tools (see `backup-restore.yaml`)
+- `geocode-addresses`, `generate-map`: Python 3, `curl`; GeoApify API key (`--api-key` or `GEOAPIFY_API_KEY`)
+- `download-map`: `curl`; OSM also needs `bc` and ImageMagick (`magick`)
