@@ -1,0 +1,410 @@
+#!/usr/bin/env bash
+
+# Generate a static map with 2-letter labels from CSV coordinates
+# Usage: ./generate-map [OPTIONS] <csv_file>
+
+set -euo pipefail
+
+main() {
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # shellcheck source=common-functions
+  source "$(dirname "$0")/common-functions"
+  generate_map_main "$@"
+}
+
+generate_map_main() {
+  show_usage() {
+    log_usage_title '[OPTIONS] <csv_file>'
+    echo
+    echo 'Build a GeoApify map with 2-letter marker labels from a CSV'
+    echo
+    log_header 'Options'
+    log_usage_options_line '-l;--label-col <NAME|N>' \
+      'CSV column used for 2-letter labels (required)'
+    log_usage_options_line '--lat-col <NAME|N>' \
+      'Latitude column (default: lat, latitude)'
+    log_usage_options_line '--lng-col <NAME|N>' \
+      'Longitude column (default: lng, lon, longitude)'
+    log_usage_options_line '-k;--api-key <KEY>' \
+      'GeoApify API key (or env GEOAPIFY_API_KEY)'
+    log_usage_options_line '-o;--output <FILE|DIR>' \
+      'Output image or directory (default: <csv-dir>/map.jpg)'
+    log_usage_options_line '-z;--zoom <ZOOM>' \
+      'Zoom (sets map center to the average of points)'
+    log_usage_options_line '-c;--center <LAT>,<LNG>' \
+      'Override map center'
+    log_usage_options_line '-w;--width <WIDTH>' \
+      'Image width (default: %s)' "$DEFAULT_WIDTH"
+    log_usage_options_line '--height <HEIGHT>' \
+      'Image height (default: %s)' "$DEFAULT_HEIGHT"
+    log_usage_options_line '--color <COLOR>' \
+      'Marker color (default: %s)' "$DEFAULT_COLOR"
+    log_usage_options_line '--color-col <NAME|N>' \
+      'Optional CSV column with per-point colors'
+    log_usage_options_line '-t;--marker-type <TYPE>' \
+      'circle, awesome, material, plain (default: %s)' "$DEFAULT_MARKER_TYPE"
+    log_usage_options_line '--type-col <NAME|N>' \
+      'Optional CSV column with per-point marker type'
+    log_usage_options_line '--marker-size <PX>' \
+      'Marker size (default: %s)' "$DEFAULT_MARKER_SIZE"
+    log_usage_options_line '-v;--verbose' \
+      'Verbose output'
+    log_usage_options_line '-d;--debug' \
+      'Debug output'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    log_header 'CSV'
+    echo '  Header row required. Label values are trimmed to 2 letters (A-Z, 0-9).'
+    echo '  Optional type column: circle, awesome, material, plain.'
+    echo '  Geocode first when the file has addresses only:'
+    echo "  $(styler text YELLOW)./geocode-addresses -a adres places.csv$(styler reset)"
+    echo
+    log_header 'Examples'
+    log_usage_example_line '--label-col kod -k YOUR_KEY places-geocoded.csv'
+    log_usage_example_line '-l initials -t awesome --type-col kind data.csv'
+    log_usage_example_line '-l 1 --lat-col lat --lng-col lng -o ~/Pictures/trasy.jpg geo.csv'
+    exit 0
+  }
+
+  local DEFAULT_WIDTH=1200 DEFAULT_HEIGHT=800 DEFAULT_COLOR="#e0222d"
+  local DEFAULT_MARKER_TYPE="circle" DEFAULT_MARKER_SIZE=48
+  local LABEL_COL="" LAT_COL="" LNG_COL="" API_KEY="${GEOAPIFY_API_KEY:-}"
+  local OUTPUT="" ZOOM="" CENTER="" WIDTH="$DEFAULT_WIDTH" HEIGHT="$DEFAULT_HEIGHT"
+  local COLOR="$DEFAULT_COLOR" COLOR_COL="" MARKER_TYPE="$DEFAULT_MARKER_TYPE" TYPE_COL=""
+  local MARKER_SIZE="$DEFAULT_MARKER_SIZE" CSV_FILE="" VERBOSE=0
+
+  is_marker_type() {
+    case "$1" in
+    circle | awesome | material | plain) return 0 ;;
+    *) return 1 ;;
+    esac
+  }
+  # shellcheck disable=SC2034
+  local DEBUG=0
+
+  parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+      -l | --label-col)
+        LABEL_COL="$2"
+        shift 2
+        ;;
+      --lat-col)
+        LAT_COL="$2"
+        shift 2
+        ;;
+      --lng-col)
+        LNG_COL="$2"
+        shift 2
+        ;;
+      -k | --api-key)
+        API_KEY="$2"
+        shift 2
+        ;;
+      -o | --output)
+        OUTPUT="$2"
+        shift 2
+        ;;
+      -z | --zoom)
+        ZOOM="$2"
+        if ! [[ "$ZOOM" =~ ^[0-9]+$ ]] || [[ "$ZOOM" -lt 0 ]] || [[ "$ZOOM" -gt 20 ]]; then
+          die 1 'Invalid zoom level: %s. Must be between 0 and 20' "$ZOOM"
+        fi
+        shift 2
+        ;;
+      -c | --center)
+        CENTER="$2"
+        shift 2
+        ;;
+      -w | --width)
+        WIDTH="$2"
+        shift 2
+        ;;
+      --height)
+        HEIGHT="$2"
+        shift 2
+        ;;
+      --color)
+        COLOR="$2"
+        shift 2
+        ;;
+      --color-col)
+        COLOR_COL="$2"
+        shift 2
+        ;;
+      -t | --marker-type)
+        MARKER_TYPE="$2"
+        if ! is_marker_type "$MARKER_TYPE"; then
+          die 1 'Invalid marker type: %s. Use circle, awesome, material, plain' "$MARKER_TYPE"
+        fi
+        shift 2
+        ;;
+      --type-col)
+        TYPE_COL="$2"
+        shift 2
+        ;;
+      --marker-size)
+        MARKER_SIZE="$2"
+        shift 2
+        ;;
+      -v | --verbose)
+        VERBOSE=1
+        shift
+        ;;
+      -d | --debug)
+        DEBUG=1
+        shift
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        echo
+        show_usage
+        ;;
+      *)
+        if [[ -n "$CSV_FILE" ]]; then
+          die 1 'Unexpected argument: <b>%s</b>' "$1"
+        fi
+        CSV_FILE="$1"
+        shift
+        ;;
+      esac
+    done
+  }
+
+  parse_arguments "$@"
+
+  if [[ -z "$CSV_FILE" ]]; then
+    log_error 'CSV file is required'
+    echo
+    show_usage
+  fi
+  if [[ ! -f "$CSV_FILE" ]]; then
+    die 1 'CSV file not found: <u>%s</u>' "$CSV_FILE"
+  fi
+  if [[ -z "$LABEL_COL" ]]; then
+    die 1 'Label column is required. Use <code>--label-col</code>'
+  fi
+  if [[ -z "$API_KEY" ]]; then
+    die 1 'API key is required. Use <code>--api-key</code> or <code>GEOAPIFY_API_KEY</code>'
+  fi
+
+  local DOWNLOAD_MAP
+  DOWNLOAD_MAP="$(cd "$(dirname "$0")" && pwd)/download-map"
+  if [[ ! -x "$DOWNLOAD_MAP" ]]; then
+    die 1 'download-map not found next to this script: <u>%s</u>' "$DOWNLOAD_MAP"
+  fi
+
+  check_dependencies python3 curl
+  log_title 'Generate Map'
+
+  local POINTS _py_status=0 AVG_LAT="" AVG_LNG=""
+  POINTS="$(
+    LABEL_COL="$LABEL_COL" LAT_COL="$LAT_COL" LNG_COL="$LNG_COL" COLOR_COL="$COLOR_COL" \
+      TYPE_COL="$TYPE_COL" \
+      python3 - "$CSV_FILE" <<'PY'
+import csv
+import io
+import os
+import re
+import sys
+
+path = sys.argv[1]
+label_spec = os.environ["LABEL_COL"]
+lat_spec = os.environ.get("LAT_COL", "")
+lng_spec = os.environ.get("LNG_COL", "")
+color_spec = os.environ.get("COLOR_COL", "")
+type_spec = os.environ.get("TYPE_COL", "")
+
+raw = open(path, encoding="utf-8-sig", newline="").read()
+sample = raw[:4096]
+try:
+    dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+except csv.Error:
+    dialect = csv.excel
+reader = csv.DictReader(io.StringIO(raw), dialect=dialect)
+names = list(reader.fieldnames or [])
+if not names:
+    raise SystemExit("CSV has no header")
+
+
+def resolve(spec, fallbacks):
+    if spec:
+        if spec.isdigit():
+            idx = int(spec) - 1
+            if idx < 0 or idx >= len(names):
+                raise SystemExit(f"Column index out of range: {spec}")
+            return names[idx]
+        for name in names:
+            if name == spec or name.lower() == spec.lower():
+                return name
+        raise SystemExit(f"Column not found: {spec}")
+    lowered = {name.lower(): name for name in names}
+    for cand in fallbacks:
+        if cand in lowered:
+            return lowered[cand]
+    return None
+
+
+label_col = resolve(label_spec, ())
+lat_col = resolve(lat_spec, ("lat", "latitude", "szerokosc", "y"))
+lng_col = resolve(lng_spec, ("lng", "lon", "long", "longitude", "dlugosc", "x"))
+color_col = resolve(color_spec, ()) if color_spec else None
+type_col = resolve(type_spec, ()) if type_spec else None
+if not label_col:
+    raise SystemExit("Label column is required")
+if not lat_col or not lng_col:
+    raise SystemExit("Latitude/longitude columns not found")
+
+print(f"#cols\t{label_col}\t{lat_col}\t{lng_col}")
+points = []
+for i, row in enumerate(reader, 2):
+    raw_label = (row.get(label_col) or "").strip()
+    letters = re.sub(r"[^0-9A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]", "", raw_label)
+    label = letters[:2].upper()
+    lat = (row.get(lat_col) or "").strip().replace(",", ".")
+    lng = (row.get(lng_col) or "").strip().replace(",", ".")
+    color = (row.get(color_col) or "").strip() if color_col else ""
+    mtype = (row.get(type_col) or "").strip().lower() if type_col else ""
+    if not label:
+        print(f"#skip\tline {i}: empty label")
+        continue
+    if not lat or not lng:
+        print(f"#skip\tline {i}: missing coordinates for {label}")
+        continue
+    points.append((label, lat, lng, color, mtype))
+    print(f"{label}\t{lat}\t{lng}\t{color}\t{mtype}")
+
+if points:
+    avg_lat = sum(float(p[1]) for p in points) / len(points)
+    avg_lng = sum(float(p[2]) for p in points) / len(points)
+    print(f"#meta\t{len(points)}\t{avg_lat:.6f}\t{avg_lng:.6f}")
+PY
+  )" || _py_status=$?
+
+  if [[ "$_py_status" -ne 0 ]]; then
+    die 1 'Failed to read CSV'
+  fi
+
+  local MARKERS="" COUNT=0
+  local label lat lng color_value type_value content_size
+  content_size=$((MARKER_SIZE / 2))
+  [[ "$content_size" -lt 14 ]] && content_size=14
+  [[ "$content_size" -gt 22 ]] && content_size=22
+
+  while IFS=$'\t' read -r label lat lng color_value type_value; do
+    [[ -z "$label" ]] && continue
+    if [[ "$label" == "#cols" ]]; then
+      log_debug 'Columns: label=<b>%s</b> lat=<b>%s</b> lng=<b>%s</b>' "$lat" "$lng" "$color_value"
+      continue
+    fi
+    if [[ "$label" == "#skip" ]]; then
+      log_warning '%s' "$lat${lng:+ $lng}${color_value:+ $color_value}"
+      continue
+    fi
+    if [[ "$label" == "#meta" ]]; then
+      COUNT="$lat"
+      AVG_LAT="$lng"
+      AVG_LNG="$color_value"
+      continue
+    fi
+    if [[ -z "$color_value" ]]; then
+      color_value="$COLOR"
+    fi
+    if [[ -z "$type_value" ]]; then
+      type_value="$MARKER_TYPE"
+    fi
+    if ! is_marker_type "$type_value"; then
+      log_warning 'Row %s: unknown type <b>%s</b>, using %s' "$label" "$type_value" "$MARKER_TYPE"
+      type_value="$MARKER_TYPE"
+    fi
+    local marker="lonlat:${lng},${lat};type:${type_value};color:${color_value};size:${MARKER_SIZE};text:${label};contentsize:${content_size};contentcolor:white;whitecircle:no"
+    if [[ -z "$MARKERS" ]]; then
+      MARKERS="$marker"
+    else
+      MARKERS="${MARKERS}|${marker}"
+    fi
+    if [[ "$VERBOSE" == "1" ]]; then
+      log_info ---icon '📍' '%s  %s,%s' "$label" "$lat" "$lng"
+    fi
+    log_debug 'Marker: %s' "$marker"
+  done <<<"$POINTS"
+
+  if [[ -z "$MARKERS" ]]; then
+    die 1 'No valid points with labels and coordinates'
+  fi
+
+  local OUT_DIR OUT_FILE TMP_DIR
+  if [[ -z "$OUTPUT" ]]; then
+    OUT_DIR="$(cd "$(dirname "$CSV_FILE")" && pwd)"
+    OUT_FILE="$OUT_DIR/map.jpg"
+  elif [[ -d "$OUTPUT" ]]; then
+    OUT_DIR="$(cd "$OUTPUT" && pwd)"
+    OUT_FILE="$OUT_DIR/map.jpg"
+  else
+    mkdir -p "$(dirname "$OUTPUT")"
+    OUT_DIR="$(cd "$(dirname "$OUTPUT")" && pwd)"
+    OUT_FILE="$OUT_DIR/$(basename "$OUTPUT")"
+  fi
+
+  TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/generate-map.XXXXXX")"
+  trap 'rm -rf "$TMP_DIR"' EXIT
+
+  local -a MAP_ARGS=(
+    --provider geoapify
+    --api-key "$API_KEY"
+    --width "$WIDTH"
+    --height "$HEIGHT"
+    --output "$TMP_DIR"
+    --markers "$MARKERS"
+  )
+  [[ "$VERBOSE" == "1" ]] && MAP_ARGS+=(--verbose)
+  [[ "${DEBUG:-0}" == "1" ]] && MAP_ARGS+=(--debug)
+
+  if [[ -n "$CENTER" ]]; then
+    MAP_ARGS+=(--center "$CENTER")
+    MAP_ARGS+=(--zoom "${ZOOM:-15}")
+  elif [[ -n "$ZOOM" ]]; then
+    MAP_ARGS+=(--center "${AVG_LAT},${AVG_LNG}")
+    MAP_ARGS+=(--zoom "$ZOOM")
+    log_debug 'Center: %s,%s zoom %s' "$AVG_LAT" "$AVG_LNG" "$ZOOM"
+  else
+    log_debug 'Auto-fitting %s markers' "$COUNT"
+  fi
+
+  log_info ---icon '📍' 'Markers: <b>%s</b>' "$COUNT"
+  log_info ---icon '🗺' 'Calling download-map...'
+  "$DOWNLOAD_MAP" "${MAP_ARGS[@]}"
+
+  local downloaded=""
+  local -a _imgs=()
+  shopt -s nullglob
+  _imgs=("$TMP_DIR"/*.jpg "$TMP_DIR"/*.png)
+  shopt -u nullglob
+  downloaded="${_imgs[0]:-}"
+  if [[ -z "$downloaded" || ! -f "$downloaded" ]]; then
+    die 1 'download-map did not produce an image'
+  fi
+  mkdir -p "$OUT_DIR"
+  mv "$downloaded" "$OUT_FILE"
+  rm -rf "$TMP_DIR"
+  trap - EXIT
+  log_success ---icon '🗺' 'Map saved: <u>%s</u>' "$OUT_FILE"
+}
+
+main "$@"
