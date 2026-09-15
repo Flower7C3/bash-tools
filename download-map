@@ -54,7 +54,7 @@ map_main() {
     log_usage_options_line '--height <HEIGHT>' \
       'Image height (default: %s)' "$DEFAULT_HEIGHT"
     log_usage_options_line '-c;--center <LAT>,<LNG>' \
-      'Center coordinates'
+      'Center coordinates (optional when markers are set)'
     log_usage_options_line '-m;--markers <MARKERS>' \
       'Marker definitions, eg: <code>lonlat:20.0000,50.0326;type:circle;color:red</code>'
     log_header 'OSM options'
@@ -276,34 +276,46 @@ map_main() {
   download_geoapify_map() {
     log_info ---icon '🗺' 'Downloading GeoApify map...'
 
+    if [[ -z "$API_KEY" && -n "${GEOAPIFY_API_KEY:-}" ]]; then
+      API_KEY="$GEOAPIFY_API_KEY"
+    fi
+
     if [[ -z "$API_KEY" ]]; then
       log_error 'API key is required for GeoApify'
       return 1
     fi
 
-    if [[ -z "$CENTER_LAT" || -z "$CENTER_LNG" ]]; then
-      log_error 'Center coordinates are required for GeoApify'
+    local _has_center=0
+    if [[ -n "$CENTER_LAT" && -n "$CENTER_LNG" ]]; then
+      _has_center=1
+      if ! validate_coordinates "$CENTER_LAT" "$CENTER_LNG"; then
+        return 1
+      fi
+    elif [[ -z "$MARKERS" ]]; then
+      log_error 'Center coordinates or markers are required for GeoApify'
       return 1
     fi
 
-    # Validate coordinates
-    if ! validate_coordinates "$CENTER_LAT" "$CENTER_LNG"; then
-      return 1
-    fi
-
-    # Create markers parameter
     local _markers_param=""
     if [[ -n "$MARKERS" ]]; then
       _markers_param="&marker=$(printf '%s' "$MARKERS" | sed 's/#/%23/g')"
     fi
 
-    # Build URL
-    local _url="https://maps.geoapify.com/v1/staticmap?style=osm-carto&center=lonlat:${CENTER_LNG},${CENTER_LAT}&zoom=${ZOOM}&width=${WIDTH}&height=${HEIGHT}&apiKey=${API_KEY}${_markers_param}"
+    local _center_param=""
+    if [[ "$_has_center" == "1" ]]; then
+      _center_param="&center=lonlat:${CENTER_LNG},${CENTER_LAT}&zoom=${ZOOM}"
+    fi
+
+    local _url="https://maps.geoapify.com/v1/staticmap?style=osm-carto&width=${WIDTH}&height=${HEIGHT}&apiKey=${API_KEY}${_center_param}${_markers_param}"
 
     log_debug 'GeoApify URL: <u>%s</u>' "$_url"
 
-    # Create output filename
-    local _output_file="$OUTPUT_DIR/geoapify_map_${ZOOM}_${CENTER_LAT}_${CENTER_LNG}_${WIDTH}x${HEIGHT}.jpg"
+    local _output_file
+    if [[ "$_has_center" == "1" ]]; then
+      _output_file="$OUTPUT_DIR/geoapify_map_${ZOOM}_${CENTER_LAT}_${CENTER_LNG}_${WIDTH}x${HEIGHT}.jpg"
+    else
+      _output_file="$OUTPUT_DIR/geoapify_map_markers_${WIDTH}x${HEIGHT}.jpg"
+    fi
 
     # Download map
     log_info 'Downloading map from GeoApify...'
@@ -389,6 +401,9 @@ map_main() {
         DEBUG=1
         shift
         ;;
+      -u | --update)
+        update_application
+        ;;
       -h | --help)
         show_usage
         ;;
@@ -412,7 +427,11 @@ map_main() {
     PROVIDER="$DEFAULT_PROVIDER"
   fi
 
-  check_dependencies curl bc magick
+  if [[ "$PROVIDER" == "osm" ]]; then
+    check_dependencies curl bc magick
+  else
+    check_dependencies curl
+  fi
   create_output_dir
 
   log_title 'Map Downloader'
