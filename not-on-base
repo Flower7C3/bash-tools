@@ -25,6 +25,7 @@ not_on_base_main() {
   local OUT=""
   local DO_FETCH=0
   local -a REPOS=()
+  local -a VALID_REPOS=()
   local -a LINES=()
   local -a LINE_GIT_ARGS=()
   local ICON_LIVE=$'\u2705'
