@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Extra/orphan (non-merge) commits on line branches that are not on base.
-# First --from line is primary; later lines only add commits not on an earlier line.
+# Extra/orphan commits on line branches, unmerged topic refs, and open PRs vs base.
+# CLI prints text. --out writes Markdown.
 #
 # Usage: ./not-on-base [OPTIONS] [repo...]
 
@@ -24,31 +24,44 @@ not_on_base_main() {
   local FROM="uat,develop"
   local OUT=""
   local DO_FETCH=0
+  local NO_GH=0
+  local GH_ON=0
+  local GH_LOADED_FOR=""
   local -a REPOS=()
   local -a VALID_REPOS=()
-  local -a LINES=()
+  local -a LINE_BRANCHES=()
   local -a LINE_GIT_ARGS=()
-  local ICON_LIVE=$'\u2705'
+  local -A PR_NUM=()
+  local -A PR_URL=()
+  local -A PR_STATE=()
+  local ICON_OK=$'\u2705'
+  local ICON_EXTRA=$'\u2B06\uFE0F'
   local ICON_ORPHAN=$'\u26A0\uFE0F'
+  local ICON_REPO=$'\U0001F4E6'
+  local ICON_PIN=$'\U0001F4CC'
+  local ICON_BRANCH=$'\U0001F33F'
+  local ICON_PR=$'\U0001F517'
+  local ICON_NONE='—'
 
   show_usage() {
     log_usage_title '[OPTIONS] [repo...]'
     echo
-    echo 'Report extra and orphan commits on line branches that are not on the base branch.'
-    echo 'Skips merge commits (Merge branch / Merge pull request).'
-    echo 'First --from line is primary; later lines only list commits not already on an earlier line.'
+    echo 'What is not on the base branch: extra/orphan commits on line branches,'
+    echo 'unmerged topic refs, and open GitHub PRs (if gh is logged in).'
+    echo 'Stdout is text. Use --out to export Markdown.'
     echo
     log_header 'Options'
     log_usage_options_line '--base <branch>' 'Base branch (default: main)'
     log_usage_options_line '--from <uat,develop,...>' 'Line branches (default: uat,develop)'
-    log_usage_options_line '--out;-o <file.md>' 'Write Markdown report (default: stdout)'
+    log_usage_options_line '--out;-o <file.md>' 'Write Markdown (use - for stdout)'
+    log_usage_options_line '--no-gh' 'Skip GitHub even if gh is available'
     log_usage_options_line '--fetch' 'git fetch --prune origin first'
     log_usage_options_line '-u;--update' 'Update app'
     log_usage_options_line '-h;--help' 'Show this help message'
     echo
     log_header 'Examples'
     log_usage_example_line
-    log_usage_example_line '--fetch --out docs/not-on-main.md visit-finland-next work-in-finland magnolia'
+    log_usage_example_line '--fetch --out report.md repo-a repo-b'
     log_usage_example_line '--base main --from uat,develop .'
     exit 0
   }
@@ -61,6 +74,19 @@ not_on_base_main() {
     fi
     if git -C "$r" rev-parse --verify --quiet "${b}" >/dev/null; then
       echo "${b}"
+      return 0
+    fi
+    return 1
+  }
+
+  tip_ref_for() {
+    local r="$1" name="$2"
+    if git -C "$r" rev-parse --verify --quiet "origin/${name}" >/dev/null; then
+      echo "origin/${name}"
+      return 0
+    fi
+    if git -C "$r" rev-parse --verify --quiet "${name}" >/dev/null; then
+      echo "${name}"
       return 0
     fi
     return 1
@@ -94,6 +120,61 @@ not_on_base_main() {
     echo "$name"
   }
 
+  probe_gh() {
+    GH_ON=0
+    [[ "$NO_GH" -eq 1 ]] && return 1
+    command_exists gh || return 1
+    gh auth status >/dev/null 2>&1 || return 1
+    GH_ON=1
+  }
+
+  ensure_gh_cache() {
+    local r="$1" num url state head
+    [[ "$GH_ON" -eq 1 ]] || return 0
+    [[ "$GH_LOADED_FOR" == "$r" ]] && return 0
+    PR_NUM=()
+    PR_URL=()
+    PR_STATE=()
+    GH_LOADED_FOR="$r"
+    while IFS=$'\t' read -r num url state head; do
+      [[ -z "${head:-}" ]] && continue
+      PR_NUM["$head"]="$num"
+      PR_URL["$head"]="$url"
+      PR_STATE["$head"]="$state"
+    done < <(
+      (
+        cd "$r" || exit 0
+        gh pr list --state all --limit 200 \
+          --json number,url,state,headRefName \
+          --jq '.[] | [.number, .url, .state, .headRefName] | @tsv'
+      ) 2>/dev/null || true
+    )
+  }
+
+  head_for_pr() {
+    local name="$1"
+    name="${name#refs/heads/}"
+    name="${name#refs/remotes/origin/}"
+    name="${name#origin/}"
+    echo "$name"
+  }
+
+  pr_md() {
+    local head
+    head="$(head_for_pr "$1")"
+    if [[ -n "${PR_NUM[$head]:-}" ]]; then
+      printf '[#%s](%s) %s' "${PR_NUM[$head]}" "${PR_URL[$head]}" "${PR_STATE[$head]}"
+    fi
+  }
+
+  pr_plain() {
+    local head
+    head="$(head_for_pr "$1")"
+    if [[ -n "${PR_NUM[$head]:-}" ]]; then
+      printf '#%s %s' "${PR_NUM[$head]}" "${PR_STATE[$head]}"
+    fi
+  }
+
   fill_line_git_args() {
     local r="$1" line="$2"
     local base_ref from_ref prev prev_ref
@@ -101,7 +182,7 @@ not_on_base_main() {
     base_ref="$(origin_ref "$r" "$BASE")" || return 1
     from_ref="$(origin_ref "$r" "$line")" || return 1
     LINE_GIT_ARGS=("${base_ref}..${from_ref}")
-    for prev in "${LINES[@]}"; do
+    for prev in "${LINE_BRANCHES[@]}"; do
       [[ "$prev" == "$line" ]] && break
       prev_ref="$(origin_ref "$r" "$prev")" || continue
       LINE_GIT_ARGS+=(--not "$prev_ref")
@@ -110,7 +191,7 @@ not_on_base_main() {
 
   not_on_label() {
     local line="$1" prev out="${BASE}"
-    for prev in "${LINES[@]}"; do
+    for prev in "${LINE_BRANCHES[@]}"; do
       [[ "$prev" == "$line" ]] && break
       out+=" / ${prev}"
     done
@@ -118,7 +199,6 @@ not_on_base_main() {
   }
 
   classify_line() {
-    # stdout: total live orphan  (extra vs earlier --from lines)
     local r="$1" line="$2"
     local sha total=0 live=0 orphan=0
     fill_line_git_args "$r" "$line" || {
@@ -138,63 +218,40 @@ not_on_base_main() {
   }
 
   line_role() {
-    local line="$1"
-    if [[ "$line" == "${LINES[0]}" ]]; then
+    if [[ "$1" == "${LINE_BRANCHES[0]}" ]]; then
       echo "primary"
     else
       echo "other"
     fi
   }
 
-  emit_summary_table() {
-    echo "## Summary"
-    echo
-    local header="| Repo"
-    local sep="| ---"
-    local line
-    for line in "${LINES[@]}"; do
-      header+=" | Extra on \`${line}\` ($(line_role "$line")) | Orphan on \`${line}\` ($(line_role "$line"))"
-      sep+=" | ---: | ---:"
+  is_line_name() {
+    local n="$1" line
+    [[ "$n" == "$BASE" ]] && return 0
+    for line in "${LINE_BRANCHES[@]}"; do
+      [[ "$n" == "$line" ]] && return 0
     done
-    header+=" |"
-    sep+=" |"
-    echo "$header"
-    echo "$sep"
-    local r total live orphan row
-    for r in "${VALID_REPOS[@]}"; do
-      row="| $(basename "$r")"
-      for line in "${LINES[@]}"; do
-        read -r total live orphan <<<"$(classify_line "$r" "$line")"
-        row+=" | ${live} | ${orphan}"
-      done
-      row+=" |"
-      echo "$row"
-    done
+    return 1
   }
 
-  emit_summary_mermaid() {
-    echo "flowchart LR"
-    local r id total live orphan line role
-    for r in "${VALID_REPOS[@]}"; do
-      id="$(sanitize_id "$(basename "$r")")"
-      echo "  subgraph ${id}[\"$(basename "$r")\"]"
-      local i=0
-      for line in "${LINES[@]}"; do
-        role="$(line_role "$line")"
-        read -r total live orphan <<<"$(classify_line "$r" "$line")"
-        echo "    ${id}_${i}E[\"Extra ${line} (${role}) +${live}\"]"
-        echo "    ${id}_${i}O[\"Orphan ${line} (${role}) +${orphan}\"]"
-        if [[ "$i" -eq 0 ]]; then
-          echo "    ${id}_M[\"${BASE}\"]"
-        fi
-        echo "    ${id}_${i}E -.-> ${id}_M"
-        i=$((i + 1))
-      done
-      echo "  end"
-    done
+  collect_topic_branches() {
+    local r="$1" base_ref="$2"
+    local ref name tip
+    git -C "$r" for-each-ref --format='%(refname)' --no-merged="$base_ref" \
+      refs/heads refs/remotes/origin |
+      while IFS= read -r ref; do
+        [[ -z "$ref" ]] && continue
+        name="${ref#refs/heads/}"
+        name="${name#refs/remotes/origin/}"
+        name="${name#refs/remotes/}"
+        [[ "$name" == "HEAD" || "$name" == "origin/HEAD" ]] && continue
+        is_line_name "$name" && continue
+        tip="$(tip_ref_for "$r" "$name")" || continue
+        printf '%s|%s\n' "$(git -C "$r" log -1 --format='%ct' "$tip")" "$name"
+      done | sort -t'|' -k1,1nr | awk -F'|' '!seen[$2]++ { print $2 }'
   }
 
-  emit_commit_rows() {
+  each_commit() {
     local r="$1" kind="$2"
     shift 2
     local sha short date subj topic
@@ -202,12 +259,190 @@ not_on_base_main() {
       [[ -z "$sha" ]] && continue
       if topic="$(topic_name_for "$r" "$sha")"; then
         [[ "$kind" == "orphan" ]] && continue
-        echo "| \`${short}\` | ${date} | ${subj} | \`${topic}\` |"
+        echo "${short}|${date}|${subj}|${topic}"
       else
         [[ "$kind" == "live" ]] && continue
-        echo "| \`${short}\` | ${date} | ${subj} |"
+        echo "${short}|${date}|${subj}|"
       fi
     done < <(git -C "$r" log --no-merges --format='%H|%h|%as|%s' "$@")
+  }
+
+  open_pr_count() {
+    local head n=0
+    for head in "${!PR_STATE[@]}"; do
+      [[ "${PR_STATE[$head]}" == "OPEN" ]] && n=$((n + 1))
+    done
+    echo "$n"
+  }
+
+  icon_for_count() {
+    local n="$1" bad="$2"
+    if [[ "${n:-0}" -eq 0 ]]; then
+      echo "$ICON_OK"
+    else
+      echo "$bad"
+    fi
+  }
+
+  # --- text ---
+
+  emit_text() {
+    local r name base_ref from_ref line short subj
+    local total live orphan short date topic pr
+    echo "Not on ${BASE}  $(date '+%Y-%m-%d %H:%M %Z')"
+    echo "  ${ICON_OK} ok  ${ICON_EXTRA} extra  ${ICON_ORPHAN} orphan  ${ICON_BRANCH} topic  ${ICON_PR} PR"
+    echo "Lines: ${FROM}"
+    [[ "$GH_ON" -eq 1 ]] && echo "GitHub: gh"
+    echo
+    local i=0
+    for r in "${VALID_REPOS[@]}"; do
+      if [[ "$i" -gt 0 ]]; then
+        echo "--------------------------------------------------------------------------------"
+        echo
+      fi
+      i=$((i + 1))
+      name="$(basename "$r")"
+      echo "${ICON_REPO} ${name}"
+      echo "  ${r}"
+      base_ref="$(origin_ref "$r" "$BASE")" || {
+        echo "  ${ICON_ORPHAN} no ${BASE}"
+        echo
+        continue
+      }
+      ensure_gh_cache "$r"
+      printf "  %s %-10s %s  %s\n" "$ICON_PIN" "$BASE" "$(git -C "$r" log -1 --format='%h' "$base_ref")" "$(git -C "$r" log -1 --format='%s' "$base_ref")"
+      for line in "${LINE_BRANCHES[@]}"; do
+        from_ref="$(origin_ref "$r" "$line")" || {
+          printf "  %s %-10s %s\n" "$ICON_PIN" "$line" "$ICON_NONE"
+          continue
+        }
+        printf "  %s %-10s %s  %s\n" "$ICON_PIN" "$line" "$(git -C "$r" log -1 --format='%h' "$from_ref")" "$(git -C "$r" log -1 --format='%s' "$from_ref")"
+      done
+      echo
+
+      for line in "${LINE_BRANCHES[@]}"; do
+        fill_line_git_args "$r" "$line" || continue
+        read -r total live orphan <<<"$(classify_line "$r" "$line")"
+        echo "  $(icon_for_count "$live" "$ICON_EXTRA") extra ${line}  (${live}, not on $(not_on_label "$line"))"
+        if [[ "$live" -eq 0 ]]; then
+          echo "    ${ICON_OK}"
+        else
+          while IFS='|' read -r short date subj topic; do
+            pr=""
+            [[ "$GH_ON" -eq 1 ]] && pr="$(pr_plain "$topic")"
+            printf "    %s %s  %s  %s  %s" "$ICON_EXTRA" "$short" "$date" "$subj" "$topic"
+            [[ -n "$pr" ]] && printf "  %s %s" "$ICON_PR" "$pr"
+            echo
+          done < <(each_commit "$r" live "${LINE_GIT_ARGS[@]}")
+        fi
+        echo
+        echo "  $(icon_for_count "$orphan" "$ICON_ORPHAN") orphan ${line}  (${orphan}, not on $(not_on_label "$line"))"
+        if [[ "$orphan" -eq 0 ]]; then
+          echo "    ${ICON_OK}"
+        else
+          while IFS='|' read -r short date subj topic; do
+            printf "    %s %s  %s  %s\n" "$ICON_ORPHAN" "$short" "$date" "$subj"
+          done < <(each_commit "$r" orphan "${LINE_GIT_ARGS[@]}")
+        fi
+        echo
+      done
+
+      local b tip_ref any_b=0 n_b
+      n_b="$(collect_topic_branches "$r" "$base_ref" | grep -c . || true)"
+      echo "  $(icon_for_count "$n_b" "$ICON_BRANCH") topic branches  (${n_b}, not merged to ${BASE})"
+      while IFS= read -r b; do
+        [[ -z "$b" ]] && continue
+        tip_ref="$(tip_ref_for "$r" "$b")" || continue
+        any_b=1
+        pr=""
+        [[ "$GH_ON" -eq 1 ]] && pr="$(pr_plain "$b")"
+        printf "    %s %s  %s  %s" "$ICON_BRANCH" "$b" "$(git -C "$r" log -1 --format='%h %as' "$tip_ref")" "$(git -C "$r" log -1 --format='%s' "$tip_ref")"
+        [[ -n "$pr" ]] && printf "  %s %s" "$ICON_PR" "$pr"
+        echo
+      done < <(collect_topic_branches "$r" "$base_ref")
+      [[ "$any_b" -eq 0 ]] && echo "    ${ICON_OK}"
+      echo
+
+      if [[ "$GH_ON" -eq 1 ]]; then
+        echo "  $(icon_for_count "$(open_pr_count)" "$ICON_PR") open PRs to ${BASE}  ($(open_pr_count))"
+        emit_open_prs_text "$r"
+        echo
+      fi
+    done
+  }
+
+  emit_open_prs_text() {
+    local r="$1" n
+    n="$(open_pr_count)"
+    if [[ "$n" -eq 0 ]]; then
+      echo "    ${ICON_OK}"
+      return
+    fi
+    (
+      cd "$r" || exit 0
+      gh pr list --base "$BASE" --state open --limit 100 \
+        --json number,state,headRefName,title \
+        --jq --arg icon "$ICON_PR" '.[] | "    \($icon) #\(.number)  \(.state)  \(.headRefName)  \(.title)"'
+    ) 2>/dev/null || echo "    ${ICON_NONE}"
+  }
+
+  # --- markdown ---
+
+  emit_summary_table() {
+    echo "## Summary"
+    echo
+    local header="| Repo" sep="| ---" line
+    for line in "${LINE_BRANCHES[@]}"; do
+      header+=" | ${ICON_EXTRA} Extra \`${line}\` | ${ICON_ORPHAN} Orphan \`${line}\`"
+      sep+=" | ---: | ---:"
+    done
+    header+=" | ${ICON_BRANCH} Topics"
+    sep+=" | ---:"
+    if [[ "$GH_ON" -eq 1 ]]; then
+      header+=" | ${ICON_PR} PRs"
+      sep+=" | ---:"
+    fi
+    echo "${header} |"
+    echo "${sep} |"
+    local r total live orphan row base_ref n_b
+    for r in "${VALID_REPOS[@]}"; do
+      row="| $(basename "$r")"
+      for line in "${LINE_BRANCHES[@]}"; do
+        read -r total live orphan <<<"$(classify_line "$r" "$line")"
+        row+=" | ${live} | ${orphan}"
+      done
+      base_ref="$(origin_ref "$r" "$BASE")" || base_ref=""
+      n_b=0
+      if [[ -n "$base_ref" ]]; then
+        n_b="$(collect_topic_branches "$r" "$base_ref" | grep -c . || true)"
+      fi
+      row+=" | ${n_b}"
+      if [[ "$GH_ON" -eq 1 ]]; then
+        ensure_gh_cache "$r"
+        row+=" | $(open_pr_count)"
+      fi
+      echo "${row} |"
+    done
+  }
+
+  emit_summary_mermaid() {
+    echo "flowchart LR"
+    local r id total live orphan line role i
+    for r in "${VALID_REPOS[@]}"; do
+      id="$(sanitize_id "$(basename "$r")")"
+      echo "  subgraph ${id}[\"$(basename "$r")\"]"
+      i=0
+      for line in "${LINE_BRANCHES[@]}"; do
+        role="$(line_role "$line")"
+        read -r total live orphan <<<"$(classify_line "$r" "$line")"
+        echo "    ${id}_${i}E[\"Extra ${line} (${role}) +${live}\"]"
+        echo "    ${id}_${i}O[\"Orphan ${line} (${role}) +${orphan}\"]"
+        [[ "$i" -eq 0 ]] && echo "    ${id}_M[\"${BASE}\"]"
+        echo "    ${id}_${i}E -.-> ${id}_M"
+        i=$((i + 1))
+      done
+      echo "  end"
+    done
   }
 
   emit_repo_mermaid() {
@@ -216,9 +451,8 @@ not_on_base_main() {
     echo '```mermaid'
     echo "flowchart TB"
     echo "  src[\"${line}\"]"
-    local sha short date subj topic nid
+    local sha short date subj topic nid any=0
     local -a seen=()
-    local any=0
     while IFS='|' read -r sha short date subj; do
       [[ -z "$sha" ]] && continue
       topic="$(topic_name_for "$r" "$sha")" || continue
@@ -237,66 +471,164 @@ not_on_base_main() {
     echo '```'
   }
 
-  emit_unique_section() {
+  emit_md_unique() {
     local r="$1" line="$2"
-    local total live orphan
+    local total live orphan short date subj topic pr
     fill_line_git_args "$r" "$line" || return 0
     read -r total live orphan <<<"$(classify_line "$r" "$line")"
 
-    echo "### Extra on \`${line}\` ($(line_role "$line"), not on \`$(not_on_label "$line")\`)"
+    echo "### $(icon_for_count "$live" "$ICON_EXTRA") Extra on \`${line}\` ($(line_role "$line"), ${live}, not on \`$(not_on_label "$line")\`)"
     echo
     if [[ "$live" -eq 0 ]]; then
       echo "_None._"
       echo
     else
-      echo "| SHA | Date | Subject | Topic |"
-      echo "| --- | --- | --- | --- |"
-      emit_commit_rows "$r" live "${LINE_GIT_ARGS[@]}"
+      if [[ "$GH_ON" -eq 1 ]]; then
+        echo "| SHA | Date | Subject | Topic | PR |"
+        echo "| --- | --- | --- | --- | --- |"
+      else
+        echo "| SHA | Date | Subject | Topic |"
+        echo "| --- | --- | --- | --- |"
+      fi
+      while IFS='|' read -r short date subj topic; do
+        if [[ "$GH_ON" -eq 1 ]]; then
+          pr="$(pr_md "$topic")"
+          echo "| \`${short}\` | ${date} | ${subj} | \`${topic}\` | ${pr} |"
+        else
+          echo "| \`${short}\` | ${date} | ${subj} | \`${topic}\` |"
+        fi
+      done < <(each_commit "$r" live "${LINE_GIT_ARGS[@]}")
       echo
       emit_repo_mermaid "$r" "$line" "${LINE_GIT_ARGS[@]}"
       echo
     fi
 
-    echo "### Orphan on \`${line}\` ($(line_role "$line"), not on \`$(not_on_label "$line")\`)"
+    echo "### $(icon_for_count "$orphan" "$ICON_ORPHAN") Orphan on \`${line}\` ($(line_role "$line"), ${orphan}, not on \`$(not_on_label "$line")\`)"
     echo
     if [[ "$orphan" -eq 0 ]]; then
       echo "_None._"
       echo
-      return
+    else
+      echo "| SHA | Date | Subject |"
+      echo "| --- | --- | --- |"
+      while IFS='|' read -r short date subj topic; do
+        echo "| \`${short}\` | ${date} | ${subj} |"
+      done < <(each_commit "$r" orphan "${LINE_GIT_ARGS[@]}")
+      echo
     fi
-    echo "| SHA | Date | Subject |"
-    echo "| --- | --- | --- |"
-    emit_commit_rows "$r" orphan "${LINE_GIT_ARGS[@]}"
+  }
+
+  emit_md_branches() {
+    local r="$1" base_ref="$2"
+    local b tip_ref short date subj pr any=0
+    echo "### ${ICON_BRANCH} Topic branches not merged to \`${BASE}\`"
+    echo
+    if [[ "$GH_ON" -eq 1 ]]; then
+      echo "| Branch | Tip | Date | Subject | PR |"
+      echo "| --- | --- | --- | --- | --- |"
+    else
+      echo "| Branch | Tip | Date | Subject |"
+      echo "| --- | --- | --- | --- |"
+    fi
+    while IFS= read -r b; do
+      [[ -z "$b" ]] && continue
+      tip_ref="$(tip_ref_for "$r" "$b")" || continue
+      any=1
+      short="$(git -C "$r" log -1 --format='%h' "$tip_ref")"
+      date="$(git -C "$r" log -1 --format='%as' "$tip_ref")"
+      subj="$(git -C "$r" log -1 --format='%s' "$tip_ref")"
+      if [[ "$GH_ON" -eq 1 ]]; then
+        pr="$(pr_md "$b")"
+        echo "| \`${b}\` | \`${short}\` | ${date} | ${subj} | ${pr} |"
+      else
+        echo "| \`${b}\` | \`${short}\` | ${date} | ${subj} |"
+      fi
+    done < <(collect_topic_branches "$r" "$base_ref")
+    if [[ "$any" -eq 0 ]]; then
+      echo
+      echo "_None._"
+    fi
     echo
   }
 
-  emit_repo_section() {
+  emit_md_prs() {
     local r="$1"
-    local name base_ref from_ref line
-    name="$(basename "$r")"
-    echo "## ${name}"
+    [[ "$GH_ON" -eq 1 ]] || return 0
+    echo "### ${ICON_PR} Open PRs to \`${BASE}\` (GitHub)"
     echo
-    echo "Path: \`${r}\`"
-    echo
-    base_ref="$(origin_ref "$r" "$BASE")" || {
-      echo "_No \`${BASE}\` ref._"
+    if [[ "$(open_pr_count)" -eq 0 ]]; then
+      echo "_None._"
       echo
       return
-    }
-    echo "| Ref | Tip | Subject |"
-    echo "| --- | --- | --- |"
-    echo "| \`${BASE}\` | \`$(git -C "$r" log -1 --format='%h' "$base_ref")\` | $(git -C "$r" log -1 --format='%s' "$base_ref") |"
-    for line in "${LINES[@]}"; do
-      from_ref="$(origin_ref "$r" "$line")" || {
-        echo "| \`${line}\` | — | _missing_ |"
+    fi
+    echo "| PR | Head | State | Title |"
+    echo "| --- | --- | --- | --- |"
+    (
+      cd "$r" || exit 0
+      gh pr list --base "$BASE" --state open --limit 100 \
+        --json number,url,state,headRefName,title \
+        --jq '.[] | "| [#\(.number)](\(.url)) | `\(.headRefName)` | \(.state) | \(.title) |"'
+    ) 2>/dev/null || true
+    echo
+  }
+
+  emit_markdown() {
+    local r name base_ref from_ref line rest="" j
+    echo "# Not on \`${BASE}\`"
+    echo
+    echo "Generated: $(date '+%Y-%m-%d %H:%M %Z')"
+    echo
+    echo "Extra/orphan commits on line branches, topic refs not merged into \`${BASE}\`."
+    [[ "$GH_ON" -eq 1 ]] && echo "Open PRs from \`gh\`."
+    echo
+    echo "| | |"
+    echo "| --- | --- |"
+    echo "| Base | \`${BASE}\` |"
+    echo "| Lines | \`${FROM}\` |"
+    echo "| Icons | ${ICON_OK} ok · ${ICON_EXTRA} extra · ${ICON_ORPHAN} orphan · ${ICON_BRANCH} topic · ${ICON_PR} PR |"
+    [[ "$GH_ON" -eq 1 ]] && echo "| GitHub | \`gh\` |"
+    echo
+    emit_summary_table
+    echo
+    echo '```mermaid'
+    emit_summary_mermaid
+    echo '```'
+    echo
+    local i=0
+    for r in "${VALID_REPOS[@]}"; do
+      if [[ "$i" -gt 0 ]]; then
+        echo
+        echo '---'
+        echo
+      fi
+      i=$((i + 1))
+      name="$(basename "$r")"
+      echo "## ${ICON_REPO} ${name}"
+      echo
+      echo "Path: \`${r}\`"
+      echo
+      base_ref="$(origin_ref "$r" "$BASE")" || {
+        echo "_No \`${BASE}\` ref._"
+        echo
         continue
       }
-      echo "| \`${line}\` | \`$(git -C "$r" log -1 --format='%h' "$from_ref")\` | $(git -C "$r" log -1 --format='%s' "$from_ref") |"
-    done
-    echo
-
-    for line in "${LINES[@]}"; do
-      emit_unique_section "$r" "$line"
+      echo "| Ref | Tip | Subject |"
+      echo "| --- | --- | --- |"
+      echo "| \`${BASE}\` | \`$(git -C "$r" log -1 --format='%h' "$base_ref")\` | $(git -C "$r" log -1 --format='%s' "$base_ref") |"
+      for line in "${LINE_BRANCHES[@]}"; do
+        from_ref="$(origin_ref "$r" "$line")" || {
+          echo "| \`${line}\` | — | _missing_ |"
+          continue
+        }
+        echo "| \`${line}\` | \`$(git -C "$r" log -1 --format='%h' "$from_ref")\` | $(git -C "$r" log -1 --format='%s' "$from_ref") |"
+      done
+      echo
+      ensure_gh_cache "$r"
+      for line in "${LINE_BRANCHES[@]}"; do
+        emit_md_unique "$r" "$line"
+      done
+      emit_md_branches "$r" "$base_ref"
+      emit_md_prs "$r"
     done
   }
 
@@ -317,9 +649,10 @@ not_on_base_main() {
     --out | -o)
       shift
       OUT="${1:-}"
-      [[ -n "$OUT" ]] || die 1 '--out needs a file path'
+      [[ -n "$OUT" ]] || die 1 '--out needs a file path or -'
       ;;
     --fetch) DO_FETCH=1 ;;
+    --no-gh) NO_GH=1 ;;
     --)
       shift
       REPOS+=("$@")
@@ -336,9 +669,11 @@ not_on_base_main() {
   fi
 
   check_dependencies git
-  log_title "Commits not on ${BASE}"
+  [[ -z "$OUT" ]] && log_title "Not on ${BASE}"
 
-  IFS=',' read -r -a LINES <<<"$FROM"
+  local IFS=','
+  read -r -a LINE_BRANCHES <<<"$FROM"
+  unset IFS
 
   local repo
   for repo in "${REPOS[@]}"; do
@@ -358,50 +693,23 @@ not_on_base_main() {
     done
   fi
 
-  local tmp
-  tmp="$(mktemp)"
-
-  {
-    echo "# Commits not on \`${BASE}\`"
-    echo
-    echo "Generated: $(date '+%Y-%m-%d %H:%M %Z')"
-    echo
-    echo "Extra/orphan on the primary line vs \`${BASE}\`. Other lines only add commits not already on an earlier line."
-    echo
-    echo "| | |"
-    echo "| --- | --- |"
-    echo "| Base | \`${BASE}\` |"
-    echo "| Primary | \`${LINES[0]}\` |"
-    if [[ ${#LINES[@]} -gt 1 ]]; then
-      local rest="" j
-      for ((j = 1; j < ${#LINES[@]}; j++)); do
-        [[ -n "$rest" ]] && rest+=", "
-        rest+="${LINES[$j]}"
-      done
-      echo "| Other | \`${rest}\` |"
-    fi
-    echo "| Icons | ${ICON_LIVE} live topic branch · ${ICON_ORPHAN} orphan (topic branch gone) |"
-    echo
-    emit_summary_table
-    echo
-    echo '```mermaid'
-    emit_summary_mermaid
-    echo '```'
-    echo
-    for repo in "${VALID_REPOS[@]}"; do
-      emit_repo_section "$repo"
-    done
-  } >"$tmp"
+  probe_gh || true
+  if [[ -z "$OUT" && "$GH_ON" -eq 1 ]]; then
+    log_info 'GitHub PRs via <code>gh</code>'
+  fi
 
   if [[ -n "$OUT" ]]; then
-    mkdir -p "$(dirname "$OUT")"
-    cp "$tmp" "$OUT"
-    rm -f "$tmp"
-    log_success 'Wrote <code>%s</code>' "$OUT"
-  else
-    cat "$tmp"
-    rm -f "$tmp"
+    if [[ "$OUT" == "-" ]]; then
+      emit_markdown
+    else
+      mkdir -p "$(dirname "$OUT")"
+      emit_markdown >"$OUT"
+      log_success 'Wrote <code>%s</code>' "$OUT"
+    fi
+    return 0
   fi
+
+  emit_text
 }
 
 main "$@"

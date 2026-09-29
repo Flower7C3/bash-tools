@@ -6,7 +6,7 @@ Collection of useful bash scripts for development and system administration.
 
 ### Development Tools
 
-- `not-on-base` - Extra/orphan commits on uat/develop not on main
+- `not-on-base` - What is not on base (commits, topic branches, open PRs). Text on stdout; `--out file.md` for Markdown. Uses `gh` when logged in.
 - `convert-jpg-mp4` - Convert JPG images to MP4 video
 - `extract-mermaid` - Export Mermaid diagrams from Markdown to SVG/PNG
 - `wordpress-update` - Update WordPress installations safely
