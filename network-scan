@@ -31,9 +31,19 @@ network_scan_main() {
     echo
     log_header 'Selection'
     log_usage_options_line '-m;--mac' \
-      'Match inventory MACs against the local ARP/neighbour tables'
+      'Match inventory MACs against the local ARP table and refresh their IP'
     log_usage_options_line '-n;--network' \
-      'Actively sweep every host of the local subnet(s) and rebuild ARP data'
+      'Actively sweep every host of the local subnet(s), then append what is found'
+    log_usage_options_line '-i;--identify' \
+      'Describe the entries: probe open ports, HTTP title and mDNS/SSDP to detect services and device types'
+    echo
+    log_header 'Typical combinations'
+    log_usage_options_line '-i' \
+      'Describe only the devices already listed in the file (no ARP read, no sweep)'
+    log_usage_options_line '-ni' \
+      'Sweep the network, append unknown devices and describe all of them'
+    log_usage_options_line '-mi' \
+      'Refresh IPs from the ARP table and describe the listed devices'
     echo
     log_header 'Columns'
     log_usage_options_line '--mac-col <NAME|N>' \
@@ -48,6 +58,16 @@ network_scan_main() {
       'Hostname column, created if missing (default: hostname). Filled only if the network has reverse DNS'
     log_usage_options_line '--type-col <NAME>' \
       'Device type column, created by --identify (default: typ)'
+    log_usage_options_line '--status-col <NAME>' \
+      'Online/offline/new status column, created if missing (default: status)'
+    log_usage_options_line '--services-col <NAME>' \
+      'Detected services column, created by --identify (default: uslugi)'
+    echo
+    log_header 'Identification'
+    log_usage_options_line '--identify-ports <LIST>' \
+      'Ports to probe (default: 22,23,53,80,443,445,554,631,8080,8009,8443,9100)'
+    log_usage_options_line '--identify-timeout <MS>' \
+      'Per-port connect timeout in milliseconds (default: 700)'
     echo
     log_header 'Network'
     log_usage_options_line '--subnet <CIDR>' \
@@ -80,18 +100,10 @@ network_scan_main() {
       'Append devices found on the network that are missing from the inventory (default: on)'
     log_usage_options_line '--no-add-new' \
       'Never append new devices, only report them'
-    log_usage_options_line '--status-col <NAME>' \
-      'Online/offline/new status column, created if missing (default: status)'
     log_usage_options_line '--mac-typo-tolerance <N>' \
       'Correct a MAC that differs from a live device by up to N hex digits (default: 2)'
     log_usage_options_line '--no-dns' \
       'Skip reverse DNS (hostname) lookups'
-    log_usage_options_line '--identify' \
-      'Probe new/unknown devices (ports, HTTP title, mDNS/SSDP) to guess what they are'
-    log_usage_options_line '--identify-ports <LIST>' \
-      'Ports for --identify (default: 22,23,53,80,443,445,554,631,8080,8009,8443,9100)'
-    log_usage_options_line '--identify-timeout <MS>' \
-      'Per-port connect timeout for --identify (default: 700)'
     log_usage_options_line '--csv-dir <DIR>' \
       'Write per-section CSV files (breakdown, changes, identified devices)'
     log_usage_options_line '-v;--verbose' \
@@ -104,8 +116,10 @@ network_scan_main() {
       'Show this help message'
     echo
     log_header 'Examples'
-    log_usage_example_line '-mn inventory.tsv'
-    log_usage_example_line '-mn --identify --subnet 192.168.1.0/24 devices.tsv'
+    log_usage_example_line '-i inventory.tsv'
+    log_usage_example_line '-m inventory.tsv'
+    log_usage_example_line '-ni --subnet 192.168.1.0/24 devices.tsv'
+    log_usage_example_line '-ni --csv-dir ./scan-csv devices.tsv'
     log_usage_example_line '-m -o new.tsv -r changes.md devices.tsv'
     exit 0
   }
@@ -116,7 +130,7 @@ network_scan_main() {
   local IDENTIFY_PORTS="22,23,53,80,443,445,554,631,8080,8009,8443,9100" IDENTIFY_TIMEOUT_MS=700
   local OUI_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/bash-tools/oui" OUI_AGE=30 NO_DOWNLOAD=0
   local OUTPUT="" REPORT="" NO_DNS=0 VERBOSE=0 CSV_DIR="" ADD_NEW=1 STATUS_COL="status"
-  local MAC_TYPO_TOLERANCE=2
+  local MAC_TYPO_TOLERANCE=2 SERVICES_COL="uslugi"
   # shellcheck disable=SC2034
   local DEBUG=0
   local -a SUBNETS=() INTERFACES=() INPUTS=()
@@ -130,7 +144,7 @@ network_scan_main() {
     for ((i = 1; i < ${#arg}; i++)); do
       char="-${arg:i:1}"
       case "$char" in
-      -m | -n | -v | -d | -h | -u) expanded+=("$char") ;;
+      -m | -n | -i | -v | -d | -h | -u) expanded+=("$char") ;;
       *)
         printf '%s\n' "$arg"
         return
@@ -252,7 +266,11 @@ network_scan_main() {
         MAC_TYPO_TOLERANCE="$2"
         shift 2
         ;;
-      --identify)
+      --services-col)
+        SERVICES_COL="$2"
+        shift 2
+        ;;
+      -i | --identify)
         IDENTIFY=1
         shift
         ;;
@@ -301,8 +319,8 @@ network_scan_main() {
       exit 1
     fi
 
-    if [[ "$MAC_SCAN" -eq 0 && "$NETWORK_SCAN" -eq 0 ]]; then
-      log_error 'Nothing to do: pass <b>--mac</b> and/or <b>--network</b>'
+    if [[ "$MAC_SCAN" -eq 0 && "$NETWORK_SCAN" -eq 0 && "$IDENTIFY" -eq 0 ]]; then
+      log_error 'Nothing to do: pass <b>--mac</b>, <b>--network</b> and/or <b>--identify</b>'
       show_usage
     fi
 
@@ -454,6 +472,7 @@ network_scan_main() {
     OUI_DIR="$OUI_DIR" OUI_AGE="$OUI_AGE" NO_DOWNLOAD="$NO_DOWNLOAD" \
     OUTPUT="$OUTPUT" REPORT="$REPORT" NO_DNS="$NO_DNS" CSV_DIR="$CSV_DIR" \
     ADD_NEW="$ADD_NEW" STATUS_COL="$STATUS_COL" MAC_TYPO_TOLERANCE="$MAC_TYPO_TOLERANCE" \
+    SERVICES_COL="$SERVICES_COL" \
     IDENTIFY="$IDENTIFY" IDENTIFY_PORTS="$IDENTIFY_PORTS" \
     IDENTIFY_TIMEOUT_MS="$IDENTIFY_TIMEOUT_MS" \
     VERBOSE="$VERBOSE" DEBUG="$DEBUG" INPUT="${INPUTS[0]}" \
@@ -482,6 +501,7 @@ VENDOR_COL = os.environ.get("VENDOR_COL", "")
 HOSTNAME_COL = os.environ.get("HOSTNAME_COL", "") or "hostname"
 TYPE_COL = os.environ.get("TYPE_COL", "") or "typ"
 STATUS_COL = os.environ.get("STATUS_COL", "") or "status"
+SERVICES_COL = os.environ.get("SERVICES_COL", "") or "uslugi"
 MAC_TYPO_TOLERANCE = int(os.environ["MAC_TYPO_TOLERANCE"])
 ADD_NEW = os.environ["ADD_NEW"] == "1"
 TIMEOUT_MS = int(os.environ["TIMEOUT_MS"])
@@ -647,33 +667,29 @@ if mac_key is None:
 for key in (HOSTNAME_COL,):
     if key not in fieldnames:
         fieldnames.append(key)
-if IDENTIFY and TYPE_COL not in fieldnames:
-    fieldnames.append(TYPE_COL)
-if STATUS_COL not in fieldnames:
-    fieldnames.append(STATUS_COL)
+if IDENTIFY:
+    for extra in (TYPE_COL, SERVICES_COL):
+        if extra not in fieldnames:
+            fieldnames.append(extra)
 if vendor_key is None:
     vendor_key = "vendor"
     if vendor_key not in fieldnames:
         fieldnames.append(vendor_key)
+if STATUS_COL not in fieldnames:
+    fieldnames.append(STATUS_COL)
 if DEBUG:
     log("DEBUG", f"mac={mac_key} ip={ip_key} name={name_key} vendor={vendor_key}")
 
 invalid_rows = []
 repaired_macs = []  # (line, original, repaired, note)
 corrected_macs = []  # (typed, actual, distance)
+pending_by_ip = []  # rows that have an IP but no usable MAC
 inventory = []  # (row, mac, ip)
 seen_macs = {}
+skipped_rows = {}  # row -> why it could not be reconciled
 for idx, row in enumerate(rows, start=2):
     original = (row.get(mac_key, "") if mac_key else "") or ""
     mac, note = repair_mac(original)
-    if not mac:
-        if any((v or "").strip() for v in row.values()):
-            invalid_rows.append((idx, original.strip()))
-        continue
-    if note:
-        if mac_key:
-            row[mac_key] = mac
-        repaired_macs.append((idx, original.strip(), mac, note))
     ip = (row.get(ip_key, "") if ip_key else "").strip()
     if ip:
         try:
@@ -681,13 +697,29 @@ for idx, row in enumerate(rows, start=2):
         except ValueError:
             log("WARN", f"Line {idx}: invalid IP '{ip}', ignored")
             ip = ""
+    if not mac:
+        # No MAC but a usable IP: the address can be looked up on the network
+        # once the ARP table is known, so hold the row instead of dropping it.
+        if ip:
+            pending_by_ip.append((idx, row, ip, original.strip()))
+        elif any((v or "").strip() for v in row.values()):
+            invalid_rows.append((idx, original.strip()))
+            skipped_rows[id(row)] = "nieprawidłowy MAC"
+        continue
+    if note:
+        if mac_key:
+            row[mac_key] = mac
+        repaired_macs.append((idx, original.strip(), mac, note))
     if mac in seen_macs:
         log("WARN", f"Line {idx}: duplicate MAC {mac} (first seen on line {seen_macs[mac]})")
+        skipped_rows[id(row)] = "duplikat MAC"
         continue
     seen_macs[mac] = idx
     inventory.append([row, mac, ip])
 
 log("INFO", f"Inventory: {len(inventory)} devices with a MAC address")
+if pending_by_ip:
+    log("INFO", f"{len(pending_by_ip)} row(s) have an IP but no MAC, looking them up")
 if repaired_macs:
     log("INFO", f"Repaired {len(repaired_macs)} malformed MAC address(es)")
 
@@ -871,13 +903,37 @@ if discovered:
             log("INFO", f"MAC typo: {mac} -> {best} ({distance} digit(s) off)")
     if corrected_macs:
         log("INFO", f"Corrected {len(corrected_macs)} MAC address(es) against the network")
-        live = set(discovered)
-        seen = {}
-        for entry in inventory:
-            row, mac, ip = entry
-            if mac in seen:
-                continue
-            seen[mac] = True
+
+# Rows that carried only an IP get their MAC resolved from the ARP table.
+resolved_by_ip = []
+for idx, row, ip, original in pending_by_ip:
+    mac = ip_to_mac.get(ip, "")
+    if not mac:
+        invalid_rows.append((idx, original or ip))
+        skipped_rows[id(row)] = "brak MAC (IP poza siecią)"
+        log("WARN", f"Line {idx}: no MAC for {ip} on the network, cannot fill it in")
+        continue
+    if mac in seen_macs:
+        log("WARN", f"Line {idx}: {ip} resolves to {mac}, already listed on line {seen_macs[mac]}")
+        existing = next(e for e in inventory if e[1] == mac)
+        # Keep the richer of the two records: an IP we have just seen on the
+        # network beats a stale one, and an existing name is never discarded.
+        if name_key and not (row.get(name_key) or "").strip():
+            row[name_key] = existing[0].get(name_key, "") or ""
+        if not existing[2]:
+            existing[2] = ip
+        resolved_by_ip.append((idx, original or "-", mac, "already present, merged"))
+        skipped_rows[id(row)] = "duplikat IP"
+        continue
+    if mac_key:
+        row[mac_key] = mac
+    seen_macs[mac] = idx
+    inventory.append([row, mac, ip])
+    resolved_by_ip.append((idx, original or "-", mac, "found on the network"))
+    log("INFO", f"Line {idx}: filled in MAC {mac} for {ip}")
+
+if resolved_by_ip:
+    log("INFO", f"Filled in {len(resolved_by_ip)} MAC address(es) from the network")
 
 
 # ---------------------------------------------------------------- vendors
@@ -1093,6 +1149,56 @@ def mdns_lookup(ip):
     return match.group(1).strip()[:80] if match else ""
 
 
+PORT_SERVICES = {
+    20: "FTP (data)",
+    21: "FTP",
+    22: "SSH",
+    23: "Telnet",
+    53: "DNS",
+    67: "DHCP",
+    80: "HTTP",
+    88: "Kerberos",
+    111: "RPCbind",
+    123: "NTP",
+    139: "NetBIOS",
+    161: "SNMP",
+    389: "LDAP",
+    443: "HTTPS",
+    445: "SMB",
+    465: "SMTPS",
+    514: "Syslog",
+    554: "RTSP",
+    587: "SMTP",
+    631: "IPP (drukarka)",
+    1883: "MQTT",
+    3240: "Plex",
+    3389: "RDP",
+    5000: "UPnP / Synology",
+    5001: "UPnP / Synology",
+    5431: "Opencast",
+    5900: "VNC",
+    8009: "Roku / Chromecast",
+    8080: "HTTP alt / proxy",
+    8443: "HTTPS alt / Chromecast",
+    8883: "MQTT TLS",
+    9100: "RAW (drukarka)",
+    9121: "NordVPN",
+    27017: "MongoDB",
+    32400: "Plex DLNA",
+    47808: "AirPlay",
+    49152: "UPnP / Windows RPC",
+    50000: "UPnP / AirPlay",
+}
+
+
+def services_for(ports):
+    """Human readable service list for a set of open ports."""
+    out = []
+    for port in sorted(set(ports or [])):
+        out.append(PORT_SERVICES.get(port, f"TCP/{port}"))
+    return ", ".join(out)
+
+
 TYPE_RULES = [
     (lambda p, v, s: 9295 in p, "Consola PlayStation"),
     (lambda p, v, s: 5050 in p or 1755 in p, "Konsola Xbox"),
@@ -1191,12 +1297,17 @@ unchanged = 0
 
 identities = {}
 if IDENTIFY and IDENTIFY_PORTS:
-    log("INFO", f"Identifying devices on {len(IDENTIFY_PORTS)} ports")
     ssdp = ssdp_scan()
-    targets = sorted(
-        {ip for ip in discovered.values()} | set(ssdp.keys()),
-        key=lambda s: ipaddress.ip_address(s),
-    )
+    if MAC_SCAN or NETWORK_SCAN:
+        # A network sweep is running, so describe everything it found.
+        candidates = set(discovered.values()) | set(ssdp.keys())
+        log("INFO", f"Identifying {len(candidates)} discovered device(s) on {len(IDENTIFY_PORTS)} ports")
+    else:
+        # No sweep: describe only the devices listed in the inventory file.
+        candidates = {ip for _row, _mac, ip in inventory if ip}
+        candidates |= set(ssdp.keys())
+        log("INFO", f"Identifying {len(candidates)} listed device(s) on {len(IDENTIFY_PORTS)} ports")
+    targets = sorted(candidates, key=lambda s: ipaddress.ip_address(s))
     vendor_by_ip = {ip: vendor_for(mac) for mac, ip in discovered.items()}
     done = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=JOBS) as pool:
@@ -1216,24 +1327,47 @@ if IDENTIFY and IDENTIFY_PORTS:
     if DEBUG:
         log("DEBUG", f"ssdp responders: {len(ssdp)}")
 
+def device_online(ip):
+    """Is the device reachable?
+
+    With a MAC table read or a sweep the answer comes from the ARP table.
+    With `--identify` on its own there is no ARP data, so the probe result
+    decides: a device that answers on any port, or shows up in SSDP, is up.
+    """
+    if MAC_SCAN or NETWORK_SCAN:
+        return ip in ip_to_mac
+    info = identities.get(ip)
+    if not info:
+        return False
+    return bool(info["ports"] or info["names"])
+
+
 if IDENTIFY:
     for entry in inventory:
         row, mac, ip = entry
         info = identities.get(ip)
         if info:
             row[TYPE_COL] = info["type"]
+            row[SERVICES_COL] = services_for(info["ports"])
 
+
+# IP changes and "not seen" only mean something when the ARP table was read;
+# with `--identify` alone nothing knows the current IP of a device.
+TRACK_IP = bool(MAC_SCAN or NETWORK_SCAN)
 
 for entry in inventory:
     row, mac, ip = entry
     new_ip = discovered.get(mac, "")
-    if new_ip and new_ip != ip:
-        changes_ip.append((mac, ip, new_ip, name_key and (row.get(name_key) or "").strip()))
+    if TRACK_IP:
+        if new_ip and new_ip != ip:
+            changes_ip.append((mac, ip, new_ip, name_key and (row.get(name_key) or "").strip()))
+            ip = new_ip
+        elif not new_ip:
+            missing.append((mac, ip, name_key and (row.get(name_key) or "").strip()))
+        else:
+            unchanged += 1
+    elif new_ip:
         ip = new_ip
-    elif not new_ip:
-        missing.append((mac, ip, name_key and (row.get(name_key) or "").strip()))
-    else:
-        unchanged += 1
 
     old_vendor = (row.get(vendor_key, "") or "").strip()
     if is_locally_administered(mac):
@@ -1250,7 +1384,7 @@ for entry in inventory:
     if ip_key:
         row[ip_key] = ip
     row[HOSTNAME_COL] = hostname_for(ip)
-    row[STATUS_COL] = "online" if mac in discovered else "offline"
+    row[STATUS_COL] = "online" if device_online(ip) else "offline"
 
 known_macs = {mac for _, mac, _ in inventory}
 added_devices = []
@@ -1269,6 +1403,7 @@ for mac, ip in sorted(discovered.items(), key=lambda kv: ipaddress.ip_address(kv
     row[HOSTNAME_COL] = hostname_for(ip)
     if IDENTIFY:
         row[TYPE_COL] = info["type"] if info else ""
+        row[SERVICES_COL] = services_for(info["ports"]) if info else ""
     row[STATUS_COL] = "new"
     added_devices.append((mac, ip, vendor, info["type"] if info else "", row[name_key] if name_key else ""))
     if ADD_NEW:
@@ -1279,6 +1414,13 @@ for mac, ip in sorted(discovered.items(), key=lambda kv: ipaddress.ip_address(kv
 
 # ---------------------------------------------------------------- output
 
+
+# Rows that never entered the inventory still belong in the output file, so
+# they get an explicit status instead of a silently empty cell.
+for row in rows:
+    reason = skipped_rows.get(id(row))
+    if reason and STATUS_COL in row:
+        row[STATUS_COL] = reason
 
 # A hostname column that is empty for every device carries no information,
 # so it is dropped from the output file.
@@ -1315,6 +1457,7 @@ lines = [
     f"- New devices on the network: {len(added_devices)} ("
     + ("added to the output file" if ADD_NEW else "report only, not added")
     + ")",
+    f"- MAC filled in from the network: {len(resolved_by_ip)}",
     f"- Malformed MAC repaired: {len(repaired_macs)}",
     f"- MAC typos corrected: {len(corrected_macs)}",
     f"- Unchanged: {unchanged}",
@@ -1462,6 +1605,12 @@ table(
     [(m, i, nm or "-", v or "-", kind or "-") for m, i, v, kind, nm in added_devices],
     ["MAC", "IP", "Name", "Vendor", "Type"],
 )
+if resolved_by_ip:
+    table(
+        "MAC addresses filled in from the network",
+        [(line_no, old_value, mac, how) for line_no, old_value, mac, how in resolved_by_ip],
+        ["Line", "MAC in inventory", "Resolved to", "How"],
+    )
 if repaired_macs:
     table(
         "Malformed MAC addresses repaired",
@@ -1539,7 +1688,7 @@ category_of_device = {}
 for entry in inventory:
     row, mac, ip = entry
     info = identities.get(ip)
-    online = ip in ip_to_mac
+    online = device_online(ip)
     if info:
         kind = info["type"]
     else:
@@ -1560,7 +1709,7 @@ for entry in inventory:
     # a column would just duplicate it.
     if ip == gateway_ip:
         continue
-    grouped.setdefault((order, kind), []).append((ip, label, mac, ip in ip_to_mac))
+    grouped.setdefault((order, kind), []).append((ip, label, mac, device_online(ip)))
 
 ordered_groups = sorted(
     grouped.items(),
@@ -1669,7 +1818,7 @@ if CSV_DIR:
 
     write_csv(
         "devices.csv",
-        ["mac", "ip", "name", "vendor", "hostname", "type", "status", "open_ports", "identified_as"],
+        ["mac", "ip", "name", "vendor", "hostname", "type", "status", "open_ports", "services", "identified_as"],
         [
             [
                 mac,
@@ -1678,8 +1827,9 @@ if CSV_DIR:
                 (row.get(vendor_key, "") or "").strip(),
                 row.get(HOSTNAME_COL, "") or "",
                 identities[ip]["type"] if ip in identities else "",
-                "online" if ip in ip_to_mac else "offline",
+                "online" if device_online(ip) else "offline",
                 ", ".join(str(p) for p in identities[ip]["ports"]) if ip in identities else "",
+                services_for(identities[ip]["ports"]) if ip in identities else "",
                 ", ".join(identities[ip]["names"]) if ip in identities else "",
             ]
             for row, mac, ip in inventory
@@ -1727,13 +1877,14 @@ if CSV_DIR:
     if identities:
         write_csv(
             "identified.csv",
-            ["ip", "mac", "type", "open_ports", "names", "vendor"],
+            ["ip", "mac", "type", "open_ports", "services", "names", "vendor"],
             [
                 [
                     ip,
                     ip_to_mac.get(ip, ""),
                     info["type"],
                     ", ".join(str(p) for p in info["ports"]),
+                    services_for(info["ports"]),
                     ", ".join(info["names"]),
                     vendor_for(ip_to_mac.get(ip, "")) if ip in ip_to_mac else "",
                 ]

@@ -17,7 +17,7 @@ Collection of useful bash scripts for development and system administration.
 - `check-url` - Check HTTP status codes and redirects
 - `check-redirects` - Validate URL redirects from a file
 - `netcatchat` - Chat via netcat with shortcuts
-- `network-scan` - Scan local subnets and update a MAC/IP inventory TSV (vendor from IEEE OUI, device type from `--identify` port/HTTP/SSDP probes); `--mac` and `--network` select the data source; repairs malformed MAC addresses and corrects typos against live devices, marks devices `online`/`offline`/`new`, appends unknown devices to the output, and writes a Markdown report with Mermaid pie charts and a topology diagram laid out as one column per device category (gateways first, IoT last, offline devices dashed) plus per-section CSVs via `--csv-dir`
+- `network-scan` - Scan local subnets and update a MAC/IP inventory TSV (vendor from IEEE OUI, device type from `--identify` port/HTTP/SSDP probes); `-i/--identify` on its own describes only the devices listed in the file, `-n/--network` sweeps and appends, `-m/--mac` refreshes IPs from ARP; repairs malformed MAC addresses, fills in missing MACs from the observed network, corrects typos against live devices, and lists detected services per device, marks devices `online`/`offline`/`new`, appends unknown devices to the output, and writes a Markdown report with Mermaid pie charts and a topology diagram laid out as one column per device category (gateways first, IoT last, offline devices dashed) plus per-section CSVs via `--csv-dir`
 
 ### System Tools
 
