@@ -1,0 +1,1767 @@
+#!/usr/bin/env bash
+
+# Scan the local network and a MAC inventory TSV for changes
+# Usage: ./network-scan [OPTIONS] <inventory.tsv>
+
+set -euo pipefail
+
+APP_NAME='network-scan'
+APP_VERSION='1.0.0'
+
+main() {
+  if [[ ! -f "$(dirname "$0")/common-functions" ]]; then
+    echo "Downloading common-functions from GitHub..."
+    if ! curl -fsSL https://raw.githubusercontent.com/Flower7C3/bash-tools/master/common-functions -o "$(dirname "$0")/common-functions"; then
+      echo "Failed to download common-functions"
+      exit 1
+    fi
+  fi
+
+  # shellcheck source=common-functions
+  source "$(dirname "$0")/common-functions"
+  network_scan_main "$@"
+}
+
+network_scan_main() {
+  show_usage() {
+    log_usage_title '[OPTIONS] <inventory.tsv>'
+    echo
+    echo 'Scan local subnets, match MAC addresses from a TSV inventory,'
+    echo 'refresh vendor (OUI), IP address and DNS hostname data'
+    echo
+    log_header 'Selection'
+    log_usage_options_line '-m;--mac' \
+      'Match inventory MACs against the local ARP/neighbour tables'
+    log_usage_options_line '-n;--network' \
+      'Actively sweep every host of the local subnet(s) and rebuild ARP data'
+    echo
+    log_header 'Columns'
+    log_usage_options_line '--mac-col <NAME|N>' \
+      'MAC column name or 1-based index (default: mac, adres_mac, or first)'
+    log_usage_options_line '--ip-col <NAME|N>' \
+      'IP column name or 1-based index (default: ip, adres_ip, adres)'
+    log_usage_options_line '--name-col <NAME|N>' \
+      'Own name column, never overwritten (default: name, nazwa)'
+    log_usage_options_line '--vendor-col <NAME|N>' \
+      'Vendor column (default: vendor, producent)'
+    log_usage_options_line '--hostname-col <NAME|N>' \
+      'Hostname column, created if missing (default: hostname). Filled only if the network has reverse DNS'
+    log_usage_options_line '--type-col <NAME>' \
+      'Device type column, created by --identify (default: typ)'
+    echo
+    log_header 'Network'
+    log_usage_options_line '--subnet <CIDR>' \
+      'Subnet to scan, repeatable (default: subnets of the local interfaces)'
+    log_usage_options_line '--interface <NAME>' \
+      'Limit subnet detection to this interface'
+    log_usage_options_line '--timeout <MS>' \
+      'Per-host ping timeout in milliseconds (default: 1000)'
+    log_usage_options_line '--jobs <N>' \
+      'Parallel ping workers (default: 64)'
+    log_usage_options_line '--flush-arp' \
+      'Flush the ARP cache before sweeping (destroys entries for devices that ignore ICMP)'
+    log_usage_options_line '--no-sudo' \
+      'Never re-exec with sudo (ARP tables may be incomplete)'
+    echo
+    log_header 'Vendor OUI database'
+    log_usage_options_line '--oui-dir <DIR>' \
+      "Cache directory (default: ~/.cache/bash-tools/oui)"
+    log_usage_options_line '--oui-age <DAYS>' \
+      'Re-download the OUI database when older than DAYS (default: 30)'
+    log_usage_options_line '--no-download' \
+      'Use only the cached OUI database, never download'
+    echo
+    log_header 'Output'
+    log_usage_options_line '-o;--output <FILE>' \
+      'Updated TSV (default: <input base>-updated.tsv)'
+    log_usage_options_line '-r;--report <FILE>' \
+      'Change report (default: <output base>-report.md)'
+    log_usage_options_line '--add-new' \
+      'Append devices found on the network that are missing from the inventory (default: on)'
+    log_usage_options_line '--no-add-new' \
+      'Never append new devices, only report them'
+    log_usage_options_line '--status-col <NAME>' \
+      'Online/offline/new status column, created if missing (default: status)'
+    log_usage_options_line '--mac-typo-tolerance <N>' \
+      'Correct a MAC that differs from a live device by up to N hex digits (default: 2)'
+    log_usage_options_line '--no-dns' \
+      'Skip reverse DNS (hostname) lookups'
+    log_usage_options_line '--identify' \
+      'Probe new/unknown devices (ports, HTTP title, mDNS/SSDP) to guess what they are'
+    log_usage_options_line '--identify-ports <LIST>' \
+      'Ports for --identify (default: 22,23,53,80,443,445,554,631,8080,8009,8443,9100)'
+    log_usage_options_line '--identify-timeout <MS>' \
+      'Per-port connect timeout for --identify (default: 700)'
+    log_usage_options_line '--csv-dir <DIR>' \
+      'Write per-section CSV files (breakdown, changes, identified devices)'
+    log_usage_options_line '-v;--verbose' \
+      'Verbose output'
+    log_usage_options_line '-d;--debug' \
+      'Debug output'
+    log_usage_options_line '-u;--update' \
+      'Update app'
+    log_usage_options_line '-h;--help' \
+      'Show this help message'
+    echo
+    log_header 'Examples'
+    log_usage_example_line '-mn inventory.tsv'
+    log_usage_example_line '-mn --identify --subnet 192.168.1.0/24 devices.tsv'
+    log_usage_example_line '-m -o new.tsv -r changes.md devices.tsv'
+    exit 0
+  }
+
+  local MAC_SCAN=0 NETWORK_SCAN=0
+  local MAC_COL="" IP_COL="" NAME_COL="" VENDOR_COL="" HOSTNAME_COL="hostname" TYPE_COL="typ"
+  local TIMEOUT_MS=1000 JOBS=64 NO_SUDO=0 FLUSH_ARP=0 IDENTIFY=0
+  local IDENTIFY_PORTS="22,23,53,80,443,445,554,631,8080,8009,8443,9100" IDENTIFY_TIMEOUT_MS=700
+  local OUI_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/bash-tools/oui" OUI_AGE=30 NO_DOWNLOAD=0
+  local OUTPUT="" REPORT="" NO_DNS=0 VERBOSE=0 CSV_DIR="" ADD_NEW=1 STATUS_COL="status"
+  local MAC_TYPO_TOLERANCE=2
+  # shellcheck disable=SC2034
+  local DEBUG=0
+  local -a SUBNETS=() INTERFACES=() INPUTS=()
+
+  expand_short_flags() {
+    local arg="$1" expanded=() i char
+    if [[ ! "$arg" =~ ^-[a-zA-Z]{2,}$ ]]; then
+      printf '%s\n' "$arg"
+      return
+    fi
+    for ((i = 1; i < ${#arg}; i++)); do
+      char="-${arg:i:1}"
+      case "$char" in
+      -m | -n | -v | -d | -h | -u) expanded+=("$char") ;;
+      *)
+        printf '%s\n' "$arg"
+        return
+        ;;
+      esac
+    done
+    printf '%s\n' "${expanded[@]}"
+  }
+
+  parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+      -m | --mac)
+        MAC_SCAN=1
+        shift
+        ;;
+      -n | --network)
+        NETWORK_SCAN=1
+        shift
+        ;;
+      -[a-zA-Z][a-zA-Z]*)
+        local -a _expanded=()
+        while IFS= read -r _flag; do
+          [[ -n "$_flag" ]] && _expanded+=("$_flag")
+        done < <(expand_short_flags "$1")
+        shift
+        set -- "${_expanded[@]}" "$@"
+        continue
+        ;;
+      --mac-col)
+        MAC_COL="$2"
+        shift 2
+        ;;
+      --ip-col)
+        IP_COL="$2"
+        shift 2
+        ;;
+      --name-col)
+        NAME_COL="$2"
+        shift 2
+        ;;
+      --vendor-col)
+        VENDOR_COL="$2"
+        shift 2
+        ;;
+      --hostname-col)
+        HOSTNAME_COL="$2"
+        shift 2
+        ;;
+      --type-col)
+        TYPE_COL="$2"
+        shift 2
+        ;;
+      --subnet)
+        SUBNETS+=("$2")
+        shift 2
+        ;;
+      --interface)
+        INTERFACES+=("$2")
+        shift 2
+        ;;
+      --timeout)
+        TIMEOUT_MS="$2"
+        shift 2
+        ;;
+      --jobs)
+        JOBS="$2"
+        shift 2
+        ;;
+      --flush-arp)
+        FLUSH_ARP=1
+        shift
+        ;;
+      --no-sudo)
+        NO_SUDO=1
+        shift
+        ;;
+      --oui-dir)
+        OUI_DIR="$2"
+        shift 2
+        ;;
+      --oui-age)
+        OUI_AGE="$2"
+        shift 2
+        ;;
+      --no-download)
+        NO_DOWNLOAD=1
+        shift
+        ;;
+      -o | --output)
+        OUTPUT="$2"
+        shift 2
+        ;;
+      -r | --report)
+        REPORT="$2"
+        shift 2
+        ;;
+      --no-dns)
+        NO_DNS=1
+        shift
+        ;;
+      --csv-dir)
+        CSV_DIR="$2"
+        shift 2
+        ;;
+      --add-new)
+        ADD_NEW=1
+        shift
+        ;;
+      --no-add-new)
+        ADD_NEW=0
+        shift
+        ;;
+      --status-col)
+        STATUS_COL="$2"
+        shift 2
+        ;;
+      --mac-typo-tolerance)
+        MAC_TYPO_TOLERANCE="$2"
+        shift 2
+        ;;
+      --identify)
+        IDENTIFY=1
+        shift
+        ;;
+      --identify-ports)
+        IDENTIFY_PORTS="$2"
+        shift 2
+        ;;
+      --identify-timeout)
+        IDENTIFY_TIMEOUT_MS="$2"
+        shift 2
+        ;;
+      -v | --verbose)
+        VERBOSE=1
+        shift
+        ;;
+      -d | --debug)
+        DEBUG=1
+        shift
+        ;;
+      -u | --update)
+        update_application
+        ;;
+      -h | --help)
+        show_usage
+        ;;
+      -*)
+        log_error 'Unknown option: <b>%s</b>' "$1"
+        show_usage
+        ;;
+      *)
+        INPUTS+=("$1")
+        shift
+        ;;
+      esac
+    done
+  }
+
+  validate_input() {
+    if [[ ${#INPUTS[@]} -ne 1 ]]; then
+      log_error 'Provide exactly one TSV inventory file'
+      show_usage
+    fi
+
+    if [[ ! -f "${INPUTS[0]}" ]]; then
+      log_error 'File does not exist: <u>%s</u>' "${INPUTS[0]}"
+      exit 1
+    fi
+
+    if [[ "$MAC_SCAN" -eq 0 && "$NETWORK_SCAN" -eq 0 ]]; then
+      log_error 'Nothing to do: pass <b>--mac</b> and/or <b>--network</b>'
+      show_usage
+    fi
+
+    if [[ ! "$TIMEOUT_MS" =~ ^[0-9]+$ ]] || [[ "$TIMEOUT_MS" -lt 1 ]]; then
+      log_error '--timeout must be a positive number of milliseconds'
+      exit 1
+    fi
+
+    if [[ ! "$JOBS" =~ ^[0-9]+$ ]] || [[ "$JOBS" -lt 1 ]]; then
+      log_error '--jobs must be a positive number'
+      exit 1
+    fi
+
+    if [[ ! "$OUI_AGE" =~ ^[0-9]+$ ]]; then
+      log_error '--oui-age must be a number of days'
+      exit 1
+    fi
+
+    if [[ ! "$IDENTIFY_TIMEOUT_MS" =~ ^[0-9]+$ ]] || [[ "$IDENTIFY_TIMEOUT_MS" -lt 1 ]]; then
+      log_error '--identify-timeout must be a positive number of milliseconds'
+      exit 1
+    fi
+
+    if [[ -n "$IDENTIFY_PORTS" && ! "$IDENTIFY_PORTS" =~ ^[0-9]+([[:space:],]+[0-9]+)*$ ]]; then
+      log_error '--identify-ports must be a comma or space separated list of ports'
+      exit 1
+    fi
+
+    if [[ ! "$MAC_TYPO_TOLERANCE" =~ ^[0-9]+$ ]] || [[ "$MAC_TYPO_TOLERANCE" -gt 6 ]]; then
+      log_error '--mac-typo-tolerance must be a number between 0 and 6'
+      exit 1
+    fi
+  }
+
+  parse_arguments "$@"
+  validate_input
+
+  check_dependencies python3 curl
+  log_title 'Network Scan' "$APP_VERSION"
+
+  log_info ---icon '📄' 'Inventory: <u>%s</u>' "${INPUTS[0]}"
+
+  if [[ "$NETWORK_SCAN" -eq 1 && "$NO_SUDO" -eq 0 ]]; then
+    if [[ "$(id -u)" != "0" ]]; then
+      log_info 'Re-running with sudo to populate ARP tables'
+      exec sudo -- "$0" "$@"
+    fi
+  fi
+
+  local _base="${INPUTS[0]}"
+  _base="${_base%.*}"
+  [[ -z "$OUTPUT" ]] && OUTPUT="${_base}-updated.tsv"
+  [[ -z "$REPORT" ]] && REPORT="${OUTPUT%.*}-report.md"
+
+  log_info ---icon '🔎' 'Mode: <b>%s</b>' "$([[ "$MAC_SCAN" -eq 1 && "$NETWORK_SCAN" -eq 1 ]] && echo 'mac + network' || { [[ "$MAC_SCAN" -eq 1 ]] && echo 'mac' || echo 'network'; })"
+  log_info ---icon '💾' 'Output: <u>%s</u>' "$OUTPUT"
+  log_info ---icon '📝' 'Report: <u>%s</u>' "$REPORT"
+
+  _PROGRESS_LABEL=""
+  _PROGRESS_TOTAL=0
+  _PROGRESS_WIDTH=28
+
+  if [[ ! -t 1 ]]; then
+    _PROGRESS_WIDTH=0
+  fi
+
+  _finish_progress_bar() {
+    [[ -n "$_PROGRESS_LABEL" ]] || return 0
+    if [[ "$_PROGRESS_WIDTH" -gt 0 ]]; then
+      printf '\r%100s\r' ""
+    fi
+    _PROGRESS_LABEL=""
+  }
+
+  _render_progress_bar() {
+    local _done="$1" _total="$2"
+    local _pct=0
+    [[ "$_total" -gt 0 ]] && _pct=$((100 * _done / _total))
+
+    if [[ "$_PROGRESS_WIDTH" -le 0 ]]; then
+      log_info '%s: %d/%d (%d%%)' "$_PROGRESS_LABEL" "$_done" "$_total" "$_pct"
+      return 0
+    fi
+
+    local _filled=0
+    [[ "$_total" -gt 0 ]] && _filled=$((_PROGRESS_WIDTH * _done / _total))
+    local _bar=""
+    local _i
+    for ((_i = 0; _i < _filled; _i++)); do
+      _bar+='█'
+    done
+    for ((_i = _filled; _i < _PROGRESS_WIDTH; _i++)); do
+      _bar+='░'
+    done
+    printf '\r%s %s %3d%% (%d/%d)' "$_PROGRESS_LABEL" "$_bar" "$_pct" "$_done" "$_total"
+  }
+
+  consume_py_logs() {
+    local kind a b c
+    while IFS=$'\t' read -r kind a b c; do
+      case "$kind" in
+      PROGRESS)
+        if [[ "${_PROGRESS_LABEL:-}" != "$a" ]]; then
+          _finish_progress_bar
+          _PROGRESS_LABEL="$a"
+          _PROGRESS_TOTAL="${c:-0}"
+        fi
+        _render_progress_bar "${b:-0}" "${c:-0}"
+        ;;
+      INFO)
+        _finish_progress_bar
+        log_info '%s' "$a"
+        ;;
+      OK)
+        _finish_progress_bar
+        log_success ---icon '✅' '%s' "$a"
+        ;;
+      WARN)
+        _finish_progress_bar
+        log_warning '%s' "$a"
+        ;;
+      ERR)
+        _finish_progress_bar
+        log_error '%s' "$a"
+        ;;
+      DEBUG) log_debug '%s' "$a" ;;
+      STAT)
+        _finish_progress_bar
+        log_info ---icon '📊' '%s' "$a"
+        ;;
+      *)
+        _finish_progress_bar
+        [[ -n "$kind" ]] && log_info '%s' "$kind${a:+ $a}"
+        ;;
+      esac
+    done
+  }
+
+  local _py_status=0
+  local _py_fifo
+  _py_fifo="$(mktemp -u "${TMPDIR:-/tmp}/${APP_NAME}.XXXXXX")"
+  mkfifo "$_py_fifo"
+  consume_py_logs <"$_py_fifo" &
+  local _log_pid=$!
+  MAC_SCAN="$MAC_SCAN" NETWORK_SCAN="$NETWORK_SCAN" \
+    MAC_COL="$MAC_COL" IP_COL="$IP_COL" NAME_COL="$NAME_COL" VENDOR_COL="$VENDOR_COL" \
+    HOSTNAME_COL="$HOSTNAME_COL" TYPE_COL="$TYPE_COL" \
+    TIMEOUT_MS="$TIMEOUT_MS" JOBS="$JOBS" FLUSH_ARP="$FLUSH_ARP" \
+    OUI_DIR="$OUI_DIR" OUI_AGE="$OUI_AGE" NO_DOWNLOAD="$NO_DOWNLOAD" \
+    OUTPUT="$OUTPUT" REPORT="$REPORT" NO_DNS="$NO_DNS" CSV_DIR="$CSV_DIR" \
+    ADD_NEW="$ADD_NEW" STATUS_COL="$STATUS_COL" MAC_TYPO_TOLERANCE="$MAC_TYPO_TOLERANCE" \
+    IDENTIFY="$IDENTIFY" IDENTIFY_PORTS="$IDENTIFY_PORTS" \
+    IDENTIFY_TIMEOUT_MS="$IDENTIFY_TIMEOUT_MS" \
+    VERBOSE="$VERBOSE" DEBUG="$DEBUG" INPUT="${INPUTS[0]}" \
+    SUBNETS="${SUBNETS[*]}" INTERFACES="${INTERFACES[*]}" \
+    python3 - 2>"$_py_fifo" <<'PY' || _py_status=$?
+import concurrent.futures
+import csv
+import datetime
+import io
+import ipaddress
+import os
+import platform
+import re
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+
+MAC_SCAN = os.environ["MAC_SCAN"] == "1"
+NETWORK_SCAN = os.environ["NETWORK_SCAN"] == "1"
+MAC_COL = os.environ.get("MAC_COL", "")
+IP_COL = os.environ.get("IP_COL", "")
+NAME_COL = os.environ.get("NAME_COL", "")
+VENDOR_COL = os.environ.get("VENDOR_COL", "")
+HOSTNAME_COL = os.environ.get("HOSTNAME_COL", "") or "hostname"
+TYPE_COL = os.environ.get("TYPE_COL", "") or "typ"
+STATUS_COL = os.environ.get("STATUS_COL", "") or "status"
+MAC_TYPO_TOLERANCE = int(os.environ["MAC_TYPO_TOLERANCE"])
+ADD_NEW = os.environ["ADD_NEW"] == "1"
+TIMEOUT_MS = int(os.environ["TIMEOUT_MS"])
+JOBS = int(os.environ["JOBS"])
+FLUSH_ARP = os.environ["FLUSH_ARP"] == "1"
+OUI_DIR = os.environ["OUI_DIR"]
+OUI_AGE = int(os.environ["OUI_AGE"])
+NO_DOWNLOAD = os.environ["NO_DOWNLOAD"] == "1"
+OUTPUT = os.environ["OUTPUT"]
+REPORT = os.environ["REPORT"]
+IDENTIFY = os.environ["IDENTIFY"] == "1"
+IDENTIFY_PORTS = [
+    int(p)
+    for p in re.split(r"[\s,]+", os.environ["IDENTIFY_PORTS"])
+    if p.strip().isdigit()
+]
+IDENTIFY_TIMEOUT_MS = int(os.environ["IDENTIFY_TIMEOUT_MS"])
+CSV_DIR = os.environ.get("CSV_DIR", "")
+NO_DNS = os.environ["NO_DNS"] == "1"
+VERBOSE = os.environ["VERBOSE"] == "1"
+DEBUG = os.environ.get("DEBUG", "0") == "1"
+INPUT = os.environ["INPUT"]
+SUBNETS = [s for s in os.environ.get("SUBNETS", "").split() if s]
+INTERFACES = [s for s in os.environ.get("INTERFACES", "").split() if s]
+
+IS_DARWIN = platform.system() == "Darwin"
+MAC_RE = re.compile(r"(?<![0-9a-f:])([0-9a-f]{1,2}(?::[0-9a-f]{1,2}){5})(?![0-9a-f:])", re.I)
+IPV4_RE = re.compile(r"(?<![0-9.])((?:\d{1,3}\.){3}\d{1,3})(?![0-9.])")
+
+
+def log(kind, msg=""):
+    print(f"{kind}\t{msg}", file=sys.stderr, flush=True)
+
+
+def run(cmd, timeout=30):
+    try:
+        res = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, check=False
+        )
+        return res.stdout, res.stderr, res.returncode
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+        return "", str(exc), 1
+
+
+def normalize_mac(value):
+    value = (value or "").strip().lower()
+    if not value:
+        return ""
+    parts = value.replace("-", ":").split(":")
+    if len(parts) != 6:
+        return ""
+    octets = []
+    for part in parts:
+        if not re.fullmatch(r"[0-9a-f]{1,2}", part):
+            return ""
+        octets.append(part.zfill(2))
+    return ":".join(octets)
+
+
+HEX_ONLY = re.compile(r"[^0-9a-f]")
+
+
+def repair_mac(value):
+    """Best-effort repair of a malformed MAC address.
+
+    Returns (mac, note) where note explains what was changed, or ('', '')
+    when the value cannot be salvaged.
+    """
+    raw = (value or "").strip().lower()
+    if not raw:
+        return "", ""
+    strict = normalize_mac(raw)
+    if strict:
+        return strict, ""
+
+    # Drop every non-hex character. This fixes stray separators and typos
+    # such as "sb8:06:0d:41:18:55" (a leading letter, 7 groups) or dotted
+    # / dash / space separated forms.
+    digits = HEX_ONLY.sub("", raw)
+    if len(digits) == 12:
+        return ":".join(digits[i : i + 2] for i in range(0, 12, 2)), "reformatted, non-hex characters removed"
+
+    # Too few digits: a leading zero may have been dropped by a spreadsheet.
+    if len(digits) < 12 and digits:
+        padded = digits.zfill(12)
+        return normalize_mac(padded), f"padded to 12 digits ({len(digits)} found)"
+
+    # More than 12 digits means the cell holds more than one value (two MACs
+    # pasted together, or a MAC plus a note). Never guess a MAC from that:
+    # a fabricated address silently collides with a real device's IP.
+    return "", ""
+
+
+def mac_similarity(a, b):
+    """Number of differing hex digits between two MAC addresses."""
+    return sum(1 for x, y in zip(a.replace(":", ""), b.replace(":", "")) if x != y)
+
+
+def mac_prefix(mac):
+    """Return OUI candidate prefixes, longest (MA-M/OUI-28) first."""
+    raw = re.sub(r"[^0-9a-f]", "", mac.lower())
+    out = []
+    for length in (10, 8, 7, 6):
+        if len(raw) >= length:
+            out.append((length, raw[:length]))
+    return out
+
+
+def is_locally_administered(mac):
+    try:
+        first = int(re.sub(r"[^0-9a-f]", "", mac.lower())[:2], 16)
+    except ValueError:
+        return False
+    return bool(first & 0x02)
+
+
+def resolve_col(fieldnames, spec, fallbacks):
+    names = [n for n in (fieldnames or [])]
+    if spec:
+        if spec.isdigit():
+            idx = int(spec) - 1
+            if idx < 0 or idx >= len(names):
+                log("ERR", f"Column index out of range: {spec}")
+                sys.exit(1)
+            return names[idx]
+        for name in names:
+            if name.strip().lower() == spec.strip().lower():
+                return name
+        log("ERR", f"Column not found: {spec}")
+        sys.exit(1)
+    lowered = {name.strip().lower(): name for name in names}
+    for cand in fallbacks:
+        if cand in lowered:
+            return lowered[cand]
+    return None
+
+
+# ---------------------------------------------------------------- inventory
+
+
+raw = open(INPUT, encoding="utf-8-sig", newline="").read()
+reader = csv.DictReader(io.StringIO(raw), delimiter=";")
+fieldnames = [f.strip() for f in (reader.fieldnames or [])]
+rows = list(reader)
+if not fieldnames:
+    log("ERR", "Inventory has no header row")
+    sys.exit(1)
+if DEBUG:
+    log("DEBUG", f"columns={fieldnames}")
+
+mac_key = resolve_col(
+    fieldnames, MAC_COL, ("mac", "macaddress", "mac_address", "adres_mac", "adres mac")
+)
+ip_key = resolve_col(fieldnames, IP_COL, ("ip", "ipaddress", "ip_address", "adres_ip", "adres"))
+name_key = resolve_col(fieldnames, NAME_COL, ("nazwa", "name", "own_name", "device_name"))
+vendor_key = resolve_col(
+    fieldnames, VENDOR_COL, ("vendor", "producent", "manufacturer", "oem", "oui")
+)
+if mac_key is None:
+    log("ERR", "No MAC column found; use --mac-col to name it explicitly")
+    sys.exit(1)
+
+for key in (HOSTNAME_COL,):
+    if key not in fieldnames:
+        fieldnames.append(key)
+if IDENTIFY and TYPE_COL not in fieldnames:
+    fieldnames.append(TYPE_COL)
+if STATUS_COL not in fieldnames:
+    fieldnames.append(STATUS_COL)
+if vendor_key is None:
+    vendor_key = "vendor"
+    if vendor_key not in fieldnames:
+        fieldnames.append(vendor_key)
+if DEBUG:
+    log("DEBUG", f"mac={mac_key} ip={ip_key} name={name_key} vendor={vendor_key}")
+
+invalid_rows = []
+repaired_macs = []  # (line, original, repaired, note)
+corrected_macs = []  # (typed, actual, distance)
+inventory = []  # (row, mac, ip)
+seen_macs = {}
+for idx, row in enumerate(rows, start=2):
+    original = (row.get(mac_key, "") if mac_key else "") or ""
+    mac, note = repair_mac(original)
+    if not mac:
+        if any((v or "").strip() for v in row.values()):
+            invalid_rows.append((idx, original.strip()))
+        continue
+    if note:
+        if mac_key:
+            row[mac_key] = mac
+        repaired_macs.append((idx, original.strip(), mac, note))
+    ip = (row.get(ip_key, "") if ip_key else "").strip()
+    if ip:
+        try:
+            ip = str(ipaddress.ip_address(ip))
+        except ValueError:
+            log("WARN", f"Line {idx}: invalid IP '{ip}', ignored")
+            ip = ""
+    if mac in seen_macs:
+        log("WARN", f"Line {idx}: duplicate MAC {mac} (first seen on line {seen_macs[mac]})")
+        continue
+    seen_macs[mac] = idx
+    inventory.append([row, mac, ip])
+
+log("INFO", f"Inventory: {len(inventory)} devices with a MAC address")
+if repaired_macs:
+    log("INFO", f"Repaired {len(repaired_macs)} malformed MAC address(es)")
+
+
+# ---------------------------------------------------------------- subnets
+
+
+def local_subnets():
+    if SUBNETS:
+        nets = []
+        for item in SUBNETS:
+            try:
+                nets.append(ipaddress.ip_network(item, strict=False))
+            except ValueError:
+                log("WARN", f"Ignoring invalid subnet: {item}")
+        return nets
+
+    nets = []
+    if IS_DARWIN:
+        out, _, _ = run(["ifconfig"])
+        blocks = out.split("\n\n")
+        iface_re = re.compile(r"^([A-Za-z0-9_.-]+):", re.M)
+        addr_re = re.compile(r"^\s*inet (?:addr:)?([0-9.]+)(?:/([0-9]+))?(?: netmask (0x[0-9a-fA-F]+))?", re.M)
+    else:
+        out, _, _ = run(["ip", "-o", "-4", "addr"])
+        blocks = [line for line in out.splitlines() if line.strip()]
+        iface_re = re.compile(r"^\d+:\s+([A-Za-z0-9_.@-]+)")
+        addr_re = re.compile(r"\sinet\s+([0-9.]+)/([0-9]+)")
+
+    def bits_from_netmask(mask):
+        return int(mask[2:], 16).bit_count()
+
+    for block in blocks:
+        imatch = iface_re.search(block)
+        if not imatch:
+            continue
+        iface = imatch.group(1)
+        if INTERFACES and iface not in INTERFACES:
+            continue
+        for amatch in addr_re.finditer(block):
+            addr, bits, hexmask = amatch.group(1), amatch.group(2), amatch.group(3)
+            if addr.startswith("127."):
+                continue
+            try:
+                if bits:
+                    net = ipaddress.ip_network(f"{addr}/{bits}", strict=False)
+                elif hexmask:
+                    net = ipaddress.ip_network(f"{addr}/{bits_from_netmask(hexmask)}", strict=False)
+                else:
+                    continue
+            except ValueError:
+                continue
+            if net not in nets:
+                nets.append(net)
+                if DEBUG:
+                    log("DEBUG", f"subnet from {iface}: {net}")
+    if not nets:
+        log("WARN", "Could not detect local subnets, use --subnet")
+    return nets
+
+
+subnets = local_subnets()
+
+
+# ---------------------------------------------------------------- scanning
+
+
+def ping_host(ip):
+    if IS_DARWIN:
+        cmd = ["ping", "-n", "-q", "-c", "1", "-W", str(max(1, TIMEOUT_MS)), str(ip)]
+    else:
+        secs = max(1, round(TIMEOUT_MS / 1000))
+        cmd = ["ping", "-n", "-q", "-c", "1", "-W", str(secs), str(ip)]
+    run(cmd, timeout=TIMEOUT_MS / 1000 + 5)
+
+
+MAX_HOSTS = 65536
+
+
+def sweep(subnet):
+    if subnet.version != 4 or subnet.num_addresses < 3:
+        return 0
+    if subnet.num_addresses > MAX_HOSTS:
+        log("WARN", f"{subnet} is too large, skipped (use a smaller --subnet)")
+        return 0
+    targets = [str(h) for h in subnet.hosts()]
+    total = len(targets)
+    done = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=JOBS) as pool:
+        futures = {pool.submit(ping_host, ip): ip for ip in targets}
+        for _ in concurrent.futures.as_completed(futures):
+            done += 1
+            log("PROGRESS", f"Sweeping {subnet}\t{done}\t{total}")
+    return total
+
+
+def read_arp():
+    """Return list of (ip, mac)."""
+    entries = []
+    for cmd in (["arp", "-a"], ["ip", "neigh", "show"]):
+        out, _, rc = run(cmd)
+        if rc == 0 and out.strip():
+            break
+    else:
+        out = ""
+    if not out:
+        try:
+            with open("/proc/net/arp", encoding="utf-8") as fh:
+                out = fh.read()
+        except OSError:
+            log("WARN", "No ARP table available")
+            return entries
+
+    for line in out.splitlines():
+        ipm = IPV4_RE.search(line)
+        macm = MAC_RE.search(line)
+        if not ipm or not macm:
+            continue
+        ip = ipm.group(1)
+        mac = normalize_mac(macm.group(1))
+        try:
+            ip = str(ipaddress.ip_address(ip))
+        except ValueError:
+            continue
+        if not mac or ip == "0.0.0.0":
+            continue
+        addr = ipaddress.ip_address(ip)
+        if addr.is_multicast or addr.is_loopback or addr.is_reserved:
+            continue
+        if normalize_mac(macm.group(1)).startswith("01:00:5e"):
+            continue
+        entries.append((ip, mac))
+    if DEBUG:
+        log("DEBUG", f"arp entries: {len(entries)}")
+    return entries
+
+
+def arp_purge():
+    if IS_DARWIN:
+        run(["arp", "-a", "-d"], timeout=10)
+    else:
+        run(["ip", "-neigh", "flush", "all"], timeout=10)
+
+
+discovered = {}  # mac -> ip
+ip_to_mac = {}
+
+if NETWORK_SCAN:
+    if not subnets:
+        log("WARN", "Nothing to sweep")
+    for net in subnets:
+        log("INFO", f"Sweeping {net}")
+        if FLUSH_ARP:
+            if DEBUG:
+                log("DEBUG", f"flushing ARP cache before {net}")
+            arp_purge()
+        sweep(net)
+
+if MAC_SCAN or NETWORK_SCAN:
+    arp_entries = read_arp()
+    for ip, mac in arp_entries:
+        discovered.setdefault(mac, ip)
+        ip_to_mac.setdefault(ip, mac)
+    log("INFO", f"ARP/neighbour table: {len(discovered)} unique MAC addresses")
+
+# Typo correction: an inventory MAC that is one or two hex digits away from a
+# single live device is almost certainly a typo, not a different device.
+if discovered:
+    live = set(discovered)
+    for entry in inventory:
+        row, mac, ip = entry
+        if mac in live or not mac:
+            continue
+        best = min(live, key=lambda m: (mac_similarity(mac, m), m))
+        distance = mac_similarity(mac, best)
+        if 0 < distance <= MAC_TYPO_TOLERANCE:
+            corrected_macs.append((mac, best, distance))
+            if mac_key:
+                row[mac_key] = best
+            entry[1] = best
+            log("INFO", f"MAC typo: {mac} -> {best} ({distance} digit(s) off)")
+    if corrected_macs:
+        log("INFO", f"Corrected {len(corrected_macs)} MAC address(es) against the network")
+        live = set(discovered)
+        seen = {}
+        for entry in inventory:
+            row, mac, ip = entry
+            if mac in seen:
+                continue
+            seen[mac] = True
+
+
+# ---------------------------------------------------------------- vendors
+
+
+OUI_URLS = [
+    ("oui.csv", "https://standards-oui.ieee.org/oui/oui.csv"),
+    ("mam.csv", "https://standards-oui.ieee.org/oui28/mam.csv"),
+    ("oui36.csv", "https://standards-oui.ieee.org/oui36/oui36.csv"),
+    ("cid.csv", "https://standards-oui.ieee.org/cid/cid.csv"),
+]
+
+
+def oui_age_seconds():
+    oldest = None
+    for name, _ in OUI_URLS:
+        path = os.path.join(OUI_DIR, name)
+        if os.path.exists(path):
+            age = time.time() - os.path.getmtime(path)
+            oldest = age if oldest is None else max(oldest, age)
+    return oldest
+
+
+def download_oui():
+    os.makedirs(OUI_DIR, exist_ok=True)
+    todo = [
+        (name, url)
+        for name, url in OUI_URLS
+        if not (os.path.exists(os.path.join(OUI_DIR, name)) and os.path.getsize(os.path.join(OUI_DIR, name)) > 0)
+    ]
+    age = oui_age_seconds()
+    refresh = age is not None and age > OUI_AGE * 86400
+    if refresh:
+        todo = list(OUI_URLS)
+
+    for index, (name, url) in enumerate(todo, 1):
+        dest = os.path.join(OUI_DIR, name)
+        label = "Refreshing OUI" if refresh else "Downloading OUI"
+        log("PROGRESS", f"{label} {name}\t{index}\t{len(todo)}")
+        if DEBUG:
+            log("DEBUG", f"downloading {url}")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "bash-tools/network-scan"})
+            with urllib.request.urlopen(req, timeout=120) as resp, open(dest, "wb") as fh:
+                while True:
+                    chunk = resp.read(262144)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+        except Exception as exc:  # noqa: BLE001
+            log("WARN", f"OUI download failed ({name}): {exc}")
+
+
+def load_oui():
+    table = {}
+    if not os.path.isdir(OUI_DIR):
+        return table
+    for file_index, (name, _) in enumerate(OUI_URLS, 1):
+        path = os.path.join(OUI_DIR, name)
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            continue
+        log("PROGRESS", f"Reading OUI {name}\t{file_index}\t{len(OUI_URLS)}")
+        try:
+            with open(path, encoding="utf-8", errors="replace", newline="") as fh:
+                for record in csv.DictReader(fh):
+                    keys = {k.strip().lower(): v for k, v in record.items() if k}
+                    assignment = (keys.get("assignment") or "").strip()
+                    org = (keys.get("organization name") or "").strip()
+                    if not assignment or not org:
+                        continue
+                    prefix = re.sub(r"[^0-9a-f]", "", assignment.lower())
+                    table.setdefault(prefix, org)
+        except OSError as exc:
+            log("WARN", f"Cannot read {path}: {exc}")
+    if DEBUG:
+        log("DEBUG", f"OUI prefixes loaded: {len(table)}")
+    return table
+
+
+if not NO_DOWNLOAD:
+    download_oui()
+oui = load_oui()
+if oui:
+    log("INFO", f"OUI database: {len(oui)} prefixes ({OUI_DIR})")
+else:
+    log("WARN", "OUI database empty, vendor lookups will be skipped")
+
+
+def vendor_for(mac):
+    for _, prefix in mac_prefix(mac):
+        if prefix in oui:
+            return oui[prefix]
+    return ""
+
+
+# ---------------------------------------------------------------- dns
+
+
+def hostname_for(ip):
+    if NO_DNS or not ip:
+        return ""
+    try:
+        return socket.gethostbyaddr(ip)[0]
+    except (socket.herror, socket.gaierror, OSError):
+        return ""
+
+
+# ---------------------------------------------------------------- identify
+
+
+def tcp_open(ip, port):
+    try:
+        with socket.create_connection((ip, port), timeout=IDENTIFY_TIMEOUT_MS / 1000):
+            return True
+    except OSError:
+        return False
+
+
+def http_title(ip, port):
+    try:
+        req = (
+            f"GET / HTTP/1.0\r\nHost: {ip}\r\n"
+            "User-Agent: bash-tools/network-scan\r\nConnection: close\r\n\r\n"
+        )
+        with socket.create_connection((ip, port), timeout=IDENTIFY_TIMEOUT_MS / 1000 + 2) as sock:
+            sock.sendall(req.encode("latin-1", "replace"))
+            sock.settimeout(IDENTIFY_TIMEOUT_MS / 1000 + 2)
+            data = b""
+            while len(data) < 8192:
+                try:
+                    chunk = sock.recv(4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                data += chunk
+    except OSError:
+        return ""
+    text = data.decode("utf-8", "replace")
+    match = re.search(r"(?is)<title[^>]*>(.*?)</title>", text)
+    if match:
+        title = re.sub(r"\s+", " ", match.group(1)).strip()
+        if title:
+            return title[:120]
+    match = re.search(r"(?im)^server:\s*(.+)$", text)
+    if match:
+        return match.group(1).strip()[:120]
+    match = re.search(r"(?i)(HUAWEI|ASUS|TP-Link|D-Link|Netgear|Mercusys|Roku|Sonos|Chromecast|Amazon|Epson|Brother|Hikvision|Dahua)", text)
+    return match.group(0) if match else ""
+
+
+def ssdp_scan(timeout=2.5):
+    """Return {ip: [friendly names]} using an SSDP M-SEARCH broadcast."""
+    found = {}
+    request = (
+        "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\n"
+        'MAN: "ssdp:discover"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n'
+    )
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+    sock.settimeout(0.5)
+    try:
+        sock.sendto(request.encode(), ("239.255.255.250", 1900))
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                data, _ = sock.recvfrom(8192)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            text = data.decode("utf-8", "replace")
+            host = re.search(r"(?<![0-9.])((?:\d{1,3}\.){3}\d{1,3})(?![0-9.])", text)
+            candidates = []
+            for key in ("friendlyname", "server", "st", "nt", "usn"):
+                match = re.search(rf"(?im)^{key}\s*:\s*(.+)$", text)
+                if not match:
+                    continue
+                value = match.group(1).strip()
+                if key in ("friendlyname", "usn"):
+                    value = value.rsplit(":", 1)[-1].strip()
+                if key == "st":
+                    value = value.replace("upnp:", "").replace("schemas-", "").strip()
+                if re.fullmatch(r"[0-9a-fA-F-]{36}", value):  # bare UUID
+                    continue
+                if re.fullmatch(r"\d+", value):
+                    continue
+                if value.lower() in ("rootdevice", "ssdp:all", "basic", "internetgatewaydevice"):
+                    value = "UPnP " + value
+                if value:
+                    candidates.append(value)
+            if host:
+                found.setdefault(host.group(1), [])
+                for value in candidates[:2]:
+                    if value not in found[host.group(1)]:
+                        found[host.group(1)].append(value)
+    except OSError:
+        pass
+    finally:
+        sock.close()
+    return found
+
+
+def mdns_lookup(ip):
+    """Best-effort reverse name from the mDNS responder, macOS only."""
+    if not IS_DARWIN:
+        return ""
+    out, _, rc = run(["dns-sd", "-G", "v4", ip], timeout=3)
+    if rc != 0:
+        return ""
+    match = re.search(r"instance=([^\n]+)", out)
+    return match.group(1).strip()[:80] if match else ""
+
+
+TYPE_RULES = [
+    (lambda p, v, s: 9295 in p, "Consola PlayStation"),
+    (lambda p, v, s: 5050 in p or 1755 in p, "Konsola Xbox"),
+    (lambda p, v, s: any("chromecast" in x.lower() or "google home" in x.lower() or "google nest" in x.lower() for x in s) or "google" in v, "Urządzenie Google (Cast / Home)"),
+    (lambda p, v, s: any("roku" in x.lower() for x in s) or any(k in v for k in ("cyfrowy polsat", "polsat", "roku")), "TV box / IPTV (Roku)"),
+    (lambda p, v, s: 8009 in p and 8889 in p, "TV / streamer (Roku)"),
+    (lambda p, v, s: 1900 in p and any("roku" in x.lower() for x in s), "TV / streamer (Roku)"),
+    (lambda p, v, s: 1400 in p or 1445 in p, "Głośnik / soundbar (Sonos)"),
+    (lambda p, v, s: any(k in " ".join(s).lower() for k in ("amazon", "echo", "fire tv")), "Głośnik / TV (Amazon)"),
+    (lambda p, v, s: 631 in p, "Drukarka (IPP)"),
+    (lambda p, v, s: 554 in p and 8000 in p, "Kamera IP (ONVIF/RTSP)"),
+    (lambda p, v, s: 554 in p, "Kamera / streaming (RTSP)"),
+    (lambda p, v, s: 37777 in p or 34567 in p, "NVR / DVR"),
+    (lambda p, v, s: 5000 in p or 5001 in p, "NAS / serwer plików"),
+    (lambda p, v, s: 445 in p and 139 in p, "NAS / udział sieciowy"),
+    (lambda p, v, s: 1883 in p or 8883 in p, "Broker MQTT (zigbee)"),
+    (lambda p, v, s: 53 in p and 80 in p, "Router / brama (DNS+web)"),
+    (lambda p, v, s: "huawei" in v or "zte" in v or "arris" in v, "Router / brama"),
+    (lambda p, v, s: any(k in v for k in ("tp-link", "tenda", "netgear", "d-link", "mikrotik", "ubiquiti", "asus", "linksys", "zyxel")), "Router / punkt dostępowy"),
+    (lambda p, v, s: "mercusys" in v, "Router / mesh (Mercurysys)"),
+    (lambda p, v, s: "roku" in v, "TV / streamer"),
+    (lambda p, v, s: any(k in v for k in ("sonos", "bose")), "Głośnik / soundbar"),
+    (lambda p, v, s: any(k in v for k in ("hp inc", "hewlett", "epson", "brother", "canon", "lexmark", "ricoh")), "Drukarka"),
+    (lambda p, v, s: any(k in v for k in ("hikvision", "dahua", "axis", "amcrest", "reolink", "uniview")), "Kamera IP"),
+    (lambda p, v, s: any(k in v for k in ("tcl", "samsung", "lg elect", "hisense", "philips", "sony", "vestel", "tclking")), "Telewizor Smart TV"),
+    (lambda p, v, s: any(k in v for k in ("apple",)), "Urządzenie Apple"),
+    (lambda p, v, s: any(k in v for k in ("motorola", "samsung", "xiaomi", "oneplus", "oppo", "vivo", "realme", "huawei", "honor", "google")), "Telefon / tablet"),
+    (lambda p, v, s: "liteon" in v or "lenovo" in v or "dell" in v or "asustek" in v or "acer" in v, "Laptop / komputer"),
+    (lambda p, v, s: "tuya" in v or "espressif" in v or "sonoff" in v or "shelly" in v, "Gniazdko / przełącznik smart (WiFi)"),
+    (lambda p, v, s: 22 in p, "Urządzenie z SSH (Linux)"),
+    (lambda p, v, s: any("upnp" in x.lower() for x in s), "Urządzenie UPnP / LAN (media)"),
+    (lambda p, v, s: 443 in p or 80 in p, "Urządzenie z panelem web"),
+]
+
+
+def guess_type(vendor, open_ports, names):
+    vendor_l = (vendor or "").lower()
+    names_l = " ".join(names).lower()
+    for predicate, label in TYPE_RULES:
+        try:
+            if predicate(open_ports, vendor_l, names_l):
+                return label
+        except Exception:  # noqa: BLE001
+            continue
+    return "Nieznany typ"
+
+
+def identify(ip, vendor, ssdp_names):
+    open_ports = [p for p in IDENTIFY_PORTS if tcp_open(ip, p)]
+    names = list(ssdp_names)
+    title = ""
+    for port in (80, 8080, 8009, 8443, 443):
+        if port in open_ports:
+            title = http_title(ip, port)
+            if title:
+                break
+    if not title and not names:
+        mdns_name = mdns_lookup(ip)
+        if mdns_name:
+            names.append(mdns_name)
+    if title:
+        names.append(title)
+    hint = " ".join(names).lower()
+    kind = guess_type(vendor, open_ports, names)
+    if kind == "Nieznany typ" and not open_ports and not hint.strip():
+        kind = "Brak odpowiedzi (śpi / ignoruje ICMP)"
+    return {
+        "ip": ip,
+        "ports": open_ports,
+        "title": title,
+        "names": names,
+        "type": kind,
+    }
+
+
+def _identify_one(ip, vendor, ssdp_names):
+    try:
+        return identify(ip, vendor, ssdp_names)
+    except Exception as exc:  # noqa: BLE001
+        log("WARN", f"identify failed for {ip}: {exc}")
+        return {"ip": ip, "ports": [], "title": "", "names": [], "type": "Nieznany typ"}
+
+
+# ---------------------------------------------------------------- changes
+
+
+changes_ip = []
+missing = []
+vendor_updates = []
+unknown_vendor = []
+private_macs = []
+added_devices = []
+unchanged = 0
+
+# ---------------------------------------------------------------- identify run
+
+identities = {}
+if IDENTIFY and IDENTIFY_PORTS:
+    log("INFO", f"Identifying devices on {len(IDENTIFY_PORTS)} ports")
+    ssdp = ssdp_scan()
+    targets = sorted(
+        {ip for ip in discovered.values()} | set(ssdp.keys()),
+        key=lambda s: ipaddress.ip_address(s),
+    )
+    vendor_by_ip = {ip: vendor_for(mac) for mac, ip in discovered.items()}
+    done = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=JOBS) as pool:
+        futures = {}
+        for ip in targets:
+            names = list(ssdp.get(ip, []))
+            futures[pool.submit(_identify_one, ip, vendor_by_ip.get(ip, ""), names)] = ip
+        for fut in concurrent.futures.as_completed(futures):
+            done += 1
+            try:
+                info = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                log("WARN", f"identify failed for {futures[fut]}: {exc}")
+                continue
+            identities[info["ip"]] = info
+            log("PROGRESS", f"Identifying devices\t{done}\t{len(targets)}")
+    if DEBUG:
+        log("DEBUG", f"ssdp responders: {len(ssdp)}")
+
+if IDENTIFY:
+    for entry in inventory:
+        row, mac, ip = entry
+        info = identities.get(ip)
+        if info:
+            row[TYPE_COL] = info["type"]
+
+
+for entry in inventory:
+    row, mac, ip = entry
+    new_ip = discovered.get(mac, "")
+    if new_ip and new_ip != ip:
+        changes_ip.append((mac, ip, new_ip, name_key and (row.get(name_key) or "").strip()))
+        ip = new_ip
+    elif not new_ip:
+        missing.append((mac, ip, name_key and (row.get(name_key) or "").strip()))
+    else:
+        unchanged += 1
+
+    old_vendor = (row.get(vendor_key, "") or "").strip()
+    if is_locally_administered(mac):
+        # Randomized / locally administered MAC: the OUI carries no vendor
+        # information, so the inventory value is kept untouched.
+        private_macs.append((mac, ip, old_vendor, name_key and (row.get(name_key) or "").strip()))
+    else:
+        vendor = vendor_for(mac)
+        if vendor and vendor != old_vendor:
+            vendor_updates.append((mac, ip, old_vendor, vendor))
+            row[vendor_key] = vendor
+        elif not vendor:
+            unknown_vendor.append((mac, ip, old_vendor))
+    if ip_key:
+        row[ip_key] = ip
+    row[HOSTNAME_COL] = hostname_for(ip)
+    row[STATUS_COL] = "online" if mac in discovered else "offline"
+
+known_macs = {mac for _, mac, _ in inventory}
+added_devices = []
+for mac, ip in sorted(discovered.items(), key=lambda kv: ipaddress.ip_address(kv[1])):
+    if mac in known_macs:
+        continue
+    vendor = vendor_for(mac) or ""
+    info = identities.get(ip)
+    row = {f: "" for f in fieldnames}
+    row[mac_key or fieldnames[0]] = mac
+    if ip_key:
+        row[ip_key] = ip
+    row[vendor_key] = vendor
+    if name_key and info and info["names"]:
+        row[name_key] = info["names"][0]
+    row[HOSTNAME_COL] = hostname_for(ip)
+    if IDENTIFY:
+        row[TYPE_COL] = info["type"] if info else ""
+    row[STATUS_COL] = "new"
+    added_devices.append((mac, ip, vendor, info["type"] if info else "", row[name_key] if name_key else ""))
+    if ADD_NEW:
+        rows.append(row)
+
+
+
+
+# ---------------------------------------------------------------- output
+
+
+# A hostname column that is empty for every device carries no information,
+# so it is dropped from the output file.
+if not any((row.get(HOSTNAME_COL) or "").strip() for row in rows):
+    if HOSTNAME_COL in fieldnames:
+        fieldnames = [f for f in fieldnames if f != HOSTNAME_COL]
+        for row in rows:
+            row.pop(HOSTNAME_COL, None)
+        log("INFO", f"No reverse DNS in this network, dropped the '{HOSTNAME_COL}' column")
+
+with open(OUTPUT, "w", encoding="utf-8", newline="") as fh:
+    writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=";", extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+
+now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+lines = [
+    f"# Network scan report - {now}",
+    "",
+    f"- Inventory: `{INPUT}`",
+    f"- Output: `{OUTPUT}`",
+    f"- Mode: {'MAC table' if MAC_SCAN else ''}{' + ' if MAC_SCAN and NETWORK_SCAN else ''}{'active sweep' if NETWORK_SCAN else ''}",
+    f"- Subnets: {', '.join(str(n) for n in subnets) or 'n/a'}",
+    f"- ARP entries: {len(discovered)}",
+    "",
+    f"## Summary ({len(inventory)} inventory devices)",
+    "",
+    f"- IP changed: {len(changes_ip)}",
+    f"- Not seen on the network: {len(missing)}",
+    f"- Vendor updated: {len(vendor_updates)}",
+    f"- Unknown vendor: {len(unknown_vendor)}",
+    f"- Randomized / private MAC: {len(private_macs)}",
+    f"- New devices on the network: {len(added_devices)} ("
+    + ("added to the output file" if ADD_NEW else "report only, not added")
+    + ")",
+    f"- Malformed MAC repaired: {len(repaired_macs)}",
+    f"- MAC typos corrected: {len(corrected_macs)}",
+    f"- Unchanged: {unchanged}",
+]
+
+
+def table(title, items, headers):
+    lines.extend(["", f"## {title} ({len(items)})", ""])
+    if not items:
+        lines.append("_none_")
+        return
+    lines.append("| " + " | ".join(headers) + " |")
+    lines.append("| " + " | ".join("---" for _ in headers) + " |")
+    for item in items:
+        lines.append("| " + " | ".join(str(v or "").replace("|", "\\|") for v in item) + " |")
+
+
+CHART_MAX_SLICES = 8
+TOPOLOGY_LABEL_WIDTH = 22
+
+
+def wrap_label(text, width=TOPOLOGY_LABEL_WIDTH):
+    """Break a long label into mermaid `<br/>` separated chunks."""
+    words = str(text).split()
+    if not words:
+        return ""
+    chunks = []
+    current = words[0]
+    for word in words[1:]:
+        if len(current) + 1 + len(word) <= width:
+            current = f"{current} {word}"
+        else:
+            chunks.append(current)
+            current = word
+    chunks.append(current)
+    return "<br/>".join(chunks)
+
+
+def mermaid_escape(value):
+    """Make a label safe inside a mermaid node or pie slice.
+
+    `<br/>` is preserved on purpose: it is mermaid's own line break and keeps
+    long device labels from widening the layout.
+    """
+    text = str(value or "")
+    keep_breaks = "<br/>" in text
+    text = text.replace("\\", "/").replace('"', "'").replace("\n", " ").replace(";", ",")
+    if not keep_breaks:
+        text = text.replace("<", "(").replace(">", ")")
+    return text.strip() or "unknown"
+
+
+def pie(title, counts):
+    """Mermaid pie chart of {label: count}."""
+    lines.extend(["", f"## {title}", ""])
+    if not counts:
+        lines.append("_no data_")
+        return
+    items = list(counts.items())
+    if len(items) > CHART_MAX_SLICES:
+        head = items[: CHART_MAX_SLICES - 1]
+        rest = sum(c for _, c in items[CHART_MAX_SLICES - 1 :])
+        items = head + [("Other", rest)]
+    lines.append("```mermaid")
+    lines.append("pie showData")
+    for label, count in items:
+        lines.append(f'    "{mermaid_escape(label)}" : {count}')
+    lines.append("```")
+
+
+def dev_label(mac, name):
+    return f"{name} ({mac})" if name else mac
+
+
+# Infrastructure first, then personal devices, then shared multimedia, then
+# everything else (mostly IoT) at the very end.
+CATEGORY_ORDER = [
+    (0, "Brama / router / punkt dostępowy"),
+    (1, "Komputer / laptop / serwer"),
+    (2, "Telefon / tablet"),
+    (3, "Urządzenie wspólne (multimedia, drukarka, kamera)"),
+    (4, "IoT / automatyka domowa"),
+    (5, "Pozostałe / nieznane"),
+]
+
+CATEGORY_RULES = [
+    (0, ("router", "brama", "gateway", "punkt dostępowy", "mesh", "access point", "huawei", "zte", "tp-link", "tenda", "netgear", "d-link", "mikrotik", "ubiquiti", "mercusys", "arris")),
+    (1, ("laptop", "komputer", "nas", "serwer", "server", "desktop", "workstation", "apple", "ssh (linux)", "z panelem web", "liteon", "lenovo", "dell", "asustek", "acer", "intel")),
+    (2, ("telefon", "tablet", "smartfon", "phone", "motorola", "xiaomi", "oneplus", "oppo", "vivo", "realme", "honor")),
+    (3, ("tv", "konsol", "głośnik", "soundbar", "drukarka", "kamera", "media", "streamer", "nieznany typ", "upnp", "roku", "polsat", "sonos", "tcl", "samsung", "sony", "hisense", "hp inc", "hewlett", "epson", "brother", "canon", "hikvision", "dahua", "urządzenie google", "cast", "echo", "alexa")),
+    (4, ("gniazdko", "przełącznik smart", "smart", "iot", "zigbee", "mqtt", "sensor", "czujnik", "termostat", "tuya", "espressif", "sonoff", "shelly", "gvi")),
+]
+
+CATEGORY_VENDOR_FALLBACK = [
+    (0, ("mercusys", "huawei", "tp-link", "netgear", "d-link", "mikrotik", "ubiquiti", "zyxel", "linksys")),
+    (1, ("apple", "liteon", "lenovo", "dell", "asustek", "acer", "intel")),
+    (2, ("motorola", "xiaomi", "oneplus", "oppo", "vivo", "realme", "honor")),
+    (3, ("roku", "polsat", "sonos", "tcl", "samsung", "lg elect", "hisense", "sony", "hp inc", "hewlett", "epson", "brother", "canon", "hikvision", "dahua", "axis", "google")),
+    (4, ("tuya", "espressif", "sonoff", "shelly")),
+]
+
+
+def device_category(kind, vendor=""):
+    """Map a device type (and vendor as a fallback) to a CATEGORY_ORDER bucket."""
+    low = (kind or "").lower()
+    if "offline" in low or "brak odpowiedzi" in low:
+        low = ""
+    for index, keywords in CATEGORY_RULES:
+        if any(keyword in low for keyword in keywords):
+            return index
+    vendor_low = (vendor or "").lower()
+    for index, keywords in CATEGORY_VENDOR_FALLBACK:
+        if any(keyword in vendor_low for keyword in keywords):
+            return index
+    return 5
+
+
+table(
+    "IP changed",
+    [(dev_label(m, nm), old, new) for m, old, new, nm in changes_ip],
+    ["Device", "Old IP", "New IP"],
+)
+table(
+    "Not seen",
+    [(dev_label(m, nm), i) for m, i, nm in missing],
+    ["Device", "IP in inventory"],
+)
+table(
+    "Vendor updated",
+    [(m, i, old or "-", new) for m, i, old, new in vendor_updates],
+    ["MAC", "IP", "Old vendor", "New vendor"],
+)
+table(
+    "Unknown vendor",
+    [(m, i, old or "-") for m, i, old in unknown_vendor],
+    ["MAC", "IP", "Vendor in inventory"],
+)
+table(
+    "Randomized / private MAC (vendor unverifiable, inventory value kept)",
+    [(dev_label(m, nm), i, old or "-") for m, i, old, nm in private_macs],
+    ["Device", "IP", "Vendor in inventory"],
+)
+table(
+    "New devices (" + ("added to the output file" if ADD_NEW else "report only") + ")",
+    [(m, i, nm or "-", v or "-", kind or "-") for m, i, v, kind, nm in added_devices],
+    ["MAC", "IP", "Name", "Vendor", "Type"],
+)
+if repaired_macs:
+    table(
+        "Malformed MAC addresses repaired",
+        [(line_no, old, new, note) for line_no, old, new, note in repaired_macs],
+        ["Line", "In inventory", "Repaired to", "Reason"],
+    )
+if corrected_macs:
+    table(
+        "MAC typos corrected against live devices",
+        [(typed, actual, f"{distance} hex digit(s)") for typed, actual, distance in corrected_macs],
+        ["Typed in inventory", "Corrected to", "Difference"],
+    )
+
+# ------------------------------------------------------- inventory breakdown
+
+vendor_counts = {}
+type_counts = {}
+for entry in inventory:
+    row, mac, ip = entry
+    label = (row.get(vendor_key, "") or "").strip() or "Unknown"
+    vendor_counts[label] = vendor_counts.get(label, 0) + 1
+    info = identities.get(ip)
+    kind = info["type"] if info else "Not identified"
+    type_counts[kind] = type_counts.get(kind, 0) + 1
+
+vendor_counts = dict(sorted(vendor_counts.items(), key=lambda kv: (-kv[1], kv[0])))
+type_counts = dict(sorted(type_counts.items(), key=lambda kv: (-kv[1], kv[0])))
+
+lines.extend(
+    [
+        "",
+        f"## Vendor breakdown ({sum(vendor_counts.values())} devices)",
+        "",
+        "| Vendor | Devices | Share |",
+        "| --- | --- | --- |",
+    ]
+)
+for label, count in vendor_counts.items():
+    share = 100 * count / max(1, len(inventory))
+    lines.append(f"| {label} | {count} | {share:.0f}% |")
+
+pie("Vendors", vendor_counts)
+
+lines.extend(
+    [
+        "",
+        f"## Device types ({sum(type_counts.values())} devices)",
+        "",
+        "| Type | Devices | Share |",
+        "| --- | --- | --- |",
+    ]
+)
+for label, count in type_counts.items():
+    share = 100 * count / max(1, len(inventory))
+    lines.append(f"| {label} | {count} | {share:.0f}% |")
+
+pie("Device types", type_counts)
+
+# --------------------------------------------------- topology diagram
+
+gateway_ip = ""
+if IS_DARWIN:
+    _route, _, _rc = run(["route", "-n", "get", "default"])
+    _m = re.search(r"gateway:\s*([0-9.]+)", _route)
+else:
+    _route, _, _rc = run(["ip", "route", "show", "default"])
+    _m = re.search(r"default via ([0-9.]+)", _route)
+if _m:
+    gateway_ip = _m.group(1)
+
+# Group devices by category (infrastructure first, IoT last) and keep the
+# type inside the category as a sub-group, so the diagram reads top down in a
+# useful order instead of by raw type name.
+category_of_device = {}
+for entry in inventory:
+    row, mac, ip = entry
+    info = identities.get(ip)
+    online = ip in ip_to_mac
+    if info:
+        kind = info["type"]
+    else:
+        kind = "Offline" if not online else "Nieznany typ (online)"
+    vendor = (row.get(vendor_key, "") or "").strip()
+    category_of_device[mac] = (device_category(kind, vendor), kind)
+
+grouped = {}
+for entry in inventory:
+    row, mac, ip = entry
+    order, kind = category_of_device[mac]
+    label = (row.get(name_key, "") if name_key else "") or ""
+    # Unknown types collapse into one sub-group per category, otherwise each
+    # unidentified device would get its own repeated heading.
+    if kind.startswith("Nieznany typ") or kind == "Offline":
+        kind = "Nieznany typ"
+    # The gateway is already the root node of the diagram, listing it again in
+    # a column would just duplicate it.
+    if ip == gateway_ip:
+        continue
+    grouped.setdefault((order, kind), []).append((ip, label, mac, ip in ip_to_mac))
+
+ordered_groups = sorted(
+    grouped.items(),
+    key=lambda kv: (kv[0][0], -len(kv[1]), kv[0][1]),
+)
+
+lines.extend(["", "## Network topology", ""])
+if gateway_ip:
+    lines.append("```mermaid")
+    lines.append("graph TD")
+    lines.append(f'    GW["Gateway {mermaid_escape(gateway_ip)}"]')
+    lines.append("    style GW fill:#ffd,stroke:#333,stroke-width:3px")
+    node_id = 0
+    # Every category hangs directly off the gateway, so dagre puts the six
+    # category headers side by side and each category then grows downwards as
+    # its own column. One long single chain was unreadably tall, a single star
+    # was unreadably wide (7372px); a grid of columns is the readable middle.
+    by_order = {}
+    for (order, kind), devices in ordered_groups:
+        by_order.setdefault(order, []).append((kind, devices))
+
+
+    for order in sorted(by_order):
+        cat_label = CATEGORY_ORDER[order][1]
+        cat_id = "C" + str(node_id)
+        node_id += 1
+        lines.append(f'    {cat_id}["{mermaid_escape(wrap_label(cat_label))}"]')
+        lines.append(f"    style {cat_id} fill:#cde,stroke:#334,stroke-width:2px")
+        lines.append(f"    GW --- {cat_id}")
+        previous = cat_id
+        for kind, devices in by_order[order]:
+            if kind != cat_label:
+                slug = "T" + str(node_id)
+                node_id += 1
+                lines.append(f'    {slug}["{mermaid_escape(wrap_label(kind))}"]')
+                lines.append(f"    {previous} -.-> {slug}")
+                previous = slug
+            entries = sorted(devices, key=lambda t: ipaddress.ip_address(t[0]))
+            shown = entries
+            # Every edge target must be a node id, never a bare string:
+            # mermaid rejects `A --> "text"` with a parse error.
+            for ip, label, mac, online in shown:
+                device_id = f"D{node_id}"
+                node_id += 1
+                lines.append(
+                    f'    {device_id}["{mermaid_escape(wrap_label(label or mac) + "<br/>" + ip)}"]'
+                )
+                if online:
+                    lines.append(f"    style {device_id} fill:#dfd,stroke:#3a3,stroke-width:1px")
+                else:
+                    # Offline devices get a dashed frame and a muted fill.
+                    lines.append(
+                        f"    style {device_id} fill:#eee,stroke:#999,"
+                        "stroke-width:2px,stroke-dasharray:5 4"
+                    )
+                lines.append(f"    {previous} -.-> {device_id}")
+                previous = device_id
+    lines.append("```")
+else:
+    lines.append("_default gateway not found, topology skipped_")
+
+if identities:
+    table(
+        "Identification details",
+        [
+            (
+                info["ip"],
+                info["type"],
+                ", ".join(str(p) for p in info["ports"]) or "-",
+                ", ".join(info["names"]) or "-",
+            )
+            for _, info in sorted(
+                identities.items(), key=lambda kv: ipaddress.ip_address(kv[0])
+            )
+        ],
+        ["IP", "Type", "Open ports", "Name / HTTP title"],
+    )
+
+if invalid_rows:
+    table(
+        "Rows without a valid MAC address",
+        [(line, value) for line, value in invalid_rows],
+        ["Line", "Value"],
+    )
+
+with open(REPORT, "w", encoding="utf-8") as fh:
+    fh.write("\n".join(lines) + "\n")
+
+# ---------------------------------------------------------------- csv export
+
+csv_written = []
+if CSV_DIR:
+    try:
+        os.makedirs(CSV_DIR, exist_ok=True)
+    except OSError as exc:
+        log("ERR", f"Cannot create {CSV_DIR}: {exc}")
+        sys.exit(1)
+
+    def write_csv(filename, headers, rows):
+        path = os.path.join(CSV_DIR, filename)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(headers)
+            writer.writerows(rows)
+        csv_written.append(path)
+
+    write_csv(
+        "devices.csv",
+        ["mac", "ip", "name", "vendor", "hostname", "type", "status", "open_ports", "identified_as"],
+        [
+            [
+                mac,
+                ip,
+                (row.get(name_key, "") if name_key else "") or "",
+                (row.get(vendor_key, "") or "").strip(),
+                row.get(HOSTNAME_COL, "") or "",
+                identities[ip]["type"] if ip in identities else "",
+                "online" if ip in ip_to_mac else "offline",
+                ", ".join(str(p) for p in identities[ip]["ports"]) if ip in identities else "",
+                ", ".join(identities[ip]["names"]) if ip in identities else "",
+            ]
+            for row, mac, ip in inventory
+        ],
+    )
+    write_csv(
+        "vendors.csv",
+        ["vendor", "devices", "share_pct"],
+        [
+            [label, count, f"{100 * count / max(1, len(inventory)):.1f}"]
+            for label, count in vendor_counts.items()
+        ],
+    )
+    write_csv(
+        "types.csv",
+        ["type", "devices", "share_pct"],
+        [
+            [label, count, f"{100 * count / max(1, len(inventory)):.1f}"]
+            for label, count in type_counts.items()
+        ],
+    )
+    write_csv(
+        "changes.csv",
+        ["change", "mac", "ip", "detail"],
+        [["ip_changed", m, new, f"{old} -> {new}"] for m, old, new, _ in changes_ip]
+        + [["not_seen", m, i, ""] for m, i, _ in missing]
+        + [["vendor_updated", m, i, f"{old} -> {new}"] for m, i, old, new in vendor_updates]
+        + [["unknown_vendor", m, i, ""] for m, i, _ in unknown_vendor]
+        + [["private_mac", m, i, old] for m, i, old, _ in private_macs],
+    )
+    write_csv(
+        "new-devices.csv",
+        ["mac", "ip", "vendor", "type", "identified_as"],
+        [
+            [
+                m,
+                i,
+                v,
+                identities[i]["type"] if i in identities else "",
+                ", ".join(identities[i]["names"]) if i in identities else "",
+            ]
+            for m, i, v, _k, _n in added_devices
+        ],
+    )
+    if identities:
+        write_csv(
+            "identified.csv",
+            ["ip", "mac", "type", "open_ports", "names", "vendor"],
+            [
+                [
+                    ip,
+                    ip_to_mac.get(ip, ""),
+                    info["type"],
+                    ", ".join(str(p) for p in info["ports"]),
+                    ", ".join(info["names"]),
+                    vendor_for(ip_to_mac.get(ip, "")) if ip in ip_to_mac else "",
+                ]
+                for ip, info in sorted(identities.items(), key=lambda kv: ipaddress.ip_address(kv[0]))
+            ],
+        )
+    for path in csv_written:
+        log("INFO", f"CSV: {path}")
+
+log(
+    "STAT",
+    "{}, {} IP changed, {} not seen, {} vendor updates, {} new devices".format(
+        len(inventory), len(changes_ip), len(missing), len(vendor_updates), len(added_devices)
+    ),
+)
+PY
+
+  wait "$_log_pid" || true
+  rm -f "$_py_fifo"
+  if [[ "$VERBOSE" != "1" ]]; then
+    echo
+  fi
+
+  if [[ "$_py_status" -ne 0 ]]; then
+    die "$_py_status" 'Scan failed'
+  fi
+
+  log_success ---icon '📝' 'Report written to <u>%s</u>' "$REPORT"
+}
+
+main "$@"
