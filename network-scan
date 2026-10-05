@@ -382,17 +382,31 @@ network_scan_main() {
   _PROGRESS_LABEL=""
   _PROGRESS_TOTAL=0
   _PROGRESS_WIDTH=28
+  _PROGRESS_LEN=0
 
   if [[ ! -t 1 ]]; then
     _PROGRESS_WIDTH=0
   fi
 
+  # Erase to end of line instead of padding with spaces, so no trailing
+  # whitespace is left behind when the output is copied or piped.
+  if [[ "$_PROGRESS_WIDTH" -gt 0 && "${TERM:-dumb}" != 'dumb' ]]; then
+    _PROGRESS_ERASE=$'\033[K'
+  else
+    _PROGRESS_ERASE=""
+  fi
+
   _finish_progress_bar() {
     [[ -n "$_PROGRESS_LABEL" ]] || return 0
     if [[ "$_PROGRESS_WIDTH" -gt 0 ]]; then
-      printf '\r%100s\r' ""
+      if [[ -n "$_PROGRESS_ERASE" ]]; then
+        printf '\r%s' "$_PROGRESS_ERASE"
+      else
+        printf '\r%*s\r' "$_PROGRESS_LEN" ""
+      fi
     fi
     _PROGRESS_LABEL=""
+    _PROGRESS_LEN=0
   }
 
   _render_progress_bar() {
@@ -415,7 +429,10 @@ network_scan_main() {
     for ((_i = _filled; _i < _PROGRESS_WIDTH; _i++)); do
       _bar+='░'
     done
-    printf '\r%s %s %3d%% (%d/%d)' "$_PROGRESS_LABEL" "$_bar" "$_pct" "$_done" "$_total"
+    local _line
+    printf -v _line '%s %s %3d%% (%d/%d)' "$_PROGRESS_LABEL" "$_bar" "$_pct" "$_done" "$_total"
+    _PROGRESS_LEN="${#_line}"
+    printf '\r%s%s' "$_line" "$_PROGRESS_ERASE"
   }
 
   consume_py_logs() {
@@ -610,6 +627,25 @@ def mac_prefix(mac):
     return out
 
 
+BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
+
+
+def is_broadcast_mac(mac):
+    """True for the all-ones MAC, which never identifies a single device."""
+    return re.sub(r"[^0-9a-f]", "", (mac or "").lower()) == "ffffffffffff"
+
+
+def is_broadcast_ip(ip):
+    """True for a subnet's network or broadcast address."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return addr.is_unspecified or addr.is_loopback or addr.is_reserved or (
+        addr.version == 4 and int(addr) & 0xFF == 0xFF
+    )
+
+
 def is_locally_administered(mac):
     try:
         first = int(re.sub(r"[^0-9a-f]", "", mac.lower())[:2], 16)
@@ -697,6 +733,14 @@ for idx, row in enumerate(rows, start=2):
         except ValueError:
             log("WARN", f"Line {idx}: invalid IP '{ip}', ignored")
             ip = ""
+    # ff:ff:ff:ff:ff:ff with a .255 address is the subnet broadcast, not a
+    # device; it never appears in the ARP table so it would always be "not seen".
+    if mac and (is_broadcast_mac(mac) or is_broadcast_ip(ip)):
+        reason = "adres rozgłoszeniowy" if is_broadcast_ip(ip) else "MAC rozgłoszeniowy"
+        log("WARN", f"Line {idx}: {mac} {ip or '-'} is a broadcast address, ignored")
+        invalid_rows.append((idx, original.strip()))
+        skipped_rows[id(row)] = reason
+        continue
     if not mac:
         # No MAC but a usable IP: the address can be looked up on the network
         # once the ARP table is known, so hold the row instead of dropping it.
@@ -850,6 +894,8 @@ def read_arp():
         if addr.is_multicast or addr.is_loopback or addr.is_reserved:
             continue
         if normalize_mac(macm.group(1)).startswith("01:00:5e"):
+            continue
+        if is_broadcast_mac(mac) or is_broadcast_ip(ip):
             continue
         entries.append((ip, mac))
     if DEBUG:
